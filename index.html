@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="中国式家长 H5自娱版 - 原生纯前端实现，模拟从婴儿到高考再到成家立业与世代传承。">
+<title>中国式家长 · H5自娱版</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <!-- 浮动音效开关 -->
+  <button id="sound-btn" class="icon-toggle" title="音效切换" aria-label="音效切换">🔊</button>
+
+  <!-- 开始页 -->
+  <div id="splash" class="screen active">
+    <div class="splash-content">
+      <div class="logo-bounce">🎈👨‍👩‍👦</div>
+      <h1>中国式家长</h1>
+      <p class="sub">H5 自娱版 · 从出生到高考，再到世代传承</p>
+      
+      <div id="fam-badge" class="fam-card" hidden>
+        <div class="fam-title">📜 家族底蕴</div>
+        <div id="fam-detail" class="fam-info">已传承 0 代 · 家族特长 0 个</div>
+      </div>
+
+      <div class="splash-actions">
+        <button id="btn-continue" class="btn big ghost" hidden>
+          ▶ 继续成长 (第<span id="cont-gen">1</span>代 · 第<span id="cont-turn">1</span>回合)
+        </button>
+        <button id="btn-new" class="btn big primary">
+          🎒 开启新的一代
+        </button>
+      </div>
+      <p class="tip" id="splash-tip">🔒 纯本地存档 · 自动保存 · 数据安全保存在你的浏览器</p>
+    </div>
+  </div>
+
+  <!-- 游戏主界面 -->
+  <div id="game" class="screen" hidden>
+    <header id="topbar"></header>
+    <div id="status"></div>
+    <main id="stage"></main>
+    <nav id="tabs">
+      <button data-tab="plan" class="tab-btn on">📅 日程</button>
+      <button data-tab="brain" class="tab-btn">🧠 脑洞</button>
+      <button data-tab="social" class="tab-btn">👥 同学</button>
+      <button data-tab="shop" class="tab-btn">🛒 商店</button>
+      <button data-tab="atlas" class="tab-btn">🏆 图鉴</button>
+    </nav>
+  </div>
+
+  <!-- 世代结算画卷大屏 -->
+  <div id="report" class="screen" hidden>
+    <div class="report-wrap">
+      <div class="report-header">
+        <div class="report-emblem">📜</div>
+        <h2 id="rep-title">第 1 代 · 人生功绩录</h2>
+        <div id="rep-sub" class="report-sub">时光荏苒，韶华不负</div>
+      </div>
+      
+      <div class="report-card" id="rep-profile"></div>
+      <div class="report-card" id="rep-highlights"></div>
+      <div class="report-card" id="rep-inheritance"></div>
+
+      <div class="report-footer">
+        <button id="rep-next-btn" class="btn big primary">🌟 生下下一代 (开启新传承)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹层 -->
+  <div id="modal"></div>
+  <div id="toasts"></div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/core.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
