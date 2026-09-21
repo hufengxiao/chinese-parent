@@ -213,26 +213,54 @@ function renderPlan() {
     wrap.appendChild(h('div', 'hint', '💡 点击已选格子可撤销。填满 6 个格子后可结束回合。注意平衡学习与娱乐！'));
   }
 
-  // 行动池
+  // 1) 研习新技能板块 (原版核心机制: 挖脑洞得悟性 -> 悟性研习新课程 -> 日程自由排课)
+  const unlearned = CP.learnList ? CP.learnList() : [];
+  const info = CP.info();
+  if (unlearned.length) {
+    const learnSection = h('div', 'learn-section');
+    learnSection.innerHTML = '<div class="pool-cat flex-between"><span>💡 研习新技能 (消耗悟性)</span><span class="chip" style="font-size:11px">可用悟性: <b>' + (info ? info.insight : 0) + '💡</b></span></div>';
+    const lgrid = h('div', 'learn-grid');
+    unlearned.forEach(uc => {
+      const card = h('div', 'learn-card' + (uc.can ? '' : ' disabled'));
+      card.innerHTML =
+        '<div class="lc-header"><span class="lc-ico">' + uc.icon + '</span><span class="lc-name">' + uc.name + '</span><span class="lc-cost">' + uc.cost + '💡</span></div>' +
+        '<div class="lc-desc">' + niceEff(uc.attr) + ' <span class="lc-sub">(' + uc.mainAttr + '折扣)</span></div>';
+      if (uc.can) {
+        card.onclick = () => {
+          sound.coin();
+          if (CP.learnCourse(uc.id)) {
+            render();
+          }
+        };
+      }
+      lgrid.appendChild(card);
+    });
+    learnSection.appendChild(lgrid);
+    wrap.appendChild(learnSection);
+  }
+
+  // 2) 行动池 (日程安排: 所有已掌握课程与娱乐均可自由、重复安排至 6 个格子中)
   const pl = CP.pool();
-  const cats = { '学习 📘': [], '娱乐 🎮': [], '打工 💼': [], '索取 🧺': [], '休息 💤': [] };
+  const cats = { '学习 📘 (已掌握可重复排)': [], '娱乐 🎮': [], '打工 💼': [], '索取 🧺': [], '休息 💤': [] };
   pl.forEach(pi => {
-    if (pi.tone === 'course') cats['学习 📘'].push(pi);
+    if (pi.tone === 'course') cats['学习 📘 (已掌握可重复排)'].push(pi);
     else if (pi.tone === 'job') cats['打工 💼'].push(pi);
     else if (pi.tone === 'beg') cats['索取 🧺'].push(pi);
     else if (pi.tone === 'rest') cats['休息 💤'].push(pi);
     else cats['娱乐 🎮'].push(pi);
   });
 
+  wrap.appendChild(h('div', 'pool-cat', '📋 今日可选安排 (点击填入上方格子，可重复安排)'));
+
   Object.keys(cats).forEach(cn => {
     if (!cats[cn].length) return;
-    wrap.appendChild(h('div', 'pool-cat', cn));
+    wrap.appendChild(h('div', 'pool-subcat', cn));
     const list = h('div', '');
     cats[cn].forEach(pi => {
       const li = h('div', 'pool-item' + (pi.locked ? ' disabled' : ''));
       li.innerHTML = '<span class="pi-ico">' + pi.icon + '</span>' +
         '<span class="pi-info"><span class="pi-name">' + pi.name + '</span><br><span class="pi-desc">' + pi.desc + '</span></span>' +
-        '<span class="pi-cost">' + (pi.money ? pi.money + '¥ ' : '') + (pi.extra || (pi.act + '⚡')) + '</span>';
+        '<span class="pi-cost">' + (pi.money ? pi.money + '¥ ' : '') + (pi.extra ? '<span class="tag-badge">' + pi.extra + '</span> ' : '') + (pi.act ? pi.act + '⚡' : '') + '</span>';
       if (!pi.locked) {
         li.onclick = () => {
           sound.pop();

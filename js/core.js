@@ -108,8 +108,11 @@ function newGame() {
   if (fam.g > 0) {
     ATTRS.forEach(k => { S.attrs[k] += Math.round(((fam.attr && fam.attr[k]) || 0) * 0.18) + (fam.talent || 0); });
   }
+  S.learnedCourses = ['fanshen', 'wanju'];
+  S.skills.fanshen = 1;
+  S.skills.wanju = 1;
   S.act = 100;
-  S.pending.push({ type: 'intro', title: '第' + S.gen + '代 · 出生', body: '你出生在一个普通中国家庭,爸妈起名「' + S.name + '」。\n\n每个回合:挖脑洞攒悟性 → 安排 6 件事(学习/娱乐/打工/社交) → 考试、选秀、面子,一路卷到高考。\n' + (fam.g > 0 ? '上一代的积累让你出生自带天赋 +' + fam.talent + '。' : '白手起家,加油!'), opts: ['开始成长'] });
+  S.pending.push({ type: 'intro', title: '第' + S.gen + '代 · 出生', body: '你出生在一个普通中国家庭,爸妈起名「' + S.name + '」。\n\n每个回合:挖脑洞攒悟性 → 研习新技能 → 自由安排 6 件事(学习/娱乐/打工/社交) → 考试、选秀、面子,一路卷到高考。\n' + (fam.g > 0 ? '上一代的积累让你出生自带天赋 +' + fam.talent + '。' : '白手起家,加油!'), opts: ['开始成长'] });
   captureTurnStart();
   persist();
 }
@@ -117,6 +120,9 @@ function resume() {
   const s = loadSave();
   if (s && s.ver) {
     S = s;
+    if (!S.learnedCourses) {
+      S.learnedCourses = Object.keys(S.skills).length ? Object.keys(S.skills) : ['fanshen', 'wanju'];
+    }
     if (!S.turnStart) captureTurnStart();
     return true;
   }
@@ -138,6 +144,7 @@ function captureTurnStart() {
     skills: { ...S.skills },
     flags: { ...S.flags },
     talents: [...(S.talents || [])],
+    learnedCourses: [...(S.learnedCourses || [])],
   };
 }
 
@@ -154,6 +161,63 @@ function restoreTurnStart() {
   S.skills = { ...ts.skills };
   S.flags = { ...ts.flags };
   S.talents = [...ts.talents];
+  S.learnedCourses = [...(ts.learnedCourses || ['fanshen', 'wanju'])];
+}
+
+function courseCost(c) {
+  const phaseBase = { baby: 20, kinder: 35, pri: 55, junior: 85, senior: 130, college: 160 }[c.phase] || 40;
+  const base = c.baseInsight || phaseBase;
+  const mainAttrKey = c.main || (c.attr ? Object.keys(c.attr)[0] : 'iq');
+  const attrVal = (S && S.attrs) ? (S.attrs[mainAttrKey] || 0) : 0;
+  // 属性越高，折扣越大，最高可享 75% 折扣 (原版核心机制)
+  const discount = clamp(attrVal * 0.003, 0, 0.75);
+  return Math.max(5, Math.round(base * (1 - discount)));
+}
+
+function learnCourse(id) {
+  if (!S) return false;
+  S.learnedCourses = S.learnedCourses || ['fanshen', 'wanju'];
+  if (S.learnedCourses.indexOf(id) >= 0) return false;
+  const c = D.courses.find(x => x.id === id);
+  if (!c) return false;
+  const cost = courseCost(c);
+  if (S.insight < cost) {
+    toast('悟性不足 (还需' + (cost - S.insight) + '💡)');
+    return false;
+  }
+  S.insight -= cost;
+  S.learnedCourses.push(id);
+  S.skills[id] = 1;
+  ATTRS.forEach(k => { if (c.attr && c.attr[k]) S.attrs[k] += c.attr[k]; });
+  log('研习领悟了「' + c.name + '」! 已加入日常安排');
+  toast('💡 掌握新课「' + c.name + '」!');
+  if (c.tal) rollTalent(c.tal.id, c.tal.p || 0.25);
+  persist();
+  return true;
+}
+
+function learnList() {
+  if (!S) return [];
+  const ph = cls();
+  S.learnedCourses = S.learnedCourses || ['fanshen', 'wanju'];
+  return D.courses.filter(c => {
+    if (c.phase !== ph) return false;
+    if (c.begOnly && !S.flags[c.id]) return false;
+    return S.learnedCourses.indexOf(c.id) < 0;
+  }).map(c => {
+    const cost = courseCost(c);
+    const mainAttrKey = c.main || (c.attr ? Object.keys(c.attr)[0] : 'iq');
+    return {
+      id: c.id,
+      name: c.name,
+      icon: c.icon,
+      phase: c.phase,
+      cost,
+      attr: c.attr,
+      mainAttr: ANAME[mainAttrKey] || '属性',
+      can: S.insight >= cost,
+    };
+  });
 }
 
 function clearSlots() {
@@ -216,35 +280,97 @@ function saveInfo() {
 }
 
 /* ---------- 行动池 ---------- */
-function insCost(c, lvl) {
-  const base = 10 + lvl * lvl * 2.5;
-  const dis = clamp(S.attrs[c.main || 'iq'] * 0.002, 0, 0.5);
-  return Math.max(3, Math.round(base * (1 - dis)));
-}
 function pool() {
   const ph = cls(), out = [];
+  S.learnedCourses = S.learnedCourses || ['fanshen', 'wanju'];
+
+  // 1) 所有已学会的课程，可以任意多次排入日常安排！
   D.courses.forEach(c => {
-    if (c.phase !== ph) return;
-    if (c.begOnly && !S.flags[c.id]) return;
-    const lvl = S.skills[c.id] || 0;
-    if (lvl >= 5) return;
-    const ic = insCost(c, lvl);
-    out.push({ kind: 'learn', id: c.id, name: c.name, icon: c.icon, desc: '课业 ' + lvl + '/5' + (c.ex ? ' ·学科' : ''), act: 3, extra: ic + '悟性', locked: S.insight < ic, money: c.money || 0, tone: 'course' });
+    if (S.learnedCourses.indexOf(c.id) < 0) return;
+    const lvl = S.skills[c.id] || 1;
+    out.push({
+      kind: 'learn',
+      id: c.id,
+      name: c.name,
+      icon: c.icon,
+      desc: effText(c.attr) + (c.stress ? ' 压+' + c.stress : ''),
+      act: 3,
+      extra: '熟练Lv' + lvl,
+      locked: S.act < 3 || (c.money && S.money < c.money),
+      money: c.money || 0,
+      tone: 'course'
+    });
   });
+
+  // 2) 娱乐项目
   const okPlay = p =>
     p.phase === ph ||
     (p.phase === 'college' && ph === 'college') ||
     (p.phase === 'pri' && ph === 'college' && (p.id === 'pl-games' || p.id === 'pl-janghu'));
-  D.plays.forEach(p => { if (okPlay(p)) out.push({ kind: 'play', id: p.id, name: p.name, icon: p.icon, desc: effText({ stress: p.stress, sat: p.sat, ...p.attr }) || '只是放松', act: 2, extra: '', locked: false, money: p.money || 0, tone: 'play' }); });
-  D.payjobs.forEach(pj => { if (pj.phase === ph) out.push({ kind: 'pay', id: pj.id, name: pj.name, icon: pj.icon, desc: '赚 ' + pj.money + ' 元', act: 3, extra: '', locked: false, money: 0, tone: 'job' }); });
+  D.plays.forEach(p => {
+    if (okPlay(p)) out.push({
+      kind: 'play',
+      id: p.id,
+      name: p.name,
+      icon: p.icon,
+      desc: effText({ stress: p.stress, sat: p.sat, ...p.attr }) || '只是放松',
+      act: 2,
+      extra: '',
+      locked: S.act < 2 || (p.money && S.money < p.money),
+      money: p.money || 0,
+      tone: 'play'
+    });
+  });
+
+  // 3) 打工
+  D.payjobs.forEach(pj => {
+    if (pj.phase === ph) out.push({
+      kind: 'pay',
+      id: pj.id,
+      name: pj.name,
+      icon: pj.icon,
+      desc: '赚 ' + pj.money + ' 元',
+      act: 3,
+      extra: '',
+      locked: S.act < 3,
+      money: 0,
+      tone: 'job'
+    });
+  });
+
+  // 4) 索取
   if (ph !== 'baby') D.begs.forEach(b => {
     if (S.flags['beg_' + b.id]) return;
     const reqFace = b.face || 0;
     const reqSat = b.sat || 0;
     const ok = S.face >= reqFace && S.sat >= reqSat;
-    out.push({ kind: 'beg', id: b.id, name: '跟爸妈要「' + b.n + '」', icon: b.icon, desc: (b.desc || '') + ' · 成功率' + Math.round(b.w * 100) + '%', act: 2, extra: '需面子' + reqFace + (reqSat ? ' 满意' + reqSat : ''), locked: !ok, money: 0, tone: 'beg' });
+    out.push({
+      kind: 'beg',
+      id: b.id,
+      name: '跟爸妈要「' + b.n + '」',
+      icon: b.icon,
+      desc: (b.desc || '') + ' · 成功率' + Math.round(b.w * 100) + '%',
+      act: 2,
+      extra: '需面子' + reqFace + (reqSat ? ' 满意' + reqSat : ''),
+      locked: !ok || S.act < 2,
+      money: 0,
+      tone: 'beg'
+    });
   });
-  out.push({ kind: 'rest', id: 'rest', name: '好好睡一觉', icon: '💤', desc: '行动+30 减压', act: 0, extra: '', locked: false, money: 0, tone: 'rest' });
+
+  // 5) 休息
+  out.push({
+    kind: 'rest',
+    id: 'rest',
+    name: '好好睡一觉',
+    icon: '💤',
+    desc: '行动+30 减压',
+    act: 0,
+    extra: '',
+    locked: false,
+    money: 0,
+    tone: 'rest'
+  });
   return out;
 }
 function addSlot(pi) {
@@ -261,16 +387,14 @@ function addSlot(pi) {
 function applyAct(pi) {
   if (pi.kind === 'learn') {
     const c = D.courses.find(x => x.id === pi.id);
-    const lvl = S.skills[c.id] || 0;
-    S.insight -= insCost(c, lvl);
+    const lvl = S.skills[c.id] || 1;
     ATTRS.forEach(k => { if (c.attr && c.attr[k]) S.attrs[k] = Math.max(0, S.attrs[k] + c.attr[k]); });
     S.sat = clamp(S.sat + (c.sat || 2), 0, 140);
     S.stress = clamp(S.stress + (c.stress || 4), 0, 200);
     if (c.money) S.money = Math.max(0, S.money - c.money);
     S.skills[c.id] = lvl + 1;
-    log('学了「' + c.name + '」 Lv' + (lvl + 1));
-    if (c.tal && lvl + 1 >= 4) rollTalent(pi.talId || c.tal.id, c.tal.p || 0.15);
-    if (c.tal && lvl + 1 === 5) rollTalent(c.tal.id, 1);
+    log('练习了「' + c.name + '」 (掌握Lv' + (lvl + 1) + ')');
+    if (c.tal && (lvl + 1 >= 5 || lvl + 1 >= 10)) rollTalent(c.tal.id, c.tal.p || 0.35);
   } else if (pi.kind === 'play') {
     const p = D.plays.find(x => x.id === pi.id);
     S.stress = clamp(S.stress + (p.stress || 0), 0, 200);
@@ -351,6 +475,12 @@ function endTurn() {
   if (t === 58) pendMarry();
   if (t === 60) pendEndGen();
   if ([9, 15, 25, 33, 45, 51].indexOf(t) >= 0) {
+    const starters = { 9: 'pinyin', 15: 'cn-shizi', 25: 'cn-mingzhu', 33: 'g-gao-cn', 45: 'u-gao' };
+    const stId = starters[t];
+    if (stId && S.learnedCourses && S.learnedCourses.indexOf(stId) < 0) {
+      S.learnedCourses.push(stId);
+      S.skills[stId] = 1;
+    }
     S.pending.push({ type: 'news', title: '新阶段', body: PHASE_CN[cls()] + '开始!' + (PHASE_TIPS[cls()] || ''), opts: ['好'] });
   }
   // ---- 随机事件 ----
@@ -698,6 +828,7 @@ const API = {
     exambuff: S.exambuff, talents: S.talents.length,
     job: S.job, spouse: S.spouse,
   } : null,
+  learnCourse, learnList,
   pool, addSlot, removeSlot, clearSlots, autoFillSlots,
   slots: () => S.slots,
   endTurn, pending: () => S.pending.slice(),

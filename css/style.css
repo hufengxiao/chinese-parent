@@ -298,6 +298,47 @@ button:active { transform: scale(0.96); }
 }
 .slot.filled:hover .s-remove { opacity: 1; transform: scale(1.1); }
 
+/* 研习新技能板块 */
+.learn-section {
+  background: var(--gold-light);
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin: 12px 0 16px;
+  box-shadow: var(--shadow-sm);
+}
+.learn-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.learn-card {
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s ease;
+}
+.learn-card:hover:not(.disabled) {
+  border-color: var(--gold-main);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.learn-card.disabled {
+  opacity: 0.5;
+  filter: grayscale(0.5);
+  cursor: not-allowed;
+}
+.lc-header { display: flex; align-items: center; gap: 6px; }
+.lc-ico { font-size: 20px; line-height: 1; }
+.lc-name { font-size: 13px; font-weight: 800; color: var(--ink-primary); flex: 1; }
+.lc-cost { font-size: 12px; font-weight: 800; color: var(--gold-deep); background: var(--gold-light); padding: 2px 6px; border-radius: 6px; }
+.lc-desc { font-size: 11px; color: var(--ink-secondary); margin-top: 4px; line-height: 1.3; }
+.lc-sub { color: var(--green-main); font-size: 10px; }
+
 /* 行动池 */
 .pool-cat {
   font-size: 13px;
@@ -305,6 +346,22 @@ button:active { transform: scale(0.96); }
   color: var(--red-main);
   margin: 14px 2px 8px;
   letter-spacing: 0.5px;
+}
+.pool-subcat {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-secondary);
+  margin: 10px 4px 6px;
+  border-bottom: 1px dashed var(--border-line);
+  padding-bottom: 2px;
+}
+.tag-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--blue-main);
+  background: #ebf8ff;
+  padding: 2px 5px;
+  border-radius: 4px;
 }
 .pool-item {
   display: flex;

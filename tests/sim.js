@@ -63,7 +63,13 @@ for (let gen = 1; gen <= MAX_GENS; gen++) {
     }
     if (genFinished) break;
 
-    // 2) 测试槽位操作与自动填充
+    // 2) 尝试研习新技能 (消耗悟性学新课)
+    const learnable = CP.learnList ? CP.learnList().filter(x => x.can) : [];
+    if (learnable.length && Math.random() < 0.8) {
+      CP.learnCourse(learnable[0].id);
+    }
+
+    // 3) 测试槽位操作与自动填充 (已掌握课程可无限次重复排满)
     if (Math.random() < 0.2) {
       CP.autoFillSlots();
     } else {
@@ -86,7 +92,7 @@ for (let gen = 1; gen <= MAX_GENS; gen++) {
       CP.autoFillSlots();
     }
 
-    // 3) 挖脑洞
+    // 4) 挖脑洞
     if (Math.random() < 0.6) {
       for (let k = 0; k < 5; k++) CP.brain.rev(ri(30));
     }
