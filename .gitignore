@@ -1,0 +1,11 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# node (无构建依赖,留作将来)
+node_modules/
+dist/
