@@ -430,23 +430,37 @@ function renderStage() {
 }
 
 function renderToasts() {
-  const s = CP.state();
-  if (!s) return;
-  let box = $('#toasts');
-  box.innerHTML = '';
-  s.toasts.slice().reverse().forEach(t => {
+  const box = $('#toasts');
+  if (!box) return;
+  const newToasts = CP.flushToasts ? CP.flushToasts() : [];
+  if (!newToasts.length) return;
+
+  newToasts.forEach(t => {
     const d = h('div', 'toast', t);
+    d.title = '点击关闭';
+    d.onclick = () => d.remove();
     box.appendChild(d);
-    setTimeout(() => d.classList.add('out'), 2200);
-    setTimeout(() => d.remove(), 2600);
+    while (box.children.length > 4) {
+      box.removeChild(box.firstChild);
+    }
+    setTimeout(() => {
+      d.classList.add('out');
+      setTimeout(() => d.remove(), 400);
+    }, 2200);
   });
 }
 
 function toast(m) {
-  const s = CP.state();
-  if (!s) return;
-  s.toasts.push(m);
-  if (s.toasts.length > 4) s.toasts.shift();
+  if (!m) return;
+  if (CP.toast) {
+    CP.toast(m);
+  } else {
+    const s = CP.state();
+    if (s) {
+      if (!s.toasts) s.toasts = [];
+      s.toasts.push(m);
+    }
+  }
   renderToasts();
 }
 

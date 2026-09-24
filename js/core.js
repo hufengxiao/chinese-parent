@@ -30,7 +30,18 @@ function effText(e) {
   return out.join(' ');
 }
 function log(m) { S.log.unshift(m); if (S.log.length > 60) S.log.pop(); }
-function toast(m) { S.toasts.push(m); if (S.toasts.length > 4) S.toasts.shift(); }
+function toast(m) {
+  if (!S) return;
+  if (!S.toasts) S.toasts = [];
+  S.toasts.push(m);
+  if (S.toasts.length > 8) S.toasts.shift();
+}
+function flushToasts() {
+  if (!S || !S.toasts || !S.toasts.length) return [];
+  const list = S.toasts.slice();
+  S.toasts = [];
+  return list;
+}
 function applyEff(e) {
   if (!e) return;
   ATTRS.forEach(k => { if (e[k]) S.attrs[k] += e[k]; });
@@ -52,6 +63,7 @@ function phaseOf(t) {
   return 'home';
 }
 const PHASE_CN = { baby: '婴儿期', kinder: '幼儿园', pri: '小学', junior: '初中', senior: '高中', college: '大学', work: '工作', home: '成家后' };
+const PHASE_RANK = { baby: 1, kinder: 2, pri: 3, junior: 4, senior: 5, college: 6, work: 7, home: 8 };
 const PHASE_TIPS = {
   kinder: '新课程解锁！第12回合将迎来【幼儿园才艺选秀】，准备好拿手特长争夺冠军；第13回合还会触发【过年收红包】。',
   pri: '【校园小卖部】已开张！零花钱每回合按门第发放，可在商店购买道具提升属性，也可在日程向父母索取大件心愿物。第18回合班干部竞选、第24回合期末考！',
@@ -161,6 +173,7 @@ function resume() {
   const s = loadSave();
   if (s && s.ver) {
     S = s;
+    S.toasts = [];
     if (!S.learnedCourses) {
       S.learnedCourses = Object.keys(S.skills).length ? Object.keys(S.skills) : ['fanshen', 'wanju'];
     }
@@ -290,24 +303,285 @@ function removeSlot(idx) {
 }
 
 function autoFillSlots() {
-  if (!S) return;
-  let guard = 0;
-  while (S.slots.some(x => !x) && guard++ < 12) {
-    const pl = pool().filter(x => !x.locked);
-    if (!pl.length) break;
-    let choice = null;
-    if (S.stress > 65) {
-      choice = pl.find(x => x.tone === 'rest') || pl.find(x => x.tone === 'play');
-    } else if (S.insight >= 15) {
-      choice = pl.find(x => x.tone === 'course') || pl.find(x => x.tone === 'play');
-    }
-    if (!choice) choice = pl.find(x => x.tone === 'course') || pl.find(x => x.tone === 'rest') || pl[0];
-    if (!choice || !addSlot(choice)) {
-      const restItem = pl.find(x => x.tone === 'rest');
-      if (restItem) addSlot(restItem);
-      else break;
+  if (!S || S.slots.every(Boolean)) return;
+
+  const curPhase = phaseOf(S.turn);
+  const curRank = PHASE_RANK[curPhase] || 1;
+
+  // 1) 收集已填槽位状态并推演虚拟数值（压力、满意度、各项目计数）
+  let simStress = S.stress;
+  let simSat = S.sat;
+  const counts = {};
+  let courseCount = 0;
+  let playCount = 0;
+  let restCount = 0;
+  let jobCount = 0;
+  let begCount = 0;
+
+  for (let i = 0; i < 6; i++) {
+    const sl = S.slots[i];
+    if (!sl) continue;
+    counts[sl.id] = (counts[sl.id] || 0) + 1;
+    if (sl.kind === 'learn') {
+      courseCount++;
+      const c = D.courses.find(x => x.id === sl.id);
+      if (c) {
+        simStress = clamp(simStress + (c.stress || 3), 0, 200);
+        simSat = clamp(simSat + (c.sat || 2), 0, 140);
+      }
+    } else if (sl.kind === 'play') {
+      playCount++;
+      const p = D.plays.find(x => x.id === sl.id);
+      if (p) {
+        simStress = clamp(simStress + (p.stress || -3), 0, 200);
+        simSat = clamp(simSat + (p.sat || -1), 0, 140);
+      }
+    } else if (sl.kind === 'rest') {
+      restCount++;
+      simStress = clamp(simStress - 10, 0, 200);
+    } else if (sl.kind === 'pay') {
+      jobCount++;
+    } else if (sl.kind === 'beg') {
+      begCount++;
     }
   }
+
+  // 寻找需要补齐的五维短板属性
+  const attrEntries = ATTRS.map(k => ({ k, val: (S.attrs && S.attrs[k]) || 0 }));
+  attrEntries.sort((a, b) => a.val - b.val);
+  const lowestAttrs = [attrEntries[0].k, attrEntries[1].k];
+
+  // 2) 智能估值函数：根据游戏设计规则、阶段适配、压力控制、学科多样性评估
+  function scoreCandidate(item) {
+    if (item.kind === 'learn') {
+      const c = D.courses.find(x => x.id === item.id);
+      if (!c) return -999;
+      const cRank = PHASE_RANK[c.phase] || 1;
+      const phaseDiff = curRank - cRank;
+
+      let score = 60;
+
+      // 阶段匹配度：严防高年级还选择翻身、爬行等婴儿基础动作
+      if (phaseDiff === 0) {
+        score += 130; // 当期对应阶段课程
+      } else if (phaseDiff === 1) {
+        score += 35;  // 上一阶段过渡课程
+      } else if (phaseDiff === 2) {
+        score -= 80;  // 两个阶段前
+      } else {
+        score -= 260; // 彻底过期的婴儿/远古动作 (如初高中绝不翻身)
+      }
+
+      // 重复度惩罚与学科多样性（避免单科刷满6格，多门学科并进）
+      const cUsed = counts[c.id] || 0;
+      const totalLearned = (S.learnedCourses || []).length;
+      if (totalLearned <= 2) {
+        score -= cUsed * 25;
+      } else {
+        if (cUsed >= 2) score -= 120;
+        else if (cUsed === 1) score -= 35;
+        else score += 25; // 优先挑选未排入的新学科
+      }
+
+      // 考试提分收益 (小学、初中、高中面临升学与高考大考)
+      if (curRank >= 3 && curRank <= 5 && c.ex) {
+        if (c.ex === 'all+' || c.ex === 'all') score += 40;
+        else score += 25;
+      }
+
+      // 特长获取潜力
+      if (c.tal && (!S.talents || S.talents.indexOf(c.tal.id) < 0)) {
+        score += 35;
+      }
+
+      // 熟练度升级奖励（未满5级或10级时冲刺特长质变阈值）
+      const lvl = (S.skills && S.skills[c.id]) || 1;
+      if (lvl < 5) score += (5 - lvl) * 4;
+      else if (lvl >= 10) score -= 15;
+
+      // 短板属性补强
+      if (c.attr) {
+        if (c.attr[lowestAttrs[0]]) score += 15;
+        if (c.attr[lowestAttrs[1]]) score += 10;
+      }
+
+      // 父母满意度告急时，强化加满意度的课
+      if (simSat < 55) {
+        score += ((c.sat || 2) > 0 ? 30 : -20);
+      }
+
+      // 压力动态调控：高压下大幅抑制高压力课程，避免心理阴影
+      if (simStress >= 75) {
+        score -= (c.stress || 3) * 15 + 60;
+      } else if (simStress >= 60) {
+        score -= (c.stress || 3) * 8;
+      } else if (simStress <= 30) {
+        score += 20; // 状态轻松，宜勤奋学习
+      }
+
+      // 日程结构平衡：已有4门学习时，适度礼让娱乐与休息
+      if (courseCount >= 4) {
+        score -= 40;
+      }
+
+      return score;
+    }
+
+    if (item.kind === 'play') {
+      const p = D.plays.find(x => x.id === item.id);
+      if (!p) return -999;
+      const pRank = PHASE_RANK[p.phase] || 1;
+      const phaseDiff = Math.abs(curRank - pRank);
+
+      let score = 40;
+
+      // 阶段契合
+      if (phaseDiff === 0) score += 60;
+      else if (phaseDiff === 1) score += 25;
+      else score -= 25;
+
+      // 减压核心诉求
+      const relief = -(p.stress || 0);
+      if (simStress >= 70) {
+        score += relief * 30 + 60;
+      } else if (simStress >= 50) {
+        score += relief * 18 + 30;
+      } else if (simStress >= 30) {
+        score += relief * 8 + 10;
+      } else {
+        score += relief * 4;
+        if (courseCount >= 3) score += 25; // 劳逸结合
+      }
+
+      // 娱乐种类多样性
+      const pUsed = counts[p.id] || 0;
+      if (pUsed >= 2) score -= 90;
+      else if (pUsed === 1) score -= 30;
+      else score += 20;
+
+      // 特长激发 (如小霸王、武侠小说)
+      if (p.tal && (!S.talents || S.talents.indexOf(p.tal.id) < 0)) {
+        score += 40;
+      }
+
+      // 父母满意度过低时不宜过分玩乐
+      if (simSat < 50 && (p.sat || 0) < 0) {
+        score -= 35;
+      }
+
+      // 特殊属性（魅力、想象力）加成
+      if (p.attr) {
+        if (p.attr.cha) score += 15;
+        if (p.attr.img) score += 10;
+      }
+
+      // 已经排了2个娱乐时抑制更多娱乐
+      if (playCount >= 2 && simStress < 65) {
+        score -= 50;
+      }
+
+      return score;
+    }
+
+    if (item.kind === 'pay') {
+      let score = 10;
+      // 零花钱匮乏且处于初中以上时，安排适当打工
+      if (curRank >= 4 && S.money < 30 && jobCount === 0 && S.act >= 6) {
+        score += 70;
+      } else {
+        score -= 50;
+      }
+      return score;
+    }
+
+    if (item.kind === 'beg') {
+      let score = 15;
+      const b = D.begs.find(x => x.id === item.id);
+      if (b && b.w >= 0.5 && begCount === 0 && simSat >= 60 && S.face >= (b.face || 0)) {
+        score += 50;
+      } else {
+        score -= 40;
+      }
+      return score;
+    }
+
+    if (item.kind === 'rest') {
+      // 休息：耗费 0 行动，下回合行动+30，减压10
+      // 只有在行动力耗尽、或极度高压缺乏娱乐时才作为战略补充
+      if (S.act < 3) {
+        return 999; // 体力不够排任何课程，强制休息保底
+      }
+      if (simStress >= 80 && restCount === 0) {
+        return 120; // 极高压急救
+      }
+      if (simStress >= 65 && playCount >= 2 && restCount === 0) {
+        return 80;
+      }
+      // 正常体力充沛时，睡眠排斥分，防止"全是睡大觉"
+      return -120 - restCount * 100;
+    }
+
+    return 0;
+  }
+
+  // 3) 逐格贪心填充，动态更新仿真状态
+  let guard = 0;
+  while (S.slots.some(x => !x) && guard++ < 12) {
+    const pl = pool().filter(x => !x.locked && S.act >= (x.act || 0) && (!x.money || S.money >= x.money));
+    if (!pl.length) {
+      // 若因体力或资金无法进行任何动作，用零消耗的休息填满
+      const restItem = pool().find(x => x.kind === 'rest');
+      if (restItem && addSlot(restItem)) {
+        restCount++;
+        simStress = clamp(simStress - 10, 0, 200);
+        continue;
+      }
+      break;
+    }
+
+    const scored = pl.map(item => ({ item, score: scoreCandidate(item) }));
+    scored.sort((a, b) => b.score - a.score);
+
+    let chosen = null;
+    for (const sc of scored) {
+      if (addSlot(sc.item)) {
+        chosen = sc.item;
+        break;
+      }
+    }
+
+    if (!chosen) {
+      const restItem = pool().find(x => x.kind === 'rest');
+      if (restItem && addSlot(restItem)) chosen = restItem;
+      else break;
+    }
+
+    // 更新推演数据
+    counts[chosen.id] = (counts[chosen.id] || 0) + 1;
+    if (chosen.kind === 'learn') {
+      courseCount++;
+      const c = D.courses.find(x => x.id === chosen.id);
+      if (c) {
+        simStress = clamp(simStress + (c.stress || 3), 0, 200);
+        simSat = clamp(simSat + (c.sat || 2), 0, 140);
+      }
+    } else if (chosen.kind === 'play') {
+      playCount++;
+      const p = D.plays.find(x => x.id === chosen.id);
+      if (p) {
+        simStress = clamp(simStress + (p.stress || -3), 0, 200);
+        simSat = clamp(simSat + (p.sat || -1), 0, 140);
+      }
+    } else if (chosen.kind === 'rest') {
+      restCount++;
+      simStress = clamp(simStress - 10, 0, 200);
+    } else if (chosen.kind === 'pay') {
+      jobCount++;
+    } else if (chosen.kind === 'beg') {
+      begCount++;
+    }
+  }
+
   persist();
 }
 
@@ -1051,6 +1325,7 @@ const API = {
   learnCourse, learnList,
   pool, addSlot, removeSlot, clearSlots, autoFillSlots,
   slots: () => S.slots,
+  toast, flushToasts,
   endTurn, pending: () => S.pending.slice(),
   resolve: resolvePend,
   examBuff: () => S.exambuff,
