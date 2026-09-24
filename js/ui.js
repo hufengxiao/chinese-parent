@@ -158,6 +158,9 @@ function setTab(t) {
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   sound.click();
   renderStage();
+  if (typeof guide !== 'undefined' && guide && guide.isActive) {
+    setTimeout(() => guide.updatePosition(), 60);
+  }
 }
 
 /* ---------- 日程 ---------- */
@@ -297,7 +300,11 @@ function renderBrain() {
     grid.appendChild(cell);
   });
   wrap.appendChild(grid);
-  wrap.appendChild(h('div', 'hint', '📌 优先翻开💡灯泡攒悟性；🗝️钥匙能直通下一层并回复 50 行动力；💥炸弹连环爆破周边格子！'));
+  if (b.layer >= (b.maxLayer || 4) && b.open >= b.total) {
+    wrap.appendChild(h('div', 'hint', '🚧 当前回合脑洞已挖通至最深处（施工中），推进到下个回合将刷新全新一轮脑洞！'));
+  } else {
+    wrap.appendChild(h('div', 'hint', '📌 优先翻开💡灯泡攒悟性；🗝️钥匙能直通下一层并回复 50 行动力；💥炸弹连环爆破周边格子！每回合都会刷新全新脑洞！'));
+  }
   st.appendChild(wrap);
 }
 
@@ -417,6 +424,9 @@ function renderStage() {
   else if (ACTIVE === 'social') renderSocial();
   else if (ACTIVE === 'shop') renderShop();
   else if (ACTIVE === 'atlas') renderAtlas();
+  if (typeof guide !== 'undefined' && guide && guide.isActive) {
+    setTimeout(() => guide.updatePosition(), 60);
+  }
 }
 
 function renderToasts() {
@@ -471,6 +481,12 @@ function renderModal() {
     return;
   }
 
+  // 针对阶段蜕变与成长画卷，展示专属阶段结算提示
+  if (p.type === 'phase_transition') {
+    renderPhaseTransition(p, m);
+    return;
+  }
+
   m.classList.add('show');
   m.innerHTML = '';
   const body = h('div', 'm-body');
@@ -497,37 +513,206 @@ function renderModal() {
   m.appendChild(body);
 }
 
+/* ---------- 阶段成长蜕变结算画卷 ---------- */
+function renderPhaseTransition(p, m) {
+  m.classList.add('show');
+  m.innerHTML = '';
+  const trans = p.trans || {};
+  const body = h('div', 'm-body phase-trans-modal');
+  const PHASE_SEQ = ['baby', 'kinder', 'pri', 'junior', 'senior', 'college', 'work', 'home'];
+  const phaseIdx = Math.max(0, PHASE_SEQ.indexOf(p.phase));
+
+  // 顶栏蜕变徽章与阶段指示器
+  const header = h('div', 'trans-header');
+  header.innerHTML =
+    '<div class="trans-badge">✨ 阶段蜕变 · 人生成长礼 ✨</div>' +
+    (trans.epilogue ? '<div class="trans-epilogue">🌅 人生后半程 · 终章启幕</div>' : '') +
+    '<div class="trans-ceremony"><span class="ceremony-anim">' + (trans.ceremony || '👶 ➜ 🎒') + '</span></div>' +
+    '<div class="trans-title">' + (trans.title || '迈入新阶段') + '</div>' +
+    '<div class="trans-phase-tag">' + (trans.prevName || '上一阶段') + ' (' + (trans.prevIcon || '') + ') ➔ ' + (trans.nextName || '新阶段') + ' (' + (trans.nextIcon || '') + ')</div>' +
+    '<div class="trans-progress">' + ['👶', '🎒', '🏫', '🏢', '🏛️', '🎓', '👔', '🏡'].map((ic, i) =>
+      '<span class="tp-dot' + (i <= phaseIdx ? ' on' : '') + '" title="' + PHASE_SEQ[i] + '">' + ic + '</span>').join('<span class="tp-line"></span>') +
+    '</div>' +
+    '<div class="trans-phase-count">人生阶段 ' + (phaseIdx + 1) + ' / 8</div>';
+  body.appendChild(header);
+
+  // 成长感言故事
+  if (trans.story) {
+    const storyBox = h('div', 'trans-story-box');
+    storyBox.innerHTML = '“' + trans.story + '”';
+    body.appendChild(storyBox);
+  }
+
+  // 终章提醒 (大学/职场/成家)
+  if (trans.epilogue) {
+    const epilogueBox = h('div', 'trans-epilogue-box');
+    epilogueBox.innerHTML = '💡 <b>终章提醒：</b>' +
+      (p.phase === 'college' ? '高考已落幕，本代人生进入下半场——职业、婚姻与家族档案将在最后结算，并把遗产传给下一代。' :
+       p.phase === 'work' ? '职场打拼的每一分积蓄与面子，都会折算进下一代的家族基金与门第底蕴。'
+       : '成家是这一代的句点，也是下一代的开端：伴侣基因、家族图鉴与人生评分将一起合成传家档案。');
+    body.appendChild(epilogueBox);
+  }
+
+  // 阶段成长盘点
+  const statsBox = h('div', 'trans-stats-box');
+  const a = p.stats || {};
+  statsBox.innerHTML =
+    '<div class="trans-sec-title">📊 阶段五维心智积累</div>' +
+    '<div class="trans-capsules">' +
+      '<span class="capsule">🟢 智商 <b>' + (a.iq || 0) + '</b></span>' +
+      '<span class="capsule">❤️ 情商 <b>' + (a.eq || 0) + '</b></span>' +
+      '<span class="capsule">🔵 记忆 <b>' + (a.mem || 0) + '</b></span>' +
+      '<span class="capsule">🟣 想象 <b>' + (a.img || 0) + '</b></span>' +
+      '<span class="capsule">🔴 体魄 <b>' + (a.phy || 0) + '</b></span>' +
+      '<span class="capsule">✨ 魅力 <b>' + (a.cha || 0) + '</b></span>' +
+    '</div>' +
+    '<div class="trans-subinfo">' +
+      '<span>📘 已掌握课程: <b>' + (p.learnedCount || 0) + '</b> 门</span>' +
+      '<span>🏆 觉醒特长: <b>' + (p.talentsCount || 0) + '</b> 个</span>' +
+      '<span>⭐ 现有面子: <b>' + (p.face || 0) + '</b></span>' +
+    '</div>';
+  body.appendChild(statsBox);
+
+  // 下一阶段解锁内容
+  if (trans.unlocks && trans.unlocks.length) {
+    const unlockBox = h('div', 'trans-unlock-box');
+    const itemsHtml = trans.unlocks.map(u => '<li>' + u + '</li>').join('');
+    unlockBox.innerHTML =
+      '<div class="trans-sec-title">🎯 ' + (trans.nextName || '') + '新阶段目标与解锁：</div>' +
+      '<ul class="trans-unlock-list">' + itemsHtml + '</ul>';
+    body.appendChild(unlockBox);
+  }
+
+  // 阶段成长礼包
+  if (trans.giftDesc) {
+    const giftBox = h('div', 'trans-gift-box');
+    giftBox.innerHTML = '🎁 <b>阶段成长礼包：</b>' + trans.giftDesc;
+    body.appendChild(giftBox);
+  }
+
+  // 推进大按钮
+  const btn = h('button', 'btn big pulse trans-confirm-btn', '🚀 领取成长礼，迈向新阶段！');
+  btn.onclick = () => {
+    sound.win();
+    const r = CP.resolve(0);
+    if (r) toast(r);
+    renderAll();
+  };
+  body.appendChild(btn);
+  m.appendChild(body);
+}
+
 /* ---------- 世代终章大屏展示 ---------- */
 function showReport(p) {
   showScreen('report');
   sound.win();
   const info = CP.info();
-  const fam = CP.fam();
+  const fam = p.fam || CP.fam();
   const s = CP.state();
 
-  $('#rep-title').textContent = '第 ' + (info ? info.gen : 1) + ' 代 · 人生功绩录';
-  $('#rep-sub').textContent = '「' + (info ? info.name : '孩子') + '」的人生旅程已圆满落幕';
+  const job = (s && s.job) ? s.job : (fam.job || { n: '自由职业者', icon: '🛋️', t: 0 });
+  const jobName = job.n || job.name || fam.lastJob || '自由职业';
+  const tierDesc = ['普通工薪', '温饱无忧', '小康之家', '中产体面', '高薪优渥', '领军精英'][job.t || 0];
+  const rating = fam.rating || 'S';
+  const ratingDesc = fam.ratingDesc || '小康体面 · 岁月静好';
+  const totalScore = fam.totalLifeScore || 75;
+  const perTurnBonus = fam.talent > 0 ? Math.max(1, Math.floor(fam.talent / 2)) : 0;
+  const seedMoney = fam.seedMoney || 0;
+  const highlight = fam.highlight || '踏实走完精彩一代，将温暖与希望毫无保留地交托下一代！';
 
-  const job = (s && s.job) ? s.job : { n: '自由职业者', icon: '🛋️', t: 0 };
-  const tierDesc = ['工薪起步', '温饱无忧', '小康之家', '中产体面', '高薪优渥', '领军精英'][job.t || 0];
+  $('#rep-title').textContent = '第 ' + (info ? info.gen : (fam.g || 1)) + ' 代 · 人生终章功绩录';
+  $('#rep-sub').textContent = '「' + (info ? info.name : fam.name) + '」的一生圆满落幕，家族火炬已准备就绪';
+
+  const ratingColors = {
+    SSS: 'linear-gradient(135deg, #ffd700, #ff8c00)',
+    SS: 'linear-gradient(135deg, #ff416c, #ff4b2b)',
+    S: 'linear-gradient(135deg, #9b51e0, #e056fd)',
+    A: 'linear-gradient(135deg, #27ae60, #2ecc71)',
+    B: 'linear-gradient(135deg, #2980b9, #3498db)'
+  };
 
   $('#rep-profile').innerHTML =
-    '<h4>👤 个人生平</h4>' +
-    '<p>姓名: <b>' + (info ? info.name : '') + '</b> (' + (info && info.gender === 'girl' ? '女儿' : '儿子') + ')</p>' +
-    '<p>最终职业: <b>' + job.icon + ' ' + (job.n || job.name || '自由职业') + '</b> (' + tierDesc + ')</p>' +
-    '<p>积攒积蓄: <b>' + (info ? info.money : 0) + '</b> 元 · 最终面子: <b>' + (info ? info.face : 0) + '</b></p>';
+    '<div class="rep-rating-row">' +
+      '<div class="rep-rating-badge" style="background:' + (ratingColors[rating] || ratingColors.S) + '">' + rating + '</div>' +
+      '<div class="rep-rating-meta">' +
+        '<div class="rep-rating-title">' + ratingDesc + '</div>' +
+        '<div class="rep-rating-score">本代综合评定分: <b>' + totalScore + '</b> / 100</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="rep-highlight-box">' +
+      '<span class="rep-hl-icon">✨</span>' +
+      '<span class="rep-hl-text"><b>家族高光时刻：</b>' + highlight + '</span>' +
+    '</div>' +
+    '<div class="rep-summary-grid">' +
+      '<div class="rep-grid-item"><span class="lbl">主角生平</span><span class="val">' + (info ? info.name : fam.name) + ' (' + ((info && info.gender === 'girl') ? '女儿' : '儿子') + ')</span></div>' +
+      '<div class="rep-grid-item"><span class="lbl">最终职业</span><span class="val">' + (job.icon || '💼') + ' ' + jobName + ' (' + tierDesc + ')</span></div>' +
+      '<div class="rep-grid-item"><span class="lbl">高考战绩</span><span class="val">' + (s && s.gaokaoScore ? s.gaokaoScore + ' 分' : (fam.lastScore ? fam.lastScore + ' 分' : '推荐保送')) + '</span></div>' +
+      '<div class="rep-grid-item"><span class="lbl">家庭伴侣</span><span class="val">' + (s && s.spouse ? s.spouse.name : (fam.lastSpouse || '独善其身 (单身)')) + '</span></div>' +
+      '<div class="rep-grid-item"><span class="lbl">家族积蓄</span><span class="val">' + (info ? info.money : 0) + ' 元</span></div>' +
+      '<div class="rep-grid-item"><span class="lbl">最终面子</span><span class="val">⭐ ' + (info ? info.face : 0) + '</span></div>' +
+    '</div>';
 
+  const a = (s && s.attrs) ? s.attrs : (fam.attr || {});
   $('#rep-highlights').innerHTML =
-    '<h4>🎓 关键履历</h4>' +
-    '<p>高考战绩: <b>' + (s && s.gaokaoScore ? s.gaokaoScore + ' 分' : '特长直录 / 保送') + '</b></p>' +
-    '<p>婚姻伴侣: <b>' + ((s && s.spouse) ? s.spouse.name : '独善其身 (单身潇洒)') + '</b></p>' +
-    '<p>本代特长收集: <b>' + (s && s.talents ? s.talents.length : 0) + '</b> 个</p>';
+    '<h4>📊 毕生五维心智成长</h4>' +
+    '<div class="rep-stats-capsules">' +
+      '<span class="capsule">🟢 智商 <b>' + (a.iq || 0) + '</b></span>' +
+      '<span class="capsule">❤️ 情商 <b>' + (a.eq || 0) + '</b></span>' +
+      '<span class="capsule">🔵 记忆 <b>' + (a.mem || 0) + '</b></span>' +
+      '<span class="capsule">🟣 想象 <b>' + (a.img || 0) + '</b></span>' +
+      '<span class="capsule">🔴 体魄 <b>' + (a.phy || 0) + '</b></span>' +
+      '<span class="capsule">✨ 魅力 <b>' + (a.cha || 0) + '</b></span>' +
+    '</div>' +
+    '<p style="margin-top:8px;font-size:12px;color:var(--ink-secondary);">' +
+      '已研习课程 <b>' + ((s && s.learnedCourses) ? s.learnedCourses.length : 0) + '</b> 门 · 本代收集特长 <b>' + ((s && s.talents) ? s.talents.length : 0) + '</b> 个' +
+    '</p>';
+
+  const spB = fam.spouseBonus || { iq: 6, eq: 6, mem: 6, img: 6, phy: 6, cha: 6 };
+  const uniTier = fam.uniTier || 0;
+  let uniRow = '';
+  if (uniTier >= 5) uniRow = '<div class="inherit-row"><span class="i-icon">🏆</span><div class="i-info"><b>清北世家 · 名校光环</b><div class="i-desc">让后代开局自带悟性 <b>+30</b>、面子 <b>+15</b>！</div></div></div>';
+  else if (uniTier >= 4) uniRow = '<div class="inherit-row"><span class="i-icon">🏆</span><div class="i-info"><b>985 · 名校光环</b><div class="i-desc">让后代开局自带悟性 <b>+15</b>、面子 <b>+8</b>！</div></div></div>';
+  else if (uniTier >= 3) uniRow = '<div class="inherit-row"><span class="i-icon">🏆</span><div class="i-info"><b>211 · 书香传承</b><div class="i-desc">让后代开局自带悟性 <b>+15</b>、面子 <b>+8</b>！</div></div></div>';
+
+  const famShadow = fam.shadow || 0;
+  const famStress = fam.stress || 0;
+  let shadowRow = '';
+  if (famShadow >= 50) shadowRow = '<div class="inherit-row"><span class="i-icon">🌧️</span><div class="i-info"><b>心态阴翳的遗传</b><div class="i-desc">父母的心理阴影让后代出生自带压力 <b>+' + Math.min(40, Math.round(famShadow / 4)) + '</b>，记得早点用娱乐与休息化解。</div></div></div>';
+  else if (famStress > 80) shadowRow = '<div class="inherit-row"><span class="i-icon">🌧️</span><div class="i-info"><b>高压环境的烙印</b><div class="i-desc">长期高压让后代出生自带压力 <b>+' + Math.min(40, Math.round((famStress - 80) / 4)) + '</b>。</div></div></div>';
 
   $('#rep-inheritance').innerHTML =
-    '<h4>🧬 家族传承与遗产</h4>' +
-    '<p>家族图鉴总计: <b>' + (fam.atlas ? fam.atlas.length : 0) + '</b> 个特长</p>' +
-    '<p>后代天赋继承: 每回合属性额外加成 <b>+' + (fam.talent || 0) + '</b></p>' +
-    '<p>后代先天底蕴: 继承前代五维约 18% 遗传点数</p>';
+    '<h4>🧬 家族传承与下一代先天红利清单</h4>' +
+    uniRow + shadowRow +
+    '<div class="rep-inherit-list">' +
+      '<div class="inherit-row">' +
+        '<span class="i-icon">🧬</span>' +
+        '<div class="i-info">' +
+          '<b>父母五维基因遗传 (18% 折算)</b>' +
+          '<div class="i-desc">智商 +' + Math.round((a.iq || 0) * 0.18) + ' | 情商 +' + Math.round((a.eq || 0) * 0.18) + ' | 记忆 +' + Math.round((a.mem || 0) * 0.18) + ' | 想象 +' + Math.round((a.img || 0) * 0.18) + ' | 体魄 +' + Math.round((a.phy || 0) * 0.18) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="inherit-row">' +
+        '<span class="i-icon">💑</span>' +
+        '<div class="i-info">' +
+          '<b>伴侣基因赋能加成 (' + (fam.lastSpouse || '相伴') + ')</b>' +
+          '<div class="i-desc">情商 +' + (spB.eq || 0) + ' | 魅力 +' + (spB.cha || 0) + ' | 智商 +' + (spB.iq || 0) + ' | 记忆 +' + (spB.mem || 0) + ' | 体魄 +' + (spB.phy || 0) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="inherit-row">' +
+        '<span class="i-icon">🌱</span>' +
+        '<div class="i-info">' +
+          '<b>家族特长图鉴庇佑 (' + fam.talent + ' 项特长)</b>' +
+          '<div class="i-desc">后代每回合五维全属性自然成长 <b>+' + perTurnBonus + '</b>！(一代更比一代强)</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="inherit-row">' +
+        '<span class="i-icon">💰</span>' +
+        '<div class="i-info">' +
+          '<b>家族压岁钱基金与门第底蕴</b>' +
+          '<div class="i-desc">开局自带压岁钱 <b>+' + seedMoney + '</b> 元 · 初始面子 +' + ((fam.tier || 0) * 25) + ' · 每回合发放 ' + (30 + (fam.tier || 0) * 55) + ' 元零花</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
 
   $('#rep-next-btn').onclick = () => {
     sound.win();
@@ -563,6 +748,229 @@ function updateSplash() {
   }
 }
 
+/* ---------- 新手引导系统 (聚光灯高亮与交互指引) ---------- */
+class GuideManager {
+  constructor() {
+    this.currentStep = 0;
+    this.isActive = false;
+    this.overlay = null;
+    this.spotlight = null;
+    this.card = null;
+    this.title = null;
+    this.body = null;
+    this.dots = null;
+    this.nextBtn = null;
+    this.skipBtn = null;
+    this.steps = [];
+  }
+
+  init() {
+    this.overlay = $('#guide-overlay');
+    this.spotlight = $('#guide-spotlight');
+    this.card = $('#guide-card');
+    this.title = $('#guide-title');
+    this.body = $('#guide-body');
+    this.dots = $('#guide-steps-dots');
+    this.nextBtn = $('#guide-next');
+    this.skipBtn = $('#guide-skip');
+    this.steps = (D && D.tutorialSteps) ? D.tutorialSteps : [];
+
+    if (this.nextBtn) {
+      this.nextBtn.onclick = () => {
+        sound.click();
+        this.next();
+      };
+    }
+    if (this.skipBtn) {
+      this.skipBtn.onclick = () => {
+        sound.click();
+        this.skip();
+      };
+    }
+
+    window.addEventListener('resize', () => {
+      if (this.isActive) this.updatePosition();
+    });
+    window.addEventListener('scroll', () => {
+      if (this.isActive) this.updatePosition();
+    }, true);
+  }
+
+  shouldStart() {
+    const s = CP.state();
+    if (!s || s.turn !== 1) return false;
+    const pend = CP.pending();
+    if (pend && pend.length > 0) return false;
+    if (s.tutorial && s.tutorial.done) return false;
+    if (localStorage.getItem('cph_guide_done') === '1') return false;
+    return true;
+  }
+
+  start(force = false) {
+    if (!this.overlay) this.init();
+    if (!force && !this.shouldStart()) return;
+    this.currentStep = 0;
+    this.isActive = true;
+    if (this.overlay) {
+      this.overlay.hidden = false;
+      this.overlay.classList.remove('hidden');
+    }
+    this.renderStep(0);
+  }
+
+  renderStep(index) {
+    if (!this.steps || index >= this.steps.length) {
+      this.finish();
+      return;
+    }
+    this.currentStep = index;
+    const step = this.steps[index];
+
+    if (step.tab && ACTIVE !== step.tab) {
+      setTab(step.tab);
+    }
+
+    if (this.title) this.title.textContent = step.title;
+    if (this.body) this.body.innerHTML = step.body;
+    if (this.nextBtn) this.nextBtn.textContent = step.btn || '下一步 👉';
+
+    if (this.dots) {
+      this.dots.innerHTML = '';
+      this.steps.forEach((_, i) => {
+        const dot = h('div', 'guide-dot' + (i === index ? ' active' : ''));
+        this.dots.appendChild(dot);
+      });
+    }
+
+    setTimeout(() => {
+      this.updatePosition();
+    }, 60);
+  }
+
+  updatePosition() {
+    if (!this.isActive || !this.steps.length || !this.spotlight || !this.card) return;
+    const step = this.steps[this.currentStep];
+    const targetEl = document.querySelector(step.target);
+
+    if (targetEl && targetEl.offsetParent !== null) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      const rect = targetEl.getBoundingClientRect();
+      const pad = 6;
+      const top = Math.max(4, rect.top - pad);
+      const left = Math.max(4, rect.left - pad);
+      const width = Math.min(window.innerWidth - 8, rect.width + pad * 2);
+      const height = Math.min(window.innerHeight - 8, rect.height + pad * 2);
+
+      this.spotlight.style.top = top + 'px';
+      this.spotlight.style.left = left + 'px';
+      this.spotlight.style.width = width + 'px';
+      this.spotlight.style.height = height + 'px';
+      this.spotlight.style.opacity = '1';
+
+      const cardHeight = this.card.offsetHeight || 190;
+      if (top + height + cardHeight + 25 < window.innerHeight) {
+        this.card.style.top = (top + height + 10) + 'px';
+        this.card.style.bottom = 'auto';
+      } else if (top - cardHeight - 20 > 0) {
+        this.card.style.top = 'auto';
+        this.card.style.bottom = (window.innerHeight - top + 10) + 'px';
+      } else {
+        this.card.style.top = 'auto';
+        this.card.style.bottom = '76px';
+      }
+    } else {
+      this.spotlight.style.opacity = '0';
+      this.card.style.top = '26%';
+      this.card.style.bottom = 'auto';
+    }
+  }
+
+  next() {
+    const step = this.steps[this.currentStep];
+    if (step && step.action === 'switch-tab-brain') {
+      setTab('brain');
+    } else if (step && step.action === 'switch-tab-plan') {
+      setTab('plan');
+    }
+
+    if (this.currentStep < this.steps.length - 1) {
+      this.renderStep(this.currentStep + 1);
+    } else {
+      this.finish();
+    }
+  }
+
+  skip() {
+    this.close();
+    localStorage.setItem('cph_guide_done', '1');
+    const s = CP.state();
+    if (s && s.tutorial) s.tutorial.done = true;
+    toast('已跳过新手指引，随时可点击右上角 📖 查看攻略手册');
+  }
+
+  finish() {
+    this.close();
+    localStorage.setItem('cph_guide_done', '1');
+    const gift = CP.claimNovicePack();
+    if (gift) {
+      sound.win();
+    }
+    renderAll();
+  }
+
+  close() {
+    this.isActive = false;
+    if (this.overlay) {
+      this.overlay.hidden = true;
+      this.overlay.classList.add('hidden');
+    }
+  }
+}
+const guide = new GuideManager();
+
+/* ---------- 常驻通关手册 ---------- */
+function openManual(activeCat = 'loop') {
+  sound.click();
+  const m = $('#manual-modal');
+  if (!m) return;
+  m.hidden = false;
+  m.classList.remove('hidden');
+
+  const tabsEl = $('#manual-tabs');
+  const bodyEl = $('#manual-body');
+  const list = (D && D.manual) ? D.manual : [];
+
+  tabsEl.innerHTML = '';
+  list.forEach(item => {
+    const t = h('button', 'm-tab' + (item.id === activeCat ? ' active' : ''));
+    t.innerHTML = item.icon + ' ' + item.title;
+    t.onclick = () => {
+      sound.click();
+      openManual(item.id);
+    };
+    tabsEl.appendChild(t);
+  });
+
+  const cur = list.find(x => x.id === activeCat) || list[0];
+  if (cur) {
+    bodyEl.innerHTML =
+      '<div class="manual-card">' +
+      '<h4>' + cur.icon + ' ' + cur.title + '</h4>' +
+      (cur.summary ? '<div class="manual-summary">💡 ' + cur.summary + '</div>' : '') +
+      '<div class="manual-content">' + cur.content + '</div>' +
+      '</div>';
+  }
+}
+
+function closeManual() {
+  sound.click();
+  const m = $('#manual-modal');
+  if (m) {
+    m.hidden = true;
+    m.classList.add('hidden');
+  }
+}
+
 function renderAll() {
   if (!CP.state()) {
     updateSplash();
@@ -573,6 +981,9 @@ function renderAll() {
   renderStage();
   renderModal();
   renderToasts();
+  if (guide && guide.shouldStart()) {
+    setTimeout(() => guide.start(), 80);
+  }
 }
 
 function render() {
@@ -580,6 +991,9 @@ function render() {
   renderStage();
   renderModal();
   renderToasts();
+  if (guide && guide.shouldStart()) {
+    setTimeout(() => guide.start(), 80);
+  }
 }
 
 /* ---------- 初始化绑定 ---------- */
@@ -587,15 +1001,36 @@ function init() {
   sound.updateBtn();
   $('#sound-btn').onclick = () => sound.toggle();
 
+  guide.init();
+  const guideBtn = $('#guide-btn');
+  if (guideBtn) guideBtn.onclick = () => openManual();
+
+  const manualClose = $('#manual-close');
+  if (manualClose) manualClose.onclick = () => closeManual();
+
+  const manualConfirm = $('#manual-confirm');
+  if (manualConfirm) manualConfirm.onclick = () => closeManual();
+
+  const manualReplay = $('#manual-replay-guide');
+  if (manualReplay) {
+    manualReplay.onclick = () => {
+      closeManual();
+      setTab('plan');
+      guide.start(true);
+    };
+  }
+
   $('#btn-new').onclick = () => {
     sound.pop();
     const existing = CP.saveInfo();
     if (existing) {
       if (confirm('检测到已有第 ' + existing.gen + ' 代的成长存档，开启新的一代将重置本代进度。确定开启吗？')) {
+        localStorage.removeItem('cph_guide_done');
         CP.restartLineage();
         renderAll();
       }
     } else {
+      localStorage.removeItem('cph_guide_done');
       CP.restartLineage();
       renderAll();
     }
@@ -623,5 +1058,6 @@ function init() {
   }
 }
 
+global.UI = { renderPhaseTransition, showReport, renderModal, renderAll, init };
 document.addEventListener('DOMContentLoaded', init);
 })(typeof window !== 'undefined' ? window : globalThis);

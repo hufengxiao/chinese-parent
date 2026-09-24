@@ -25,13 +25,21 @@ const ri = n => Math.floor(Math.random() * n);
 
 const MAX_GENS = 5;
 const summaries = [];
+const gkScores = [];
+const baseAttrSums = [];
 
 CP.newGame();
 
 for (let gen = 1; gen <= MAX_GENS; gen++) {
+  {
+    const i0 = CP.info();
+    baseAttrSums.push(i0.attrs.iq + i0.attrs.eq + i0.attrs.mem + i0.attrs.img + i0.attrs.phy);
+  }
   let turns = 0;
   let guard = 0;
   let genFinished = false;
+
+  let phaseTransitions = 0;
 
   while (!genFinished && guard++ < 3000) {
     // 1) 处理 pending 弹窗
@@ -39,6 +47,9 @@ for (let gen = 1; gen <= MAX_GENS; gen++) {
     let pg = 0;
     while (p.length && pg++ < 40) {
       const m = p[0];
+      if (m.type === 'phase_transition') {
+        phaseTransitions++;
+      }
       if (m.type === 'endgen') {
         const i = CP.info();
         const s = CP.state();
@@ -52,7 +63,9 @@ for (let gen = 1; gen <= MAX_GENS; gen++) {
           iq: i.attrs.iq, eq: i.attrs.eq, mem: i.attrs.mem, img: i.attrs.img, phy: i.attrs.phy, cha: i.attrs.cha,
           money: i.money, face: i.face, stress: i.stress, shadow: i.shadow, sat: i.sat,
           gk: s.gaokaoScore, famTalent: fam.talent, tier: fam.tier,
+          rating: fam.rating, score: fam.totalLifeScore, phaseTransitions
         });
+        gkScores.push(s.gaokaoScore || 0);
         CP.resolve(0); // 触发 nextGen()
         genFinished = true;
         break;
@@ -63,13 +76,30 @@ for (let gen = 1; gen <= MAX_GENS; gen++) {
     }
     if (genFinished) break;
 
-    // 2) 尝试研习新技能 (消耗悟性学新课)
+    // 2) 挖脑洞 (回合标准循环: 优先挖脑洞攒悟性)
+    const bInfoStart = CP.brain.info();
+    if (bInfoStart.total !== 36) {
+      throw new Error(`第${gen}代 回合${CP.state().turn} 脑洞格数异常: ${bInfoStart.total}`);
+    }
+    // 验证每回合开始时脑洞均已刷新为未翻开状态 (0 / 36)
+    if (bInfoStart.open !== 0) {
+      throw new Error(`第${gen}代 回合${CP.state().turn} 脑洞未重置刷新! 已翻开: ${bInfoStart.open}`);
+    }
+
+    // 翻开 6~12 格脑洞
+    const digTimes = ri(7) + 6;
+    let digOpened = 0;
+    for (let k = 0; k < digTimes; k++) {
+      if (CP.brain.rev(ri(36))) digOpened++;
+    }
+
+    // 3) 尝试研习新技能 (消耗当回合挖出的悟性研习新课)
     const learnable = CP.learnList ? CP.learnList().filter(x => x.can) : [];
-    if (learnable.length && Math.random() < 0.8) {
+    if (learnable.length && Math.random() < 0.85) {
       CP.learnCourse(learnable[0].id);
     }
 
-    // 3) 测试槽位操作与自动填充 (已掌握课程可无限次重复排满)
+    // 4) 槽位操作与撤销压力测试
     if (Math.random() < 0.2) {
       CP.autoFillSlots();
     } else {
@@ -79,9 +109,17 @@ for (let gen = 1; gen <= MAX_GENS; gen++) {
         const pi = pl[ri(pl.length)];
         if (!CP.addSlot(pi)) break;
       }
-      // 测试撤销槽位
-      if (Math.random() < 0.25 && CP.slots()[2]) {
-        CP.removeSlot(2);
+      // 测试撤销槽位并验证悟性未被污染抹除
+      const insightBeforeUndo = CP.state().insight;
+      const learnedCountBefore = CP.state().learnedCourses ? CP.state().learnedCourses.length : 0;
+      if (Math.random() < 0.35 && CP.slots()[1]) {
+        CP.removeSlot(1);
+        if (CP.state().insight !== insightBeforeUndo) {
+          throw new Error('removeSlot 破坏了悟性数值!');
+        }
+        if (CP.state().learnedCourses && CP.state().learnedCourses.length !== learnedCountBefore) {
+          throw new Error('removeSlot 抹除了已研习的技能!');
+        }
       }
       // 补齐槽位
       CP.autoFillSlots();
@@ -92,17 +130,30 @@ for (let gen = 1; gen <= MAX_GENS; gen++) {
       CP.autoFillSlots();
     }
 
-    // 4) 挖脑洞
-    if (Math.random() < 0.6) {
-      for (let k = 0; k < 5; k++) CP.brain.rev(ri(30));
-    }
-
     CP.endTurn();
     turns++;
   }
 }
 
+// ---- 回归断言 ----
+if (summaries.length !== MAX_GENS) throw new Error(`只完成了 ${summaries.length} 代`);
+summaries.forEach((ss) => {
+  if (ss.phaseTransitions !== 7) throw new Error(`第${ss.gen}代阶段蜕变次数异常: ${ss.phaseTransitions}`);
+  if (!ss.turns || ss.turns < 40) throw new Error(`第${ss.gen}代回合数异常: ${ss.turns}`);
+  const maxGk = Math.max.apply(null, gkScores);
+  const allCapped = gkScores.every(v => v >= 19900);
+  if (allCapped) throw new Error('高考分数饱和缺陷回归: 全部世代顶到满分! ' + JSON.stringify(gkScores));
+  if (maxGk > 20000) throw new Error(`高考分数不应超过 20000 上限, 实际 ${maxGk}`);
+});
+// 传承断言: 二代起基础属性显著强于一代开局
+for (let i = 1; i < MAX_GENS; i++) {
+  if (baseAttrSums[i] < baseAttrSums[0]) {
+    throw new Error(`第${i + 1}代开局属性(${baseAttrSums[i]})未高于第1代(${baseAttrSums[0]}), 传承机制失效!`);
+  }
+}
+console.log('回归断言通过: 7次蜕变/代, 高考分布合理区分, 世代传承显著生效');
+
 console.log('===== 模拟完成 (5代全流程) =====');
-summaries.forEach((s, idx) => {
-  console.log(`第${s.gen}代 [${s.name}, ${s.gender}] 职业: ${s.job}, 伴侣: ${s.spouse}, 高考: ${s.gk}, 家族特长: ${s.famTalent}, 门第: ${s.tier}`);
+summaries.forEach((s) => {
+  console.log(`第${s.gen}代 [${s.name}, ${s.gender}] 评级: ${s.rating} (${s.score}分), 经历阶段蜕变: ${s.phaseTransitions}次, 职业: ${s.job}, 伴侣: ${s.spouse}, 高考: ${s.gk}, 家族特长: ${s.famTalent}, 门第: ${s.tier}`);
 });

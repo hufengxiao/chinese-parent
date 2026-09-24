@@ -9,8 +9,11 @@
 </head>
 <body>
 <div id="app">
-  <!-- 浮动音效开关 -->
-  <button id="sound-btn" class="icon-toggle" title="音效切换" aria-label="音效切换">🔊</button>
+  <!-- 浮动操作按钮栏 (指南 + 音效) -->
+  <div class="top-floats">
+    <button id="guide-btn" class="icon-toggle" title="新手指引与通关秘籍" aria-label="新手指引">📖</button>
+    <button id="sound-btn" class="icon-toggle" title="音效切换" aria-label="音效切换">🔊</button>
+  </div>
 
   <!-- 开始页 -->
   <div id="splash" class="screen active">
@@ -72,6 +75,42 @@
   <!-- 弹层 -->
   <div id="modal"></div>
   <div id="toasts"></div>
+
+  <!-- 新手交互引导聚光灯遮罩层 -->
+  <div id="guide-overlay" class="guide-overlay" hidden>
+    <div id="guide-spotlight" class="guide-spotlight"></div>
+    <div id="guide-card" class="guide-card">
+      <div class="guide-card-head">
+        <span class="guide-mascot">👶</span>
+        <span id="guide-title" class="guide-title">新手引导</span>
+        <button id="guide-skip" class="guide-skip-btn" title="跳过引导">跳过 ✕</button>
+      </div>
+      <div id="guide-body" class="guide-body"></div>
+      <div class="guide-card-foot">
+        <div id="guide-steps-dots" class="guide-dots"></div>
+        <button id="guide-next" class="btn small primary guide-next-btn">下一步 👉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 常驻通关备忘录/攻略手册弹窗 -->
+  <div id="manual-modal" class="screen-modal" hidden>
+    <div class="manual-wrap">
+      <div class="manual-header">
+        <div class="manual-title-row">
+          <h3>📖 中国式家长 · 通关备忘录</h3>
+          <button id="manual-close" class="modal-close-btn" aria-label="关闭">✕</button>
+        </div>
+        <p class="manual-sub">给新老家长的生存发展指南与数值秘籍</p>
+      </div>
+      <div id="manual-tabs" class="manual-tabs"></div>
+      <div id="manual-body" class="manual-body"></div>
+      <div class="manual-footer">
+        <button id="manual-replay-guide" class="btn small ghost">🔄 重走开局新手指引</button>
+        <button id="manual-confirm" class="btn small primary">我已掌握，继续前行</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="js/data.js"></script>

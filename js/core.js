@@ -53,13 +53,13 @@ function phaseOf(t) {
 }
 const PHASE_CN = { baby: '婴儿期', kinder: '幼儿园', pri: '小学', junior: '初中', senior: '高中', college: '大学', work: '工作', home: '成家后' };
 const PHASE_TIPS = {
-  kinder: '新课程解锁,还能参加选秀、抢红包。',
-  pri: '零花钱发放! 商店开张,期末考来了。',
-  junior: '科目变多,中考倒计时。试着和同学走近一点?',
-  senior: '大战前的宁静。冲刺高考吧!',
-  college: '大学自由了,但也要为将来做打算。',
-  work: '上班了! 没想到吧,人生才刚刚开始。',
-  home: '成家之年——找个伴吧!',
+  kinder: '新课程解锁！第12回合将迎来【幼儿园才艺选秀】，准备好拿手特长争夺冠军；第13回合还会触发【过年收红包】。',
+  pri: '【校园小卖部】已开张！零花钱每回合按门第发放，可在商店购买道具提升属性，也可在日程向父母索取大件心愿物。第18回合班干部竞选、第24回合期末考！',
+  junior: '【同学往来】社交模块解锁！和同学聊天送礼提升好感度，未来可缔结良缘。注意关注科目偏科，第32回合将迎来决定命运的【中考】！',
+  senior: '进入冲刺阶段！六大学科掌握度直接影响【高考大关（第44回合）】，注意控制压力，切勿在冲刺期心理崩溃！',
+  college: '大学自由选课！积累职场前置门槛，为步入社会奠定专业基础。',
+  work: '迈入职场！每月发放薪水，用事业积累家族资产与声望。',
+  home: '三十而立，成家立业！将毕生修为与家族图鉴传递给下一代。',
 };
 function ageOf(t) {
   t = t || (S ? S.turn : 1);
@@ -71,9 +71,7 @@ function cls() { return phaseOf(); }
 /* ---------- 存档 ---------- */
 function persist() {
   if (!LS || !S) return;
-  const p = S.pending; S.pending = [];
   try { LS.setItem('cph_save', JSON.stringify(S)); } catch (e) {}
-  S.pending = p;
 }
 function loadSave() { if (!LS) return null; try { return JSON.parse(LS.getItem('cph_save')); } catch (e) { return null; } }
 function loadFam() { if (!LS) return null; try { return JSON.parse(LS.getItem('cph_fam')); } catch (e) { return null; } }
@@ -90,29 +88,72 @@ function pendHongbao() {
 /* ---------- 开局 ---------- */
 function newGame() {
   const fam = loadFam() || { g: 0, talent: 0, tier: 0, attr: {}, atlas: [] };
+  const seedMoney = fam.seedMoney || 0;
   S = {
     ver: 1, gen: fam.g + 1, fam,
     name: pick(['小强', '安安', '小满', '小龙', '豆豆', '妙妙', '铁蛋', '糖糖']),
     gender: Math.random() < 0.45 ? 'girl' : 'boy',
     turn: 1,
     attrs: { iq: RI(5, 9), eq: RI(5, 9), mem: RI(5, 9), img: RI(5, 9), phy: RI(5, 9), cha: RI(2, 5) },
-    insight: 15, act: 100, money: 30,
-    face: 15 + fam.tier * 25, sat: 62, stress: 0, shadow: 0,
+    insight: 15, act: 100, money: 30 + seedMoney,
+    face: 15 + (fam.tier || 0) * 25, sat: 62, stress: 0, shadow: 0,
     exambuff: 0, workSalary: 0, job: null, uniTier: 0, gaokaoScore: 0,
     skills: {}, slots: new Array(6).fill(null),
     npcAff: {}, lover: null, spouse: null,
     talents: (fam.atlas || []).slice(0, fam.talent),
     flags: {}, used: {},
+    tutorial: { done: false, step: 0, claimed: false },
     pending: [], log: [], toasts: [],
   };
   if (fam.g > 0) {
-    ATTRS.forEach(k => { S.attrs[k] += Math.round(((fam.attr && fam.attr[k]) || 0) * 0.18) + (fam.talent || 0); });
+    // 父母 18% 属性遗传 + 伴侣基因增益 + 家族特长底蕴
+    ATTRS.forEach(k => {
+      const parentShare = Math.round(((fam.attr && fam.attr[k]) || 0) * 0.18);
+      S.attrs[k] += parentShare + (fam.talent || 0);
+      if (fam.spouseBonus && fam.spouseBonus[k]) {
+        S.attrs[k] += fam.spouseBonus[k];
+      }
+    });
+    // 名校光环继承: 上一代大学档次 (0专科..5清北) 直接影响后代悟性/面子起点
+    const uniTier = fam.uniTier || 0;
+    if (uniTier >= 3) { S.insight += 15; S.face += 8; }
+    if (uniTier >= 5) { S.insight += 15; S.face += 7; }
+    // 心态遗传: 父母心理阴影/长期高压会留下先天紧绷感
+    const pShadow = fam.shadow || 0;
+    if (pShadow >= 50) S.stress = Math.min(40, Math.round(pShadow / 4));
+    if ((fam.stress || 0) > 80) S.stress = Math.min(40, S.stress + Math.round(((fam.stress || 0) - 80) / 4));
   }
   S.learnedCourses = ['fanshen', 'wanju'];
   S.skills.fanshen = 1;
   S.skills.wanju = 1;
   S.act = 100;
-  S.pending.push({ type: 'intro', title: '第' + S.gen + '代 · 出生', body: '你出生在一个普通中国家庭,爸妈起名「' + S.name + '」。\n\n每个回合:挖脑洞攒悟性 → 研习新技能 → 自由安排 6 件事(学习/娱乐/打工/社交) → 考试、选秀、面子,一路卷到高考。\n' + (fam.g > 0 ? '上一代的积累让你出生自带天赋 +' + fam.talent + '。' : '白手起家,加油!'), opts: ['开始成长'] });
+
+  const perTurnGrowth = fam.talent > 0 ? Math.max(1, Math.floor(fam.talent / 2)) : 0;
+  const inheritStory = fam.g > 0
+    ? `\n🧬 上一代【${fam.name}】的积累为你打下深厚底蕴：\n• 父母五维遗传与伴侣基因赋能已注入开局！\n• 继承家族压岁钱 +${seedMoney} 元，门第面子 +${(fam.tier || 0) * 25}\n• 家族图鉴已收录 ${fam.talent} 项特长，每回合五维成长 +${perTurnGrowth}！`
+    : '\n白手起家，第一代开启你的逆袭人生！';
+
+  // 🏆 名校光环 / 🌧️ 心态遗传 文案 (仅继承世代展示)
+  let uniBonusStory = '';
+  if (fam.g > 0) {
+    const ut = fam.uniTier || 0;
+    if (ut >= 5) uniBonusStory = ' 🏆 清北世家书香扑面，开局悟性+30、面子+15';
+    else if (ut >= 4) uniBonusStory = ' 🏆 985血脉的底蕴加持，开局悟性+15、面子+8';
+    else if (ut >= 3) uniBonusStory = ' 🏆 211书香传承，开局悟性+15、面子+8';
+    if (uniBonusStory) uniBonusStory = '\n' + uniBonusStory + '！';
+    const sh = fam.shadow || 0;
+    const st2 = fam.stress || 0;
+    if (sh >= 50 || st2 > 80) {
+      uniBonusStory += '\n🌧️ 不过父母遗留的心理阴霾，让你天生带着一丝紧绷(压力' + (S.stress || 0) + ')。';
+    }
+  }
+
+  S.pending.push({
+    type: 'intro',
+    title: '第 ' + S.gen + ' 代 · 出生',
+    body: '你出生在一个中国普通家庭，爸妈起名「' + S.name + '」(' + (S.gender === 'girl' ? '女儿' : '儿子') + ')。\n\n每个回合: 挖脑洞攒悟性 → 研习新技能 → 自由安排 6 件事(学习/娱乐/打工/社交) → 考试、选秀、面子，一路卷到高考。' + inheritStory + uniBonusStory,
+    opts: ['开始成长 🚀']
+  });
   captureTurnStart();
   persist();
 }
@@ -122,6 +163,12 @@ function resume() {
     S = s;
     if (!S.learnedCourses) {
       S.learnedCourses = Object.keys(S.skills).length ? Object.keys(S.skills) : ['fanshen', 'wanju'];
+    }
+    if (!S.tutorial) S.tutorial = { done: false, step: 0, claimed: false };
+    if (!S.pending) S.pending = [];
+    if (!S.brain) S.brain = { layer: 1, g: bGen() };
+    if (S.turn >= 60 && !S.pending.some(x => x.type === 'endgen')) {
+      pendEndGen();
     }
     if (!S.turnStart) captureTurnStart();
     return true;
@@ -222,23 +269,22 @@ function learnList() {
 
 function clearSlots() {
   if (!S) return;
-  restoreTurnStart();
+  (S.slots || []).forEach(sl => {
+    if (sl) {
+      S.act = clamp(S.act + (sl.act || 0), 0, 240);
+      if (sl.money) S.money += sl.money;
+    }
+  });
   S.slots = new Array(6).fill(null);
   persist();
 }
 
 function removeSlot(idx) {
   if (!S || idx < 0 || idx >= 6 || !S.slots[idx]) return false;
-  const preserved = S.slots.filter((s, i) => i !== idx && s != null);
-  restoreTurnStart();
-  S.slots = new Array(6).fill(null);
-  for (const s of preserved) {
-    const pl = pool();
-    const item = pl.find(x => x.kind === s.kind && x.id === s.id);
-    if (item && !item.locked) {
-      addSlot(item);
-    }
-  }
+  const sl = S.slots[idx];
+  S.act = clamp(S.act + (sl.act || 0), 0, 240);
+  if (sl.money) S.money += sl.money;
+  S.slots[idx] = null;
   persist();
   return true;
 }
@@ -305,7 +351,8 @@ function pool() {
   // 2) 娱乐项目
   const okPlay = p =>
     p.phase === ph ||
-    (p.phase === 'college' && ph === 'college') ||
+    (p.phase === 'college' && (ph === 'college' || ph === 'work' || ph === 'home')) ||
+    (p.phase === 'senior' && (ph === 'work' || ph === 'home')) ||
     (p.phase === 'pri' && ph === 'college' && (p.id === 'pl-games' || p.id === 'pl-janghu'));
   D.plays.forEach(p => {
     if (okPlay(p)) out.push({
@@ -376,35 +423,38 @@ function pool() {
 function addSlot(pi) {
   const idx = S.slots.findIndex(x => !x);
   if (idx < 0) { toast('六件事排满了,过回合吧'); return false; }
-  if (S.act < pi.act) { toast('行动力不足'); return false; }
-  if (pi.money && S.money < pi.money) { toast('零花钱不够'); return false; }
-  S.slots[idx] = { kind: pi.kind, id: pi.id };
-  S.act -= pi.act;
-  applyAct(pi);
+  const actCost = pi.act || 0;
+  const moneyCost = pi.money || 0;
+  if (S.act < actCost) { toast('行动力不足'); return false; }
+  if (moneyCost && S.money < moneyCost) { toast('零花钱不够'); return false; }
+  S.slots[idx] = { kind: pi.kind, id: pi.id, act: actCost, money: moneyCost };
+  S.act -= actCost;
+  if (moneyCost) S.money -= moneyCost;
   persist();
   return true;
 }
 function applyAct(pi) {
   if (pi.kind === 'learn') {
     const c = D.courses.find(x => x.id === pi.id);
+    if (!c) return;
     const lvl = S.skills[c.id] || 1;
     ATTRS.forEach(k => { if (c.attr && c.attr[k]) S.attrs[k] = Math.max(0, S.attrs[k] + c.attr[k]); });
     S.sat = clamp(S.sat + (c.sat || 2), 0, 140);
     S.stress = clamp(S.stress + (c.stress || 4), 0, 200);
-    if (c.money) S.money = Math.max(0, S.money - c.money);
     S.skills[c.id] = lvl + 1;
     log('练习了「' + c.name + '」 (掌握Lv' + (lvl + 1) + ')');
     if (c.tal && (lvl + 1 >= 5 || lvl + 1 >= 10)) rollTalent(c.tal.id, c.tal.p || 0.35);
   } else if (pi.kind === 'play') {
     const p = D.plays.find(x => x.id === pi.id);
+    if (!p) return;
     S.stress = clamp(S.stress + (p.stress || 0), 0, 200);
     S.sat = clamp(S.sat + (p.sat || 0), 0, 140);
     ATTRS.forEach(k => { if (p.attr && p.attr[k]) S.attrs[k] += p.attr[k]; });
-    if (p.money) S.money = Math.max(0, S.money - p.money);
     if (p.tal && Math.random() < 0.08) rollTalent(p.tal.id, 1);
     log('玩了「' + p.name + '」');
   } else if (pi.kind === 'pay') {
     const pj = D.payjobs.find(x => x.id === pi.id);
+    if (!pj) return;
     S.money += pj.money;
     ATTRS.forEach(k => { if (pj.attr && pj.attr[k]) S.attrs[k] += pj.attr[k]; });
     log('打工「' + pj.name + '」赚 ' + pj.money + ' 元');
@@ -444,8 +494,17 @@ function rollTalent(id, p) {
 /* ---------- 回合结算 ---------- */
 function endTurn() {
   if (S.slots.some(x => !x)) return false;
+  // 执行日常安排的六件事
+  S.slots.forEach(s => applyAct(s));
   S.turn++;
   const t = S.turn;
+  // 每回合刷新全新脑洞 (6x6)
+  S.brain = { layer: 1, g: bGen() };
+  // 家族天赋：每回合自然全属性成长加成 (一代更比一代强！)
+  if (S.fam && S.fam.talent > 0) {
+    const famBonus = Math.max(1, Math.floor(S.fam.talent / 2));
+    ATTRS.forEach(k => { S.attrs[k] += famBonus; });
+  }
   if (cls() === 'work') S.money += (S.workSalary || 100);
   const mp = moneyLet();
   if (mp > 0) { S.money += mp; log('零花钱 +' + mp); }
@@ -473,15 +532,35 @@ function endTurn() {
   if (t === 37) pendFace(1);
   if (t === 50) pendCareer();
   if (t === 58) pendMarry();
-  if (t === 60) pendEndGen();
-  if ([9, 15, 25, 33, 45, 51].indexOf(t) >= 0) {
+  if (t >= 60 && !S.pending.some(x => x.type === 'endgen')) pendEndGen();
+
+  // 阶段蜕变与成长结算提示
+  if ([9, 15, 25, 33, 45, 51, 58].indexOf(t) >= 0) {
     const starters = { 9: 'pinyin', 15: 'cn-shizi', 25: 'cn-mingzhu', 33: 'g-gao-cn', 45: 'u-gao' };
     const stId = starters[t];
     if (stId && S.learnedCourses && S.learnedCourses.indexOf(stId) < 0) {
       S.learnedCourses.push(stId);
       S.skills[stId] = 1;
     }
-    S.pending.push({ type: 'news', title: '新阶段', body: PHASE_CN[cls()] + '开始!' + (PHASE_TIPS[cls()] || ''), opts: ['好'] });
+    const ph = cls();
+    const trans = (D.phaseTransitions && D.phaseTransitions[ph]) ? D.phaseTransitions[ph] : null;
+    if (trans) {
+      S.pending.push({
+        type: 'phase_transition',
+        phase: ph,
+        turn: t,
+        trans: trans,
+        stats: { ...S.attrs },
+        talentsCount: S.talents.length,
+        learnedCount: S.learnedCourses.length,
+        face: S.face,
+        sat: S.sat,
+        stress: S.stress,
+        opts: ['🚀 领取阶段成长礼，迈入新人生！']
+      });
+    } else {
+      S.pending.push({ type: 'news', title: '新阶段', body: PHASE_CN[cls()] + '开始!' + (PHASE_TIPS[cls()] || ''), opts: ['好'] });
+    }
   }
   // ---- 随机事件 ----
   if (Math.random() < 0.45) {
@@ -510,30 +589,39 @@ function moneyLet() {
 }
 
 /* ---------- 考试 ---------- */
+/* 单科考分上限表 —— 防止课程无限重复排课把每代高考都顶到满分 20000 (2026-09 平衡修复) */
+const SUBJ_CAP = { cn: 55, ma: 60, en: 42, sc: 58, so: 34 };
 function subjPts() {
   const pts = { cn: 0, ma: 0, en: 0, sc: 0, so: 0 };
   Object.keys(S.skills).forEach(cid => {
     const c = D.courses.find(x => x.id === cid);
     if (!c || !c.ex) return;
-    const L = S.skills[cid];
+    const L = Math.min(S.skills[cid], 8); // 考试按掌握度计分, Lv8 后继续刷只涨属性、不再涨考分
     if (c.ex === 'all') { pts.cn += L * 10; pts.ma += L * 10; pts.en += L * 10; pts.sc += L * 10; pts.so += L * 10; }
     else if (c.ex === 'all+') { pts.cn += L * 16; pts.ma += L * 16; pts.en += L * 16; pts.sc += L * 16; pts.so += L * 16; }
     else if (pts[c.ex] !== undefined) pts[c.ex] += L;
   });
+  Object.keys(SUBJ_CAP).forEach(k => { pts[k] = Math.min(pts[k], SUBJ_CAP[k]); });
   return pts;
+}
+function cattr(keys, cap) {
+  // 考试属性加成封顶, 防止多代遗传滚雪球后无限涨分
+  let v = 0;
+  keys.forEach(k => v += Math.min((S.attrs[k] || 0), cap));
+  return v;
 }
 function pendFinal() {
   const p = subjPts();
-  const tg = Math.round((p.cn + p.ma + p.en) * 60 + p.sc * 45 + p.so * 40 + (S.attrs.iq + S.attrs.mem) * 3 + S.exambuff * 2);
-  const rank = tg < 1200 ? '班级后段' : tg < 2400 ? '中游' : tg < 3800 ? '上游' : '名列前茅';
+  const tg = Math.round((p.cn + p.ma + p.en) * 60 + p.sc * 45 + p.so * 40 + cattr(['iq', 'mem'], 200) * 3 + Math.min(S.exambuff || 0, 60) * 2);
+  const rank = tg < 3500 ? '班级后段' : tg < 7000 ? '中游' : tg < 10500 ? '上游' : '名列前茅';
   const fd = { '班级后段': -10, 中游: 0, 上游: 10, '名列前茅': 20 }[rank];
   S.face = Math.max(0, S.face + fd);
   S.pending.push({ type: 'news', title: '期末考成绩单', body: '总分 ' + tg + ' · ' + rank + '\n面子 ' + (fd >= 0 ? '+' : '') + fd, opts: ['好'] });
 }
 function pendZhongkao() {
   const p = subjPts();
-  const tg = Math.round((p.cn * 55 + p.ma * 55 + p.en * 45 + p.sc * 50 + p.so * 40) + (S.attrs.iq + S.attrs.mem) * 4 + S.exambuff * 3);
-  const lvl = tg < 4300 ? '职高' : tg < 6900 ? '普高' : '重点';
+  const tg = Math.round((p.cn * 55 + p.ma * 55 + p.en * 45 + p.sc * 50 + p.so * 40) + cattr(['iq', 'mem'], 200) * 4 + Math.min(S.exambuff || 0, 100) * 3);
+  const lvl = tg < 5200 ? '职高' : tg < 8800 ? '普高' : '重点';
   const fb = { 职高: -8, 普高: 5, 重点: 20 }[lvl];
   const bu = { 职高: 150, 普高: 300, 重点: 500 }[lvl];
   S.face = Math.max(0, S.face + fb);
@@ -543,7 +631,11 @@ function pendZhongkao() {
 }
 function pendGaokao() {
   const p = subjPts();
-  const raw = (p.cn * 60 + p.ma * 60 + p.sc * 55 + p.en * 45 + p.so * 40) + (S.attrs.iq + S.attrs.mem) * 6 + S.exambuff * 12 + S.attrs.img * 3;
+  const raw =
+    (p.cn * 70 + p.ma * 70 + p.sc * 70 + p.en * 52 + p.so * 46) +
+    cattr(['iq', 'mem'], 250) * 5 +
+    Math.min(S.exambuff || 0, 80) * 8 +
+    Math.min(S.attrs.img || 0, 200) * 2;
   const tg = Math.min(20000, Math.round(raw));
   let band = D.gk[0]; let idx = 0;
   D.gk.forEach((g, i) => { if (tg >= g.min) { band = g; idx = i; } });
@@ -694,35 +786,83 @@ function pushEndGen() {
     if (mergedAtlas.indexOf(id) < 0) mergedAtlas.push(id);
   });
   const newFamTalent = mergedAtlas.length;
+
+  // 伴侣基因增益
+  let spouseBonus = { iq: 6, eq: 6, mem: 6, img: 6, phy: 6, cha: 6 };
+  let spouseTag = '独善其身 (单身)';
+  if (S.spouse) {
+    spouseTag = S.spouse.tag || '相伴一生';
+    if (spouseTag === '校园恋人') {
+      spouseBonus = { eq: 16, cha: 16, iq: 10, mem: 10 };
+    } else {
+      spouseBonus = { iq: 14, mem: 14, eq: 10, cha: 10 };
+    }
+  } else {
+    spouseBonus = { phy: 14, img: 14, iq: 8, eq: 8 };
+  }
+
+  // 家族成长基金 (上一代积蓄的 15%)
+  const seedMoney = Math.min(300, Math.max(30, Math.floor((S.money || 0) * 0.15)));
+
+  // 本代人生综合得分与评级 (对齐 GAME-DESIGN.md 12 节: 职业40% + 婚姻20% + 财富10% + 天赋30%)
+  const jobScore = Math.min(100, (job.t || 0) * 20 + 20);
+  const marryScore = S.spouse ? (S.spouse.tag === '校园恋人' ? 100 : 85) : 40;
+  const moneyScore = Math.min(100, Math.round((S.money || 0) / 25));
+  const talentScore = Math.min(100, newFamTalent * 8 + (S.gaokaoScore >= 17000 ? 30 : S.gaokaoScore >= 12000 ? 15 : 0));
+  const totalLifeScore = Math.round(jobScore * 0.4 + marryScore * 0.2 + moneyScore * 0.1 + talentScore * 0.3);
+
+  let rating = 'B';
+  let ratingDesc = '负重前行 · 坚韧生长';
+  if (totalLifeScore >= 88) { rating = 'SSS'; ratingDesc = '家族传奇 · 光耀门楣'; }
+  else if (totalLifeScore >= 78) { rating = 'SS'; ratingDesc = '社会栋梁 · 傲视群雄'; }
+  else if (totalLifeScore >= 68) { rating = 'S'; ratingDesc = '小康体面 · 岁月静好'; }
+  else if (totalLifeScore >= 52) { rating = 'A'; ratingDesc = '平凡可贵 · 烟火人间'; }
+
+  // 经典高光回顾
+  let highlight = '踏实走完精彩一代，将温暖与希望毫无保留地交托下一代！';
+  if (S.gaokaoScore >= 19000) highlight = '高考斩获 ' + S.gaokaoScore + ' 分直通清北，全校拉起大红横幅！';
+  else if ((job.t || 0) >= 5) highlight = '白手起家终成首富，家族跨越直达金字塔尖！';
+  else if (S.spouse && S.spouse.tag === '校园恋人') highlight = '与校园白月光相守白头，亲友齐赞神仙眷侣！';
+  else if (S.talents && S.talents.length >= 8) highlight = '一身神级特长横扫各大舞台，人称『别人家孩子本尊』！';
+  else if (S.gaokaoScore >= 14000) highlight = '高考勇夺名牌大学，爸妈在亲戚群里连发三天大红包！';
+  else if ((job.t || 0) >= 3) highlight = '跻身社会精英阶层，生活体面宽裕，爸妈逢人便夸！';
+
   const fam = {
     g: S.gen,
     name: S.name,
+    gender: S.gender,
     tier: Math.max((S.fam ? S.fam.tier : 0), job.t || 0),
     talent: newFamTalent,
     attr: { ...S.attrs },
     atlas: mergedAtlas,
     lastJob: jobName,
     lastScore: S.gaokaoScore || 0,
-    lastSpouse: S.spouse ? S.spouse.name : '单身'
+    uniTier: S.uniTier || 0,
+    shadow: S.shadow || 0,
+    stress: S.stress || 0,
+    lastSpouse: S.spouse ? S.spouse.name : '独善其身 (单身)',
+    spouseBonus,
+    seedMoney,
+    totalLifeScore,
+    rating,
+    ratingDesc,
+    highlight,
+    jobScores: { jobScore, marryScore, moneyScore, talentScore }
   };
   saveFam(fam);
   S.fam = fam;
-  const line = (job.t || 0) >= 4 ? '你登上了金字塔尖，亲戚们的目光满是敬佩与艳羡！'
-    : (job.t || 0) >= 2 ? '生活体面安稳，爸妈茶余饭后终于不再念叨别人家的孩子。'
-    : '在平凡的烟火人间里，你走出了属于自己的路。';
 
   S.pending.push({
     type: 'endgen',
-    title: '第' + S.gen + '代 · 人生终章结算',
-    body: '【本代主人公】' + S.name + ' (' + (S.gender === 'girl' ? '女儿' : '儿子') + ')\n' +
-      '【最终职业】' + job.icon + ' ' + jobName + '\n' +
-      '【阶层档位】' + ['普通工薪', '温饱', '小康', '中产', '高收入', '社会领军'][Math.min(5, job.t || 0)] + '\n' +
-      '【家族积蓄】' + S.money + ' 元 · 面子 ' + S.face + '\n' +
-      '【高考成绩】' + (S.gaokaoScore || '未参加') + ' 分\n' +
-      '【特长积累】本代 ' + S.talents.length + ' 个 · 家族图鉴已收录 ' + newFamTalent + ' 个\n' +
-      '【婚姻家庭】' + (S.spouse ? S.spouse.name : '独立潇洒 (单身)') + '\n\n' +
-      line + '\n\n—— 家族的火炬已准备好，下一代将享有更高的先天属性与家族零花！',
-    opts: ['生下下一代 (开启新传承)']
+    title: '第 ' + S.gen + ' 代 · 人生终章结算',
+    fam: fam,
+    score: totalLifeScore,
+    rating: rating,
+    ratingDesc: ratingDesc,
+    highlight: highlight,
+    job: job,
+    jobName: jobName,
+    opts: ['🌟 托付家族火炬，生下下一代！']
   });
 }
 function nextGen() { resetAll(); newGame(); }
@@ -773,15 +913,15 @@ function buy(id) {
 /* ---------- 脑洞 ---------- */
 function bGen() {
   const G = [];
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 36; i++) {
     const r = Math.random();
     let t = 'bulb';
-    if (r < 0.2) t = 'bulb';
-    else if (r < 0.45) t = 'attr';
-    else if (r < 0.55) t = 'bolt';
-    else if (r < 0.63) t = 'bomb';
-    else if (r < 0.71) t = 'skull';
-    else if (r < 0.8) t = 'gold';
+    if (r < 0.22) t = 'bulb';
+    else if (r < 0.46) t = 'attr';
+    else if (r < 0.56) t = 'bolt';
+    else if (r < 0.65) t = 'bomb';
+    else if (r < 0.74) t = 'skull';
+    else if (r < 0.82) t = 'gold';
     else t = 'duck';
     G.push({ t, open: false });
   }
@@ -790,6 +930,22 @@ function bGen() {
 }
 function bOpen() { if (!S.brain) S.brain = { layer: 1, g: bGen() }; return S.brain; }
 function bGrid() { return bOpen().g; }
+
+function applyBrainCell(c, b) {
+  const db = 1 + (b.layer - 1) * 0.2;
+  switch (c.t) {
+    case 'bulb': { const v = Math.round(RI(10, 20) * db); S.insight += v; return '💡 悟性+' + v; }
+    case 'attr': { const k = pick(['iq', 'eq', 'mem', 'img', 'phy']); const v = Math.round((RI(2, 4) + Math.max(0, b.layer - 1)) * db); S.attrs[k] += v; return ANAME[k] + '+' + v; }
+    case 'bolt': { const v = RI(10, 25); S.act = clamp(S.act + v, 0, 240); return '⚡ 行动+' + v; }
+    case 'skull': { const v = RI(2, 4); ['iq', 'eq', 'mem', 'img', 'phy'].forEach(k => S.attrs[k] += v); return '💀 脑内风暴:五维+' + v; }
+    case 'gold': { const v = RI(8, 20); S.money += v; return '💰 零花+' + v; }
+    case 'duck': return '🦆 鸭子看了你一眼';
+    case 'key': return '🗝️ 钥匙';
+    case 'bomb': return '💥 炸弹';
+    default: return '';
+  }
+}
+
 function bRev(i) {
   const b = bOpen();
   const c = b.g[i];
@@ -798,21 +954,85 @@ function bRev(i) {
   S.act -= 2;
   c.open = true;
   let res = '';
-  const db = 1 + (b.layer - 1) * 0.2;
-  switch (c.t) {
-    case 'bulb': { const v = Math.round(RI(8, 16) * db); S.insight += v; res = '💡 悟性+' + v; break; }
-    case 'attr': { const k = pick(['iq', 'eq', 'mem', 'img', 'phy']); const v = Math.round((RI(1, 3) + Math.max(0, b.layer - 1)) * db); S.attrs[k] += v; res = ANAME[k] + '+' + v; break; }
-    case 'bolt': { const v = RI(8, 20); S.act = clamp(S.act + v, 0, 240); res = '⚡ 行动+' + v; break; }
-    case 'bomb': { b.g.forEach((g2, j) => { if (j !== i && Math.abs(j - i) <= 5 && !g2.open) g2.open = true; }); res = '💥 爆破连开!'; break; }
-    case 'skull': { const v = RI(2, 4); ['iq', 'eq', 'mem', 'img', 'phy'].forEach(k => S.attrs[k] += v); res = '💀 脑内风暴:五维+' + v; break; }
-    case 'gold': { const v = RI(6, 16); S.money += v; res = '💰 零花+' + v; break; }
-    case 'duck': res = '🦆 鸭子看了你一眼,然后走了。'; break;
-    case 'key': { b.layer++; b.g = bGen(); S.act = clamp(S.act + 50, 0, 240); res = '🗝️ 钥匙!下探第' + b.layer + '层(行动+50)'; break; }
+
+  if (c.t === 'key') {
+    if (b.layer < 4) {
+      b.layer++;
+      b.g = bGen();
+      S.act = clamp(S.act + 50, 0, 240);
+      res = '🗝️ 钥匙! 下探第' + b.layer + '层(行动+50)';
+    } else {
+      S.act = clamp(S.act + 50, 0, 240);
+      res = '🗝️ 钥匙! 下方脑洞施工中，下回合再来探索吧(行动+50)';
+    }
+  } else if (c.t === 'bomb') {
+    const r0 = Math.floor(i / 6);
+    const c0 = i % 6;
+    const exploded = [];
+    let foundKey = false;
+    for (let j = 0; j < b.g.length; j++) {
+      if (j === i) continue;
+      const rj = Math.floor(j / 6);
+      const cj = j % 6;
+      if (Math.abs(rj - r0) <= 1 && Math.abs(cj - c0) <= 1 && !b.g[j].open) {
+        const g2 = b.g[j];
+        g2.open = true;
+        if (g2.t === 'key') {
+          foundKey = true;
+        } else {
+          const subEff = applyBrainCell(g2, b);
+          if (subEff) exploded.push(subEff);
+        }
+      }
+    }
+    if (foundKey) {
+      if (b.layer < 4) {
+        b.layer++;
+        b.g = bGen();
+        S.act = clamp(S.act + 50, 0, 240);
+        res = '💥 炸弹连锁炸出🗝️钥匙! 下探第' + b.layer + '层(行动+50)';
+      } else {
+        S.act = clamp(S.act + 50, 0, 240);
+        res = '💥 炸出🗝️钥匙! 下方脑洞施工中(行动+50)';
+      }
+    } else {
+      res = '💥 连环爆破!' + (exploded.length ? ' 获得: ' + exploded.slice(0, 3).join(' ') + (exploded.length > 3 ? '等' : '') : '');
+    }
+  } else {
+    res = applyBrainCell(c, b);
   }
+
+  // 保底：若当前层全部翻开，自动进入下一层或封顶提示
+  if (b.g.every(x => x.open)) {
+    if (b.layer < 4) {
+      b.layer++;
+      b.g = bGen();
+      S.act = clamp(S.act + 30, 0, 240);
+      res += ' · 🎉 本层全部翻开，下探第' + b.layer + '层(行动+30)!';
+    } else {
+      res += ' · 🎉 本层脑洞已全部挖通！下回合将刷新全新脑洞。';
+    }
+  }
+
   save();
   return res;
 }
-function bInfo() { const b = bOpen(); return { layer: b.layer, open: b.g.filter(x => x.open).length, total: b.g.length }; }
+function bInfo() { const b = bOpen(); return { layer: b.layer, open: b.g.filter(x => x.open).length, total: b.g.length, maxLayer: 4 }; }
+
+/* ---------- 新手礼包 ---------- */
+function claimNovicePack() {
+  if (!S) return null;
+  if (!S.tutorial) S.tutorial = { done: false, step: 0, claimed: false };
+  if (S.tutorial.claimed) return null;
+  S.tutorial.claimed = true;
+  S.tutorial.done = true;
+  S.insight += 25;
+  S.act = clamp(S.act + 25, 0, 240);
+  persist();
+  toast('🎁 成功领取【新手启蒙礼包】：悟性+25，行动+25！');
+  log('领取了新手启蒙礼包(悟性+25,行动+25)');
+  return { insight: 25, act: 25 };
+}
 
 /* ---------- 对外 ---------- */
 const API = {
@@ -838,51 +1058,68 @@ const API = {
   social: socialList, chat, gift,
   shop: shopList, buy,
   atlas, fam: getFam,
+  claimNovicePack,
 };
 function getFam() { return S ? S.fam : (loadFam() || { g: 0, talent: 0, tier: 0, attr: {}, atlas: [] }); }
 
 function resolvePend(i) {
   if (!S.pending.length) return '';
   const m = S.pending[0];
+  let res = '';
   switch (m.type) {
     case 'intro': case 'news': case 'collapse': case 'final': case 'zhongkao': case 'gaokao': case 'career':
     case 'face': case 'electionr':
       S.pending.shift();
       if (m.type === 'collapse') { restartLineage(); return '重新开始'; }
-      return '';
+      res = '';
+      break;
     case 'choice': {
       const o = m.opts[i];
-      applyEff(o.eff);
+      if (o && o.eff) applyEff(o.eff);
       S.pending.shift();
-      return o.label;
+      res = o ? o.label : '';
+      break;
     }
     case 'mini_hb': {
       S.pending.shift();
-      if (i === 2) { S.face += 15; return '你主动把红包交给爸妈,父母欣慰(面子+15)'; }
+      if (i === 2) { S.face += 15; res = '你主动把红包交给爸妈,父母欣慰(面子+15)'; break; }
       const v = RI(100, 200);
       S.money += v;
-      return '你抢到了红包,拿到 ' + v + ' 元!' + (i === 0 ? '(左兜)' : '(右兜)');
+      res = '你抢到了红包,拿到 ' + v + ' 元!' + (i === 0 ? '(左兜)' : '(右兜)');
+      break;
     }
     case 'show': {
       S.pending.shift();
       S.pending.push({ type: 'showr', title: m.title, body: showResult(m.tier), opts: ['好'] });
-      return '登台';
+      res = '登台';
+      break;
     }
-    case 'showr': S.pending.shift(); return '';
+    case 'showr': S.pending.shift(); res = ''; break;
     case 'election': {
       const v = doElection(i);
       if (S.election.round >= 2) { S.pending.shift(); electionFinish(); }
       else S.pending[0].body = '拉了一票(+' + v + ')。再来一轮!当前票: ' + S.election.votes;
-      return '拉到 ' + v + ' 票';
+      res = '拉到 ' + v + ' 票';
+      break;
     }
-    case 'marry': return marryResolve(i);
+    case 'marry': res = marryResolve(i); break;
+    case 'phase_transition': {
+      if (m.trans && m.trans.gift) {
+        applyEff(m.trans.gift);
+      }
+      S.pending.shift();
+      res = m.trans ? ('成功开启「' + m.trans.nextName + '」阶段！' + (m.trans.giftDesc ? ' ' + m.trans.giftDesc : '')) : '开启新阶段';
+      break;
+    }
     case 'endgen': {
       S.pending.shift();
       nextGen();
-      return '生下下一代';
+      res = '生下下一代';
+      break;
     }
   }
-  return '';
+  persist();
+  return res;
 }
 global.CP = API;
 if (typeof module !== 'undefined') module.exports = API;
