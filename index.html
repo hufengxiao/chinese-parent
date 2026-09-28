@@ -4,7 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="中国式家长 H5自娱版 - 原生纯前端实现，模拟从婴儿到高考再到成家立业与世代传承。">
+<meta name="theme-color" content="#d33824">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="中国式家长">
 <title>中国式家长 · H5自娱版</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -116,5 +123,14 @@
 <script src="js/data.js"></script>
 <script src="js/core.js"></script>
 <script src="js/ui.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => {
+      console.log('SW registration skipped:', err);
+    });
+  });
+}
+</script>
 </body>
 </html>

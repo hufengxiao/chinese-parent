@@ -309,7 +309,7 @@ CP.state().pending.push({
   type: 'marry',
   title: '💌 长辈公园相亲角 · 婚恋大抉择',
   isCampus: false,
-  prob: 0.95, // 设定高成功率以确保确定性
+  prob: 1.0, // 设定100%成功率以确保单元测试确定性
   blindCandidates: [
     { id: 'blind-doc', name: '三甲医院林医生', icon: '🩺', tag: '三甲名医', bonus: { iq: 20, mem: 15 } },
     { id: 'blind-gov', name: '机关单位李骨干', icon: '🏛️', tag: '体制内精英', bonus: { eq: 20, cha: 15 } }
@@ -378,5 +378,58 @@ assert.strictEqual(CP.state().workSalary, Math.round(preJobSalary * 1.5), '晋�
 assert.strictEqual(CP.state().face, preJobFace + 50, '晋升成功后家庭面子应加 50');
 console.log('年中绩效考核与职级擢升结算验证通过:\n' + promoRes);
 
-console.log('\n🎉 全部核心机制、选秀舞台、班干部竞选、求婚相亲与职场晋升答辩单元测试全部 100% 通过！');
+console.log('\n--- 测试 11: 📱 脑洞连环爆炸机制与 PWA 离线应用支持 ---');
+// 1) 验证脑洞连环爆破机制
+CP.state().act = 50;
+const brainObj = CP.brain.grid();
+// 将索引 14 (r=2, c=2) 设为炸弹
+brainObj[14].t = 'bomb';
+brainObj[14].open = false;
+// 保证周边 8 格未开
+const r0 = 2, c0 = 2;
+const surroundingIndices = [];
+for (let j = 0; j < 36; j++) {
+  if (j === 14) continue;
+  const rj = Math.floor(j / 6), cj = j % 6;
+  if (Math.abs(rj - r0) <= 1 && Math.abs(cj - c0) <= 1) {
+    brainObj[j].open = false;
+    brainObj[j].t = 'bulb'; // 设为灯泡便于断言
+    surroundingIndices.push(j);
+  }
+}
+assert.strictEqual(surroundingIndices.length, 8, '中心炸弹周边应有8个邻格');
+
+const bombRes = CP.brain.rev(14);
+assert(bombRes && bombRes.includes('💥'), '翻开炸弹应返回连环爆破反馈: ' + bombRes);
+assert(brainObj[14].open, '炸弹自身应被翻开');
+surroundingIndices.forEach(idx => {
+  assert(brainObj[idx].open, '炸弹周边格子必须全部被连环波及翻开: 格子' + idx);
+});
+console.log('脑洞连环爆破与周边8格连锁翻开验证通过:', bombRes);
+
+// 2) 验证 PWA manifest.json 与图标资源
+const manifestPath = path.join(__dirname, '..', 'manifest.json');
+assert(fs.existsSync(manifestPath), 'manifest.json 必须存在');
+const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+assert.strictEqual(manifest.display, 'standalone', 'PWA 必须支持独立应用窗口');
+assert(manifest.name && manifest.short_name, 'PWA 必须声明名称');
+assert(manifest.icons && manifest.icons.length >= 3, 'PWA 必须包含图标数组');
+
+const iconSvgPath = path.join(__dirname, '..', 'icon.svg');
+const icon192Path = path.join(__dirname, '..', 'icon-192.png');
+const icon512Path = path.join(__dirname, '..', 'icon-512.png');
+assert(fs.existsSync(iconSvgPath) && fs.statSync(iconSvgPath).size > 100, 'icon.svg 必须有效');
+assert(fs.existsSync(icon192Path) && fs.statSync(icon192Path).size > 100, 'icon-192.png 必须有效');
+assert(fs.existsSync(icon512Path) && fs.statSync(icon512Path).size > 100, 'icon-512.png 必须有效');
+
+// 3) 验证 Service Worker sw.js
+const swPath = path.join(__dirname, '..', 'sw.js');
+assert(fs.existsSync(swPath), 'sw.js 必须存在');
+const swContent = fs.readFileSync(swPath, 'utf8');
+assert(swContent.includes('PRECACHE_ASSETS'), 'Service Worker 必须声明预缓存静态资源');
+assert(swContent.includes('caches.open'), 'Service Worker 必须支持离线缓存');
+console.log('PWA 离线桌面与移动端应用配置 (manifest.json, sw.js, 图标集) 验证通过！');
+
+console.log('\n🎉 全部五轮核心机制扩充、选秀/竞选/求婚/职场晋升/脑洞爆炸与PWA应用全部 100% 验证通过！');
+
 

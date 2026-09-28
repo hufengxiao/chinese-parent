@@ -362,22 +362,52 @@ function renderPlan() {
 }
 
 /* ---------- 脑洞 ---------- */
+let brainShaking = false;
+let lastExplodedIdx = -1;
+let lastChainIndices = [];
+
 function renderBrain() {
   const st = $('#stage');
   st.innerHTML = '';
   const b = CP.brain.info();
   const wrap = h('div');
   wrap.appendChild(h('div', 'pool-cat', '🧠 脑洞挖掘 — 第 ' + b.layer + ' 层 · 已翻 ' + b.open + '/' + b.total + ' · 每格消耗 2⚡'));
-  const grid = h('div');
+  const grid = h('div', brainShaking ? 'brain-shake' : '');
   grid.id = 'brain-grid';
+  if (brainShaking) {
+    setTimeout(() => {
+      if (grid) grid.classList.remove('brain-shake');
+      brainShaking = false;
+      lastExplodedIdx = -1;
+      lastChainIndices = [];
+    }, 450);
+  }
   CP.brain.grid().forEach((c, i) => {
-    const cell = h('div', 'cell' + (c.open ? ' open' : ''));
+    let extraCls = '';
+    if (i === lastExplodedIdx) extraCls = ' bomb-burst';
+    else if (lastChainIndices.indexOf(i) >= 0) extraCls = ' chain-burst';
+    const cell = h('div', 'cell' + (c.open ? ' open' : '') + extraCls);
     cell.textContent = c.open ? ({ bulb: '💡', attr: '🔮', bolt: '⚡', bomb: '💥', skull: '💀', gold: '💰', key: '🗝️', duck: '🦆' })[c.t] : '?';
     cell.onclick = () => {
+      const wasBomb = !c.open && c.t === 'bomb';
       const r = CP.brain.rev(i);
       if (r != null) {
         sound.brain();
         toast(r);
+        if (wasBomb || (typeof r === 'string' && (r.indexOf('💥') >= 0 || r.indexOf('炸弹') >= 0))) {
+          if (sound.win) sound.win();
+          brainShaking = true;
+          lastExplodedIdx = i;
+          const r0 = Math.floor(i / 6), c0 = i % 6;
+          lastChainIndices = [];
+          for (let j = 0; j < 36; j++) {
+            if (j === i) continue;
+            const rj = Math.floor(j / 6), cj = j % 6;
+            if (Math.abs(rj - r0) <= 1 && Math.abs(cj - c0) <= 1) {
+              lastChainIndices.push(j);
+            }
+          }
+        }
       }
       render();
     };
