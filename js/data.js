@@ -101,6 +101,10 @@ plays: [
   {id:'pl-bing',   name:'网吧通宵',      icon:'🌃', phase:'senior', attr:{}, stress:-2, sat:-2, money:20},
   {id:'pl-college',name:'社团出摊',      icon:'🎪', phase:'college', attr:{cha:1,eq:1}, stress:-2, sat:-1},
   {id:'pl-pao',    name:'夜跑撸铁',      icon:'🏃', phase:'college', attr:{phy:2}, stress:-2, sat:0},
+  {id:'pl-work-ot',   name:'赶项目KPI',      icon:'💻', phase:'work', attr:{iq:2,eq:1}, stress:3, sat:2},
+  {id:'pl-work-fish', name:'带薪摸鱼',      icon:'☕', phase:'work', attr:{eq:1}, stress:-6, sat:-1},
+  {id:'pl-work-cert', name:'考专业证书',    icon:'📜', phase:'work', attr:{iq:2,mem:2}, stress:2, sat:1},
+  {id:'pl-work-banquet',name:'高端商务宴请', icon:'🍷', phase:'work', attr:{eq:2,cha:2}, stress:-2, sat:1, money:35},
 ],
 
 /* 打工(初中起) */

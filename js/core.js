@@ -649,9 +649,10 @@ function pool() {
     });
   });
 
-  // 2) 娱乐项目
+  // 2) 娱乐与工作项目
   const okPlay = p =>
     p.phase === ph ||
+    (p.phase === 'work' && (ph === 'work' || ph === 'home')) ||
     (p.phase === 'college' && (ph === 'college' || ph === 'work' || ph === 'home')) ||
     (p.phase === 'senior' && (ph === 'work' || ph === 'home')) ||
     (p.phase === 'pri' && ph === 'college' && (p.id === 'pl-games' || p.id === 'pl-janghu'));
@@ -832,6 +833,7 @@ function endTurn() {
   if (t === 28) pendFace(0);
   if (t === 37) pendFace(1);
   if (t === 50) pendCareer();
+  if (t === 54) pendPromotion();
   if (t === 58) pendMarry();
   if (t >= 60 && !S.pending.some(x => x.type === 'endgen')) pendEndGen();
 
@@ -1333,6 +1335,70 @@ function pendCareer() {
   S.job = best.j;
   S.workSalary = 180 + best.j.t * 120;
   S.pending.push({ type: 'news', title: '毕业,步入职场', body: '你拿到了属于自己的工牌——\n\n' + best.j.icon + ' ' + (best.j.n || best.j.name) + ' 月薪回到手: ' + S.workSalary + '\n\n' + (best.j.d || '新人阶段: 踩点上下班,偶尔加班。'), opts: ['好'] });
+}
+
+/* ---------- 💼 职场年中绩效考核与晋升答辩 (Promotion Assessment) ---------- */
+function pendPromotion() {
+  const job = S.job || { n: '普通职员', icon: '💻', t: 1 };
+  const curTier = job.t || 1;
+  const salary = S.workSalary || 300;
+
+  S.pending.push({
+    type: 'promotion',
+    title: '💼 职场年中绩效考核与晋升答辩',
+    job,
+    curTier,
+    salary,
+    body: '入职以来，你的综合能力与岗位产出迎来了全公司年中大考！\n当前岗位：' + (job.icon || '💼') + ' ' + (job.n || job.name) + ' (门第 Tier ' + curTier + ')\n当前月薪：' + salary + ' 元/回\n\n请选择你向集团考核委员会陈述的核心答辩策略：',
+    opts: [
+      { label: '🚀 主攻业务突破与技术硬实力', sub: '依赖智商与记忆，展示无可替代的专业产出' },
+      { label: '🤝 强调跨部门统筹与领导力', sub: '依赖情商与魅力，展现管理潜力与团队凝聚力' },
+      { label: '📈 亮出攻坚克难与抗压战绩', sub: '依赖体魄与执行力，凸显高强度的敬业精神' }
+    ]
+  });
+}
+
+function promotionResolve(i) {
+  const m = S.pending[0];
+  S.pending.shift();
+  const job = S.job || { n: '职场骨干', icon: '💼', t: 1 };
+  const attrs = S.attrs || { iq: 0, eq: 0, mem: 0, img: 0, phy: 0, cha: 0 };
+
+  let score = 0;
+  if (i === 0) {
+    score = Math.floor((attrs.iq + attrs.mem) / 40) + RI(8, 14);
+  } else if (i === 1) {
+    score = Math.floor((attrs.eq + attrs.cha) / 40) + RI(8, 14);
+  } else {
+    score = Math.floor((attrs.phy + attrs.iq) / 40) + RI(8, 14);
+  }
+
+  // 晋升门槛根据当前阶层递增
+  const need = 15 + (job.t || 1) * 3;
+  const isPromoted = score >= need && (job.t || 1) < 5;
+
+  if (isPromoted) {
+    job.t = Math.min(5, (job.t || 1) + 1);
+    const prefixMap = { 2: '资深', 3: '主管', 4: '总监', 5: '合伙人' };
+    const prefix = prefixMap[job.t] || '首席';
+    job.n = prefix + '·' + (job.n || job.name || '核心骨干');
+    S.workSalary = Math.round(S.workSalary * 1.5);
+    S.face += 50;
+    S.sat = clamp(S.sat + 15, 0, 140);
+    const msg = '🎉 绩效考核斩获评级【S+】！\n' +
+      '委员会一致通过你的晋升申请！正式擢升为【' + job.n + '】(门第 Tier ' + job.t + ')！\n' +
+      '月薪暴涨至 ' + S.workSalary + ' 元/回！家庭面子 +50，父母欣慰之至！';
+    log('职场晋升成功！擢升为「' + job.n + '」，月薪升至 ' + S.workSalary + ' 元');
+    return msg;
+  } else {
+    S.workSalary = Math.round(S.workSalary * 1.1);
+    S.face += 10;
+    const msg = '考核平稳通过，评级为【B+】。\n' +
+      '领导对你的踏实表现表示认可，薪资微调至 ' + S.workSalary + ' 元/回 (面子+10)。\n' +
+      '继续在岗位上深耕蓄力！';
+    log('年中绩效考核评级 B+，薪资微调至 ' + S.workSalary);
+    return msg;
+  }
 }
 function pendMarry() {
   let cand = null, bestAff = 0;
@@ -1988,6 +2054,7 @@ function resolvePend(i) {
       res = '竞选拉票斩获 ' + v + ' 票';
       break;
     }
+    case 'promotion': res = promotionResolve(i); break;
     case 'marry': res = marryResolve(i); break;
     case 'phase_transition': {
       if (m.trans && m.trans.gift) {

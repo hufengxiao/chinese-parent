@@ -742,6 +742,12 @@ function renderModal() {
     return;
   }
 
+  // 针对职场期年中绩效考核与晋升答辩
+  if (p.type === 'promotion') {
+    renderPromotionModal(p, m);
+    return;
+  }
+
   m.classList.add('show');
   m.innerHTML = '';
   const body = h('div', 'm-body');
@@ -1401,6 +1407,63 @@ function renderMarryModal(p, m) {
     };
     body.appendChild(btnPass);
   }
+
+  m.appendChild(body);
+}
+
+/* ---------- 💼 职场年中绩效考核与晋升答辩 ---------- */
+function renderPromotionModal(p, m) {
+  m.classList.add('show');
+  m.innerHTML = '';
+  const body = h('div', 'm-body pro-modal');
+  const job = p.job || { n: '普通员工', icon: '💼', t: 1 };
+
+  // 1) 顶栏徽章与标题
+  const head = h('div', 'pro-header');
+  head.innerHTML =
+    '<div class="pro-badge">💼 集团年中考核委员会 · 职级答辩</div>' +
+    '<div class="pro-title">' + (p.title || '职场年中绩效考核') + '</div>' +
+    '<div class="pro-sub">亮出核心业绩与答辩策略，争取升职加薪与家族门第跃迁！</div>';
+  body.appendChild(head);
+
+  // 2) 当前岗位与月薪卡片
+  const jobCard = h('div', 'pro-job-card');
+  jobCard.innerHTML =
+    '<div class="pro-job-ico">' + (job.icon || '💼') + '</div>' +
+    '<div class="pro-job-info">' +
+      '<div class="pro-job-name">' + (job.n || job.name || '核心骨干') + '</div>' +
+      '<div class="pro-job-tier">当前社会门第：Tier ' + (p.curTier || 1) + ' · 月薪 ' + (p.salary || 300) + ' 元/回</div>' +
+    '</div>' +
+    '<div class="pro-kpi-badge">考核评定中 ⏳</div>';
+  body.appendChild(jobCard);
+
+  // 3) 三大答辩策略卡片
+  const optsBox = h('div', 'pro-opts-box');
+  optsBox.innerHTML = '<div class="pro-opts-title">📊 请选择你的答辩陈述重点：</div>';
+  const grid = h('div', 'pro-opts-grid');
+
+  const defaultOpts = [
+    { label: '🚀 主攻业务突破与技术硬实力', sub: '依赖智商与记忆，展示无可替代的专业产出' },
+    { label: '🤝 强调跨部门统筹与领导力', sub: '依赖情商与魅力，展现管理潜力与团队凝聚力' },
+    { label: '📈 亮出攻坚克难与抗压战绩', sub: '依赖体魄与执行力，凸显高强度的敬业精神' }
+  ];
+  const opts = (p.opts && p.opts.length === 3) ? p.opts : defaultOpts;
+
+  opts.forEach((opt, idx) => {
+    const btn = h('button', 'pro-opt-btn');
+    btn.innerHTML =
+      '<div class="pro-opt-title">' + (opt.label || opt) + '</div>' +
+      '<div class="pro-opt-sub">' + (opt.sub || '') + '</div>';
+    btn.onclick = () => {
+      sound.click();
+      const r = CP.resolve(idx);
+      if (r) toast(r);
+      renderAll();
+    };
+    grid.appendChild(btn);
+  });
+  optsBox.appendChild(grid);
+  body.appendChild(optsBox);
 
   m.appendChild(body);
 }

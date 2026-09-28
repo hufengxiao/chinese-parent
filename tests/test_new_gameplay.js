@@ -328,4 +328,55 @@ assert.strictEqual(CP.state().spouse.name, '三甲医院林医生', '应与林�
 assert.strictEqual(CP.state().spouse.tag, '相亲良缘', '标签应为相亲良缘');
 console.log('公园长辈相亲角约见相亲验证通过:', blindRes);
 
-console.log('\n🎉 全部核心机制、选秀舞台、班干部竞选与求婚相亲舞台单元测试全部 100% 通过！');
+console.log('\n--- 测试 10: 💼 职场期年中绩效考核与晋升答辩 ---');
+while (CP.pending().length) CP.resolve(0);
+
+// 1) 验证职场专属娱乐日程
+CP.state().turn = 52; // work 阶段
+const workPlays = ['pl-work-ot', 'pl-work-fish', 'pl-work-cert', 'pl-work-banquet'];
+const pList = CP.pool();
+workPlays.forEach(pid => {
+  const p = ctx.DATA.plays.find(x => x.id === pid);
+  assert(p, '必须存在职场日程: ' + pid);
+  assert(pList.some(item => item.id === pid), '职场期必须允许选择日程: ' + p.name);
+});
+console.log('职场期日程 (赶项目/带薪摸鱼/考专业证书/高端商务宴请) 检录可用！');
+
+// 2) 验证 Turn 54 触发年中绩效考核与职级跃迁
+CP.state().job = { id: 'prog', n: '软件开发工程师', icon: '💻', t: 1 };
+CP.state().workSalary = 300;
+CP.state().attrs.iq = 400; // 超高智商确保高绩效晋升
+CP.state().attrs.mem = 400;
+const preJobSalary = CP.state().workSalary;
+const preJobFace = CP.state().face;
+
+// 触发晋升考评
+CP.state().turn = 54;
+CP.state().pending.push({
+  type: 'promotion',
+  title: '💼 职场年中绩效考核与晋升答辩',
+  job: CP.state().job,
+  curTier: CP.state().job.t,
+  salary: CP.state().workSalary,
+  opts: [
+    { label: '🚀 主攻业务突破与技术硬实力', sub: '依赖智商与记忆' },
+    { label: '🤝 强调跨部门统筹与领导力', sub: '依赖情商与魅力' },
+    { label: '📈 亮出攻坚克难与抗压战绩', sub: '依赖体魄与执行力' }
+  ]
+});
+
+const promoModal = CP.pending()[0];
+assert.strictEqual(promoModal.type, 'promotion', '应为 promotion 模态框');
+assert.strictEqual(promoModal.curTier, 1, '当前 Tier 为 1');
+
+// 答辩选择: 业务突破与硬实力 (index 0)
+const promoRes = CP.resolve(0);
+assert.strictEqual(CP.pending().length, 0, '答辩后模态框已关闭');
+assert.strictEqual(CP.state().job.t, 2, '考核 S+ 后职级应晋升为 Tier 2');
+assert(CP.state().job.n.includes('资深'), '岗位名称应冠以晋升级别前缀: ' + CP.state().job.n);
+assert.strictEqual(CP.state().workSalary, Math.round(preJobSalary * 1.5), '晋升后月薪应暴涨 1.5 倍');
+assert.strictEqual(CP.state().face, preJobFace + 50, '晋升成功后家庭面子应加 50');
+console.log('年中绩效考核与职级擢升结算验证通过:\n' + promoRes);
+
+console.log('\n🎉 全部核心机制、选秀舞台、班干部竞选、求婚相亲与职场晋升答辩单元测试全部 100% 通过！');
+
