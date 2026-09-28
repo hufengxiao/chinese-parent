@@ -1895,6 +1895,119 @@ function closeManual() {
   }
 }
 
+/* ---------- 版本更新公告与更新日志 ---------- */
+function getStoredVer() {
+  try { return localStorage.getItem('cph_last_seen_ver'); } catch(e) { return null; }
+}
+function setStoredVer(v) {
+  try { localStorage.setItem('cph_last_seen_ver', v); } catch(e) {}
+}
+
+function checkChangelogNotice() {
+  const curVer = (D && D.version) ? D.version : 'v2.1.0';
+  const lastSeen = getStoredVer();
+  const badge = $('#update-badge');
+  if (badge) {
+    if (lastSeen !== curVer) {
+      badge.hidden = false;
+      badge.classList.remove('hidden');
+    } else {
+      badge.hidden = true;
+      badge.classList.add('hidden');
+    }
+  }
+  const splashVer = $('#splash-ver-badge');
+  if (splashVer) splashVer.textContent = curVer;
+  const headerVer = $('#changelog-cur-ver');
+  if (headerVer) headerVer.textContent = curVer;
+
+  // 用户刷新或进入游戏，若未阅读过新版本，自动弹出更新公告
+  if (lastSeen !== curVer) {
+    setTimeout(() => {
+      openChangelogModal(true);
+    }, 200);
+  }
+}
+
+function openChangelogModal(isAuto = false) {
+  if (!isAuto) sound.click();
+  const m = $('#changelog-modal');
+  if (!m) return;
+  m.hidden = false;
+  m.classList.remove('hidden');
+
+  const curVer = (D && D.version) ? D.version : 'v2.1.0';
+  const list = (D && D.changelog) ? D.changelog : [];
+  const body = $('#changelog-body');
+  if (!body) return;
+
+  let html = '';
+  html += `
+    <div class="changelog-banner">
+      <div class="banner-badge">🎉 欢迎体验全新版本 · ${curVer}</div>
+      <div class="banner-text">中国式家长持续进化！为你带来更真实沉浸的中国式成长轨迹与深度策略玩法。向下滚动可查阅各版本历史更新内容。</div>
+    </div>
+  `;
+
+  list.forEach((item, idx) => {
+    const isLatest = idx === 0;
+    const cardClass = isLatest ? 'changelog-card latest' : 'changelog-card';
+    const tagClass = isLatest ? 'tag-badge latest' : 'tag-badge normal';
+
+    html += `<div class="${cardClass}">`;
+    html += `  <div class="ver-header">`;
+    html += `    <div class="ver-left">`;
+    html += `      <span class="ver-num">${item.ver || item.version}</span>`;
+    html += `      <span class="${tagClass}">${item.tag || (isLatest ? '最新' : '历史')}</span>`;
+    html += `    </div>`;
+    html += `    <span class="ver-date">📅 ${item.date || ''}</span>`;
+    html += `  </div>`;
+    html += `  <div class="ver-title">${item.title}</div>`;
+    if (item.desc) {
+      html += `  <div class="ver-desc">${item.desc}</div>`;
+    }
+
+    if (item.highlights && item.highlights.length) {
+      html += `  <div class="ver-features">`;
+      item.highlights.forEach(h => {
+        if (typeof h === 'string') {
+          html += `    <div class="feature-item"><span class="feature-icon">✨</span><div class="feature-content"><div class="feature-text">${h}</div></div></div>`;
+        } else {
+          html += `    <div class="feature-item">`;
+          html += `      <span class="feature-icon">${h.icon || '✨'}</span>`;
+          html += `      <div class="feature-content">`;
+          html += `        <div class="feature-title">${h.title}</div>`;
+          html += `        <div class="feature-desc">${h.desc}</div>`;
+          html += `      </div>`;
+          html += `    </div>`;
+        }
+      });
+      html += `  </div>`;
+    }
+    html += `</div>`;
+  });
+
+  body.innerHTML = html;
+  body.scrollTop = 0;
+}
+
+function closeChangelogModal() {
+  sound.click();
+  const m = $('#changelog-modal');
+  if (m) {
+    m.hidden = true;
+    m.classList.add('hidden');
+  }
+  const curVer = (D && D.version) ? D.version : 'v2.1.0';
+  setStoredVer(curVer);
+
+  const badge = $('#update-badge');
+  if (badge) {
+    badge.hidden = true;
+    badge.classList.add('hidden');
+  }
+}
+
 function renderAll() {
   if (!CP.state()) {
     updateSplash();
@@ -1974,6 +2087,28 @@ function init() {
     b.onclick = () => setTab(b.dataset.tab);
   });
 
+  const changelogBtn = $('#changelog-btn');
+  if (changelogBtn) changelogBtn.onclick = () => openChangelogModal(false);
+
+  const changelogClose = $('#changelog-close');
+  if (changelogClose) changelogClose.onclick = () => closeChangelogModal();
+
+  const changelogConfirm = $('#changelog-confirm');
+  if (changelogConfirm) changelogConfirm.onclick = () => closeChangelogModal();
+
+  const changelogModal = $('#changelog-modal');
+  if (changelogModal) {
+    changelogModal.onclick = (e) => {
+      if (e.target === changelogModal) closeChangelogModal();
+    };
+  }
+
+  const splashVer = $('#splash-ver-badge');
+  if (splashVer) splashVer.onclick = () => openChangelogModal(false);
+
+  // 检查新版本公告并自愈呈现
+  checkChangelogNotice();
+
   // 检查是否有存档可自动恢复
   if (CP.resume()) {
     renderAll();
@@ -1982,6 +2117,16 @@ function init() {
   }
 }
 
-global.UI = { renderPhaseTransition, showReport, renderModal, renderAll, openWishModal, init };
+global.UI = {
+  renderPhaseTransition,
+  showReport,
+  renderModal,
+  renderAll,
+  openWishModal,
+  openChangelogModal,
+  closeChangelogModal,
+  checkChangelogNotice,
+  init
+};
 document.addEventListener('DOMContentLoaded', init);
 })(typeof window !== 'undefined' ? window : globalThis);

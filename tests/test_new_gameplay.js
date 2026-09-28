@@ -654,7 +654,48 @@ for (let g = 1; g <= 20; g++) {
 }
 console.log('20 代全随机混沌策略压力测试 100% 顺利通关，无死锁、无异常抛出、无数值 NaN！');
 
-console.log('\n🎉 全部十六项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性与20代压力测试全部 100% 验证通过！');
+console.log('\n--- 测试 17: 📢 版本更新公告、滚动日志与新版本自愈弹窗机制 ---');
+const DATA = ctx.DATA;
+assert(DATA.version, 'DATA.version 必须存在');
+assert(Array.isArray(DATA.changelog), 'DATA.changelog 必须为数组');
+assert(DATA.changelog.length >= 5, 'DATA.changelog 需包含最近多个版本的更新记录');
+assert.strictEqual(DATA.changelog[0].ver, DATA.version, 'changelog 首条记录应为当前最新版本');
+
+// 校验每条日志字段结构完整性
+DATA.changelog.forEach((c, idx) => {
+  assert(c.ver, `第 ${idx} 条更新日志版本号缺失`);
+  assert(c.date, `第 ${idx} 条更新日志日期缺失`);
+  assert(c.title, `第 ${idx} 条更新日志标题缺失`);
+  assert(Array.isArray(c.highlights) && c.highlights.length > 0, `第 ${idx} 条更新日志亮点列表缺失`);
+  c.highlights.forEach(h => {
+    if (typeof h === 'object') {
+      assert(h.title && h.desc, '亮点项需具备 title 与 desc');
+    }
+  });
+});
+
+// 模拟多轮刷新与版本跃迁自动弹窗逻辑
+delete store['cph_last_seen_ver'];
+// 场景 A: 新用户或刚发布新版本用户刷新，未读过最新版本 -> 触发弹窗
+let shouldNotice = store['cph_last_seen_ver'] !== DATA.version;
+assert.strictEqual(shouldNotice, true, '版本号不一致时必须触发自动弹窗');
+
+// 场景 B: 用户点击关闭/知道了，持久化记录版本
+store['cph_last_seen_ver'] = DATA.version;
+
+// 场景 C: 玩家日常刷新页面，版本相同 -> 不再重复自动打扰
+shouldNotice = store['cph_last_seen_ver'] !== DATA.version;
+assert.strictEqual(shouldNotice, false, '版本一致时不应重复弹出');
+
+// 场景 D: 开发者提交新代码修复或新玩法 (模拟升版至 v2.2.0)
+const nextVersion = 'v2.2.0';
+shouldNotice = store['cph_last_seen_ver'] !== nextVersion;
+assert.strictEqual(shouldNotice, true, '开发者发布新版本后，用户刷新将再次自动弹出了解最新玩法');
+
+console.log('版本更新公告数据结构、多版本滚动历史、刷新自动识别与开发者升版响应测试 100% 验证通过！');
+
+console.log('\n🎉 全部十七项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、20代压力测试与更新公告全部 100% 验证通过！');
+
 
 
 

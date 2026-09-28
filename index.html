@@ -16,8 +16,11 @@
 </head>
 <body>
 <div id="app">
-  <!-- 浮动操作按钮栏 (指南 + 音效) -->
+  <!-- 浮动操作按钮栏 (更新公告 + 指南 + 音效) -->
   <div class="top-floats">
+    <button id="changelog-btn" class="icon-toggle" title="版本更新公告与最新玩法" aria-label="更新公告">
+      📢<span id="update-badge" class="update-badge" hidden>NEW</span>
+    </button>
     <button id="guide-btn" class="icon-toggle" title="新手指引与通关秘籍" aria-label="新手指引">📖</button>
     <button id="sound-btn" class="icon-toggle" title="音效切换" aria-label="音效切换">🔊</button>
   </div>
@@ -26,7 +29,7 @@
   <div id="splash" class="screen active">
     <div class="splash-content">
       <div class="logo-bounce">🎈👨‍👩‍👦</div>
-      <h1>中国式家长</h1>
+      <h1>中国式家长 <span id="splash-ver-badge" class="splash-ver-badge" title="点击查看更新公告与玩法介绍">v2.1.0</span></h1>
       <p class="sub">H5 自娱版 · 从出生到高考，再到世代传承</p>
       
       <div id="fam-badge" class="fam-card" hidden>
@@ -115,6 +118,34 @@
       <div class="manual-footer">
         <button id="manual-replay-guide" class="btn small ghost">🔄 重走开局新手指引</button>
         <button id="manual-confirm" class="btn small primary">我已掌握，继续前行</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 版本更新与新玩法公告弹窗 -->
+  <div id="changelog-modal" class="screen-modal" hidden>
+    <div class="changelog-wrap">
+      <div class="changelog-header">
+        <div class="changelog-title-row">
+          <div class="changelog-title-wrap">
+            <span class="changelog-icon">📢</span>
+            <div>
+              <div class="changelog-main-title">
+                <h3>版本更新公告</h3>
+                <span id="changelog-cur-ver" class="changelog-ver-tag">v2.1.0</span>
+              </div>
+              <p class="changelog-sub">了解最新上线玩法与系统演进历程</p>
+            </div>
+          </div>
+          <button id="changelog-close" class="modal-close-btn" aria-label="关闭">✕</button>
+        </div>
+      </div>
+      <div id="changelog-body" class="changelog-body">
+        <!-- 动态生成版本卡片与更新细则，支持平滑滚动 -->
+      </div>
+      <div class="changelog-footer">
+        <div class="changelog-tip">💡 随时可点击右上角 📢 重新查看各版本更新记录</div>
+        <button id="changelog-confirm" class="btn small primary">🚀 我知道了，立刻体验！</button>
       </div>
     </div>
   </div>
