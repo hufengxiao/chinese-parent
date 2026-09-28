@@ -259,4 +259,73 @@ CP.resolve(0);
 assert.strictEqual(CP.pending().length, 0, '就任后任命公报应已关闭');
 console.log('班干部竞选演说多轮博弈与胜选任命验证全部通过！');
 
-console.log('\n🎉 全部核心机制、选秀舞台与班干部竞选演说单元测试全部 100% 通过！');
+console.log('\n--- 测试 9: 💘 终局浪漫求婚与长辈相亲角专属舞台 ---');
+while (CP.pending().length) CP.resolve(0);
+
+// 1) 验证校园恋人浪漫求婚
+CP.state().turn = 58;
+CP.state().npcAff = { summer: 85 };
+const preFaceM = CP.state().face;
+
+// 触发求婚节点
+CP.state().pending.push({
+  type: 'marry',
+  title: '💍 从校服到婚纱 · 浪漫求婚时刻',
+  isCampus: true,
+  cand: {
+    id: 'summer',
+    name: '苏软软',
+    icon: '🌸',
+    aff: 85,
+    intro: '后排安静的女孩',
+    bonus: { eq: 20, img: 25 },
+    quote: '我一直在等你这句话……'
+  },
+  opts: ['💍 拿出钻戒，单膝跪地浪漫求婚！', '🍂 顺其自然，互道珍重 (专注事业)']
+});
+
+const marryModal = CP.pending()[0];
+assert(marryModal.isCampus, '应正确识别为校园恋人求婚模式');
+assert.strictEqual(marryModal.cand.name, '苏软软', '求婚对象应为苏软软');
+assert.strictEqual(marryModal.cand.bonus.eq, 20, '应附带情商+20遗传加成');
+
+// 拿出钻戒求婚 (index 0)
+const proposeRes = CP.resolve(0);
+assert(CP.state().spouse, '求婚成功后必须确立配偶');
+assert.strictEqual(CP.state().spouse.tag, '校园恋人', '配偶标签应为校园恋人');
+assert.strictEqual(CP.state().spouse.name, '苏软软', '配偶姓名应为苏软软');
+assert.strictEqual(CP.state().spouse.bonus.eq, 20, '配偶专属遗传基因应成功绑定');
+assert.strictEqual(CP.state().face, preFaceM + 40, '求婚成功家庭面子增加40');
+console.log('校园恋人浪漫求婚验证通过:', proposeRes);
+
+// 2) 验证长辈公园相亲角
+while (CP.pending().length) CP.resolve(0);
+CP.state().spouse = null;
+CP.state().npcAff = {}; // 无校园羁绊
+CP.state().face = 200;
+CP.state().attrs.cha = 150;
+
+CP.state().pending.push({
+  type: 'marry',
+  title: '💌 长辈公园相亲角 · 婚恋大抉择',
+  isCampus: false,
+  prob: 0.95, // 设定高成功率以确保确定性
+  blindCandidates: [
+    { id: 'blind-doc', name: '三甲医院林医生', icon: '🩺', tag: '三甲名医', bonus: { iq: 20, mem: 15 } },
+    { id: 'blind-gov', name: '机关单位李骨干', icon: '🏛️', tag: '体制内精英', bonus: { eq: 20, cha: 15 } }
+  ],
+  opts: ['约见林医生', '约见李骨干']
+});
+
+const blindModal = CP.pending()[0];
+assert(!blindModal.isCampus, '应正确识别为相亲角模式');
+assert.strictEqual(blindModal.blindCandidates.length, 2, '应包含相亲候选人列表');
+
+// 约见林医生 (index 0)
+const blindRes = CP.resolve(0);
+assert(CP.state().spouse, '相亲成功后应确立配偶');
+assert.strictEqual(CP.state().spouse.name, '三甲医院林医生', '应与林医生结为连理');
+assert.strictEqual(CP.state().spouse.tag, '相亲良缘', '标签应为相亲良缘');
+console.log('公园长辈相亲角约见相亲验证通过:', blindRes);
+
+console.log('\n🎉 全部核心机制、选秀舞台、班干部竞选与求婚相亲舞台单元测试全部 100% 通过！');

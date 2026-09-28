@@ -736,6 +736,12 @@ function renderModal() {
     return;
   }
 
+  // 针对终局求婚与长辈相亲角舞台
+  if (p.type === 'marry') {
+    renderMarryModal(p, m);
+    return;
+  }
+
   m.classList.add('show');
   m.innerHTML = '';
   const body = h('div', 'm-body');
@@ -1288,6 +1294,113 @@ function renderElectionModal(p, m) {
   });
   tacticsBox.appendChild(grid);
   body.appendChild(tacticsBox);
+
+  m.appendChild(body);
+}
+
+/* ---------- 💘 终局求婚与长辈相亲角舞台 ---------- */
+function renderMarryModal(p, m) {
+  m.classList.add('show');
+  m.innerHTML = '';
+  const body = h('div', 'm-body marry-modal');
+  const ATTR_MAP = { iq: '📐 智商', eq: '❤️ 情商', mem: '🧠 记忆', img: '🎨 想象', phy: '💪 体魄', cha: '⭐ 魅力' };
+
+  if (p.isCampus) {
+    // 1) 校园恋人浪漫求婚舞台
+    const cand = p.cand || { name: 'TA', icon: '🌸', aff: 80, bonus: { eq: 20, img: 25 }, intro: '同窗恋人', quote: '我一直在等你……' };
+    const head = h('div', 'marry-header');
+    head.innerHTML =
+      '<div class="marry-badge campus">💍 从校服到婚纱 · 浪漫求婚时刻</div>' +
+      '<div class="marry-title">与「' + cand.name + '」的人生约定</div>' +
+      '<div class="marry-sub">从青涩校服走到圣洁婚纱，此时此刻，你想对TA说——</div>';
+    body.appendChild(head);
+
+    const card = h('div', 'marry-lover-card');
+    const bonusText = Object.entries(cand.bonus || {}).map(([k, v]) => (ATTR_MAP[k] || k) + ' +' + v).join('  ·  ');
+    card.innerHTML =
+      '<div class="marry-avatar-box">' +
+        '<span class="marry-avatar">' + (cand.icon || '🌸') + '</span>' +
+        '<span class="marry-heart-badge">❤️ ' + cand.aff + ' / 100</span>' +
+      '</div>' +
+      '<div class="marry-lover-info">' +
+        '<div class="marry-lover-name">' + cand.name + '</div>' +
+        '<div class="marry-lover-intro">' + (cand.intro || '青梅竹马同窗知己') + '</div>' +
+        '<div class="marry-lover-quote">“' + (cand.quote || '从后排传小纸条，到一起走过大学操场，我一直在等你这句话……') + '”</div>' +
+        '<div class="marry-gen-perk">🧬 伴侣后代基因赋能：' + bonusText + '</div>' +
+      '</div>';
+    body.appendChild(card);
+
+    const btnPropose = h('button', 'marry-action-btn propose');
+    btnPropose.innerHTML = '💍 拿出钻戒，单膝跪地深情求婚！<span class="btn-sub">结为校园夫妻，家庭面子+40，全额继承基因</span>';
+    btnPropose.onclick = () => {
+      sound.win();
+      const r = CP.resolve(0);
+      if (r) toast(r);
+      renderAll();
+    };
+    body.appendChild(btnPropose);
+
+    const btnSingle = h('button', 'marry-action-btn single');
+    btnSingle.innerHTML = '🍂 顺其自然，互道珍重 (专注拼事业)<span class="btn-sub">暂时保持单身，把青葱回忆珍藏在心底</span>';
+    btnSingle.onclick = () => {
+      sound.click();
+      const r = CP.resolve(1);
+      if (r) toast(r);
+      renderAll();
+    };
+    body.appendChild(btnSingle);
+
+  } else {
+    // 2) 长辈公园相亲角展台
+    const prob = p.prob || 0.5;
+    const candidates = p.blindCandidates || [
+      { id: 'blind-doc', name: '三甲医院林医生', icon: '🩺', tag: '三甲名医', intro: '外科主治医师，严谨体面受人尊重', bonus: { iq: 20, mem: 15 } },
+      { id: 'blind-gov', name: '机关单位李骨干', icon: '🏛️', tag: '体制内精英', intro: '市直单位业务中坚，处事得体周全', bonus: { eq: 20, cha: 15 } },
+      { id: 'blind-cafe', name: '咖啡馆主理人晴晴', icon: '☕', tag: '青梅发小', intro: '独立咖啡馆主理人，温柔浪漫生活情调', bonus: { img: 20, cha: 15 } }
+    ];
+
+    const head = h('div', 'marry-header');
+    head.innerHTML =
+      '<div class="marry-badge park">💌 长辈公园相亲角 · 婚恋大抉择</div>' +
+      '<div class="marry-title">红绳飘扬的相亲长廊</div>' +
+      '<div class="marry-sub">面子与个人魅力是相亲硬通货 · 意向成婚率约 ' + Math.round(prob * 100) + '%</div>';
+    body.appendChild(head);
+
+    const list = h('div', 'blind-grid');
+    candidates.forEach((cand, idx) => {
+      const card = h('button', 'blind-cand-card');
+      const bonusText = Object.entries(cand.bonus || {}).map(([k, v]) => (ATTR_MAP[k] || k) + ' +' + v).join(' · ');
+      card.innerHTML =
+        '<div class="blind-cand-top">' +
+          '<span class="blind-cand-ico">' + cand.icon + '</span>' +
+          '<div class="blind-cand-titles">' +
+            '<div class="blind-cand-name">' + cand.name + '</div>' +
+            '<span class="blind-cand-tag">' + cand.tag + '</span>' +
+          '</div>' +
+          '<span class="blind-match-btn">约见 ➔</span>' +
+        '</div>' +
+        '<div class="blind-cand-intro">' + cand.intro + '</div>' +
+        '<div class="blind-cand-perk">🧬 遗传底蕴: ' + bonusText + '</div>';
+      card.onclick = () => {
+        sound.click();
+        const r = CP.resolve(idx);
+        if (r) toast(r);
+        renderAll();
+      };
+      list.appendChild(card);
+    });
+    body.appendChild(list);
+
+    const btnPass = h('button', 'marry-action-btn single');
+    btnPass.innerHTML = '💼 婉拒相亲，专注搞事业 (保持单身)<span class="btn-sub">一个人自由自在，无伴侣遗传赋能</span>';
+    btnPass.onclick = () => {
+      sound.click();
+      const r = CP.resolve(3);
+      if (r) toast(r);
+      renderAll();
+    };
+    body.appendChild(btnPass);
+  }
 
   m.appendChild(body);
 }

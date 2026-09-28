@@ -1339,51 +1339,123 @@ function pendMarry() {
   Object.keys(S.npcAff || {}).forEach(id => {
     if (S.npcAff[id] > bestAff) {
       bestAff = S.npcAff[id];
-      cand = { id, n: (D.npcs.find(x => x.id === id) || {}).n || 'TA', aff: S.npcAff[id] };
+      const npc = D.npcs.find(x => x.id === id);
+      cand = {
+        id,
+        name: (npc && npc.n) || 'TA',
+        icon: (npc && npc.icon) || '🌸',
+        gender: (npc && npc.gender) || '女',
+        aff: S.npcAff[id],
+        intro: (npc && npc.intro) || '青梅竹马同窗',
+        bonus: (npc && npc.bonus) || { eq: 20, img: 25 },
+        quote: (npc && npc.quotes && npc.quotes.like) || '“我一直在等你这句话……”'
+      };
     }
   });
+
   if (cand && bestAff >= 60) {
     S.pending.push({
       type: 'marry',
-      title: '求婚时刻',
-      body: '和 ' + cand.n + '(好感 ' + cand.aff + ')从青涩学生时代一路相伴至今。\n此时此刻，你想对TA说——',
+      title: '💍 从校服到婚纱 · 浪漫求婚时刻',
+      isCampus: true,
       cand: cand,
-      opts: ['浪漫求婚 💍', '顺其自然(暂缓成家)']
+      body: '与【' + cand.name + '】(好感度 ' + cand.aff + ')从青涩学生时代一路相伴至今。\n从放学推单车、课间借橡皮，到今天面对人生大事，你想对TA说——',
+      opts: [
+        { label: '💍 拿出钻戒，单膝跪地浪漫求婚！', sub: '缔结「校园恋人」，全额注入下一代遗传基因底蕴' },
+        { label: '🍂 顺其自然，互道珍重 (专注事业)', sub: '暂时保持单身，把青葱回忆留在心底' }
+      ]
     });
   } else {
-    const prob = Math.min(0.9, 0.35 + S.face * 0.001 + S.attrs.cha * 0.0015);
+    const prob = Math.min(0.92, Math.max(0.35, 0.40 + S.face * 0.001 + (S.attrs ? S.attrs.cha : 0) * 0.0015));
+    const blindCandidates = [
+      {
+        id: 'blind-doc',
+        name: '三甲医院林医生',
+        icon: '🩺',
+        tag: '三甲名医',
+        intro: '外科主治医师，严谨体面，工作稳定受人尊重',
+        bonus: { iq: 20, mem: 15, eq: 10 },
+        pref: '看重学识与稳重'
+      },
+      {
+        id: 'blind-gov',
+        name: '机关单位李骨干',
+        icon: '🏛️',
+        tag: '体制内精英',
+        intro: '市直单位业务中坚，处事得体周全，长辈心头好',
+        bonus: { eq: 20, cha: 15, mem: 10 },
+        pref: '看重家庭门第与谈吐'
+      },
+      {
+        id: 'blind-cafe',
+        name: '咖啡馆主理人晴晴',
+        icon: '☕',
+        tag: '青梅发小',
+        intro: '独立咖啡馆主理人，温柔浪漫，富有生活情调',
+        bonus: { img: 20, cha: 15, eq: 10 },
+        pref: '看重个人魅力与投缘'
+      }
+    ];
+
     S.pending.push({
       type: 'marry',
-      title: '家庭相亲大会',
-      body: '恋爱未果，你被安排到了长辈的相亲席。\n成功概率约 ' + Math.round(prob * 100) + '%(面子和魅力是硬通货)',
+      title: '💌 长辈公园相亲角 · 婚恋大抉择',
+      isCampus: false,
       prob,
-      opts: ['去相亲 💌', '拼事业(选择单身)']
+      blindCandidates,
+      body: '青春专注拼搏未曾早恋，三十而立后，你被长辈拉到了公园相亲角！\n现场红绳挂满了优质相亲简历，父母在旁焦急张望……',
+      opts: [
+        { label: '🩺 约见【三甲医院林医生】', sub: '成婚率 ' + Math.round(prob * 100) + '% · 遗传: 智商+20, 记忆+15' },
+        { label: '🏛️ 约见【机关单位李骨干】', sub: '成婚率 ' + Math.round(prob * 100) + '% · 遗传: 情商+20, 魅力+15' },
+        { label: '☕ 约见【咖啡馆主理人晴晴】', sub: '成婚率 ' + Math.round(prob * 100) + '% · 遗传: 想象+20, 魅力+15' },
+        { label: '💼 婉拒相亲，专注搞事业 (保持单身)', sub: '独善其身，无伴侣遗传加成' }
+      ]
     });
   }
 }
+
 function marryResolve(i) {
   const m = S.pending[0];
   S.pending.shift();
   if (m.cand) {
     if (i === 0) {
-      S.spouse = { name: m.cand.n, icon: '💑', aff: m.cand.aff, tag: '校园恋人' };
+      S.spouse = {
+        name: m.cand.name || m.cand.n,
+        icon: m.cand.icon || '💑',
+        aff: m.cand.aff,
+        tag: '校园恋人',
+        bonus: m.cand.bonus,
+        npcId: m.cand.id
+      };
       S.face += 40;
-      return '你与「' + m.cand.n + '」在亲友见证下互换戒指，相视而笑！面子+40';
+      return '💍 喜结连理！你与「' + (m.cand.name || m.cand.n) + '」在亲友见证下步入婚姻殿堂！(面子+40，基因全额注入后代)';
     }
-    return '彼此都懂，但你决定暂时不打扰，把回忆留在心底。';
+    return '彼此都懂，但你决定暂时不打扰，把青葱回忆留在心底。保持单身。';
   }
-  if (i === 1) return '你选择了专注于拼搏事业。过年亲戚的"找对象了吗"虽迟但到。';
-  if (Math.random() < m.prob) {
-    const sName = pick(['同事介绍的小林', '相亲结识的珠珠', '咖啡馆里投缘的晴晴', '老朋友介绍的发小']);
-    S.spouse = { name: sName, icon: '💑', tag: '相亲良缘' };
+  // 相亲模式
+  if (i === 3 || (m.blindCandidates && i >= m.blindCandidates.length)) {
+    return '你收起简历，决定专注于拼搏事业。七大姑八大姨在群里叹息：“这孩子怎么就不知道急呢？”';
+  }
+  const target = (m.blindCandidates && m.blindCandidates[i]) || { name: '相亲良缘', icon: '💑', tag: '相亲良缘', bonus: { iq: 15, eq: 15 } };
+  const ok = Math.random() <= (m.prob || 0.5);
+  if (ok) {
+    S.spouse = {
+      name: target.name,
+      icon: target.icon || '💑',
+      tag: '相亲良缘',
+      bonus: target.bonus,
+      title: target.tag
+    };
     S.face += 25;
-    return '🎉 相亲成功! 和「' + sName + '」谈起恋爱，很快领证成家。';
+    return '🎉 相亲大获成功！你与【' + target.name + '】一见投缘，不久后领证组建温馨家庭！(面子+25)';
   }
-  return '相亲席上相顾无言。妈妈在群里叹气:"这孩子怎么就不开窍呢?"';
+  return '相亲席上相顾无言，未能擦出火花。长辈叹气：“看来缘分还未到，继续努力吧！”';
 }
+
 function pendEndGen() {
   pushEndGen();
 }
+
 function pushEndGen() {
   const job = S.job || { n: '自由职业者', icon: '🛋️', t: 0 };
   const jobName = job.n || job.name || '自由职业';
@@ -1399,13 +1471,15 @@ function pushEndGen() {
   let spouseTag = '独善其身 (单身)';
   if (S.spouse) {
     spouseTag = S.spouse.tag || '相伴一生';
-    if (spouseTag === '校园恋人') {
-      spouseBonus = { eq: 16, cha: 16, iq: 10, mem: 10 };
+    if (S.spouse.bonus) {
+      spouseBonus = { iq: 6, eq: 6, mem: 6, img: 6, phy: 6, cha: 6, ...S.spouse.bonus };
+    } else if (spouseTag === '校园恋人') {
+      spouseBonus = { eq: 20, img: 25, cha: 16, iq: 10, mem: 6, phy: 6 };
     } else {
-      spouseBonus = { iq: 14, mem: 14, eq: 10, cha: 10 };
+      spouseBonus = { iq: 15, mem: 15, eq: 12, cha: 12, phy: 6, img: 6 };
     }
   } else {
-    spouseBonus = { phy: 14, img: 14, iq: 8, eq: 8 };
+    spouseBonus = { phy: 14, img: 14, iq: 8, eq: 8, mem: 6, cha: 6 };
   }
 
   // 家族成长基金 (上一代积蓄的 15%)

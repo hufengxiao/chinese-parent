@@ -610,13 +610,13 @@ rivals: [
 
 /* 同学(可攻略) */
 npcs: [
-  {id:'summer', n:'苏软软', icon:'🌸', gender:'女', like:['妮妮\'s饼干','彩笔','棒棒糖'], intro:'后排安静的女孩,抽屉里贴满可爱贴纸。', phase:'kinder', quotes:{ like:'“哇！你怎么知道我一直在找这个！手账正好用得上，谢谢你~”', normal:'“谢谢你的小礼物，我很喜欢！”', meet:'正坐在窗边静静画着手账……' }},
-  {id:'shenhan', n:'沈寒', icon:'❄️', gender:'男', like:['经典游戏卡','重点鞋','运动饮料'], intro:'校队后卫,高冷话少但球风极其霸气。', phase:'junior', quotes:{ like:'“谢了兄弟！下半场篮球赛我们好好配合。”', normal:'“谢了，先放桌上吧。”', meet:'正在球场边单手转球。' }},
-  {id:'xiaomei', n:'夏小美', icon:'🍡', gender:'女', like:['毛绒玩具','西瓜冰','辣条'], intro:'爱笑开心果,笑声一响全班都被治愈。', phase:'pri', quotes:{ like:'“哈哈哈哈太棒啦！我最喜欢这个了，放学一起吃呀！”', normal:'“哇塞，给我的吗？太感动啦！”', meet:'正和前排同学笑得前仰后合。' }},
-  {id:'lizhen', n:'李振', icon:'🔥', gender:'男', like:['重点鞋','运动饮料','辣条'], intro:'热血体委,运动会上为班级屡创辉煌。', phase:'junior', quotes:{ like:'“好哥们儿！够义气，下次体测1000米我罩你！”', normal:'“谢啦，下次打球叫你！”', meet:'正在操场上给班级搬矿泉水。' }},
-  {id:'yuanyuan', n:'媛媛', icon:'🧸', gender:'女', like:['奶茶兑换券','彩虹卷笔刀','毛绒玩具'], intro:'喜欢化妆和精致可爱事物的前桌。', phase:'junior', quotes:{ like:'“哇塞好可爱！你眼光真好，明天我带奶茶分你一半~”', normal:'“谢谢你呀，你人真体贴~”', meet:'正对着小圆镜整理刘海。' }},
-  {id:'kongde', n:'孔德', icon:'🤠', gender:'男', like:['单筒望远镜','三年模拟','课外书'], intro:'天文社社长,理科奇才,偶尔中二。', phase:'senior', quotes:{ like:'“知音啊！这套资料正好解决了我的物理疑难，太感谢了！”', normal:'“收到！多谢同学互助。”', meet:'正在黑板上推演宇宙引力公式。' }},
-  {id:'qixue', n:'棋子', icon:'🎮', gender:'女', like:['经典游戏卡','棒棒糖','辣条'], intro:'电竞梦想家少女,操场联机开黑女王。', phase:'senior', quotes:{ like:'“够意思！今晚连机开黑我带你吃鸡上大分！”', normal:'“谢啦！回头有空开黑找我。”', meet:'正低头研究掌机上的格斗出招表。' }},
+  {id:'summer', n:'苏软软', icon:'🌸', gender:'女', like:['妮妮\'s饼干','彩笔','棒棒糖'], bonus:{eq:20, img:25}, intro:'后排安静的女孩,抽屉里贴满可爱贴纸。', phase:'kinder', quotes:{ like:'“哇！你怎么知道我一直在找这个！手账正好用得上，谢谢你~”', normal:'“谢谢你的小礼物，我很喜欢！”', meet:'正坐在窗边静静画着手账……' }},
+  {id:'shenhan', n:'沈寒', icon:'❄️', gender:'男', like:['经典游戏卡','重点鞋','运动饮料'], bonus:{phy:30, eq:15}, intro:'校队后卫,高冷话少但球风极其霸气。', phase:'junior', quotes:{ like:'“谢了兄弟！下半场篮球赛我们好好配合。”', normal:'“谢了，先放桌上吧。”', meet:'正在球场边单手转球。' }},
+  {id:'xiaomei', n:'夏小美', icon:'🍡', gender:'女', like:['毛绒玩具','西瓜冰','辣条'], bonus:{eq:25, cha:20}, intro:'爱笑开心果,笑声一响全班都被治愈。', phase:'pri', quotes:{ like:'“哈哈哈哈太棒啦！我最喜欢这个了，放学一起吃呀！”', normal:'“哇塞，给我的吗？太感动啦！”', meet:'正和前排同学笑得前仰后合。' }},
+  {id:'lizhen', n:'李振', icon:'🔥', gender:'男', like:['重点鞋','运动饮料','辣条'], bonus:{phy:35, eq:15}, intro:'热血体委,运动会上为班级屡创辉煌。', phase:'junior', quotes:{ like:'“好哥们儿！够义气，下次体测1000米我罩你！”', normal:'“谢啦，下次打球叫你！”', meet:'正在操场上给班级搬矿泉水。' }},
+  {id:'yuanyuan', n:'媛媛', icon:'🧸', gender:'女', like:['奶茶兑换券','彩虹卷笔刀','毛绒玩具'], bonus:{cha:35, eq:20}, intro:'喜欢化妆和精致可爱事物的前桌。', phase:'junior', quotes:{ like:'“哇塞好可爱！你眼光真好，明天我带奶茶分你一半~”', normal:'“谢谢你呀，你人真体贴~”', meet:'正对着小圆镜整理刘海。' }},
+  {id:'kongde', n:'孔德', icon:'🤠', gender:'男', like:['单筒望远镜','三年模拟','课外书'], bonus:{iq:35, mem:20}, intro:'天文社社长,理科奇才,偶尔中二。', phase:'senior', quotes:{ like:'“知音啊！这套资料正好解决了我的物理疑难，太感谢了！”', normal:'“收到！多谢同学互助。”', meet:'正在黑板上推演宇宙引力公式。' }},
+  {id:'qixue', n:'棋子', icon:'🎮', gender:'女', like:['经典游戏卡','棒棒糖','辣条'], bonus:{iq:30, img:25}, intro:'电竞梦想家少女,操场联机开黑女王。', phase:'senior', quotes:{ like:'“够意思！今晚连机开黑我带你吃鸡上大分！”', normal:'“谢啦！回头有空开黑找我。”', meet:'正低头研究掌机上的格斗出招表。' }},
 ],
 
 /* 商店 */
