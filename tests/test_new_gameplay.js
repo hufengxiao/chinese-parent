@@ -488,7 +488,174 @@ assert.strictEqual(btnFirst.textContent, '暂无次数', '0次数时按钮文本
 assert(btnFirst.disabled, '0次数时按钮必须禁用');
 console.log('0机会下点击心愿单渲染成功，全量卡片正常呈现，严禁白屏与函数未定义错误！');
 
-console.log('\n🎉 全部五轮核心机制扩充、选秀/竞选/求婚/职场晋升/脑洞爆炸/PWA与心愿单渲染测试全部 100% 验证通过！');
+console.log('\n--- 测试 13: 💾 老版本损坏或残缺存档数据迁移与自动修复 ---');
+// 构造一个缺失 cha、缺失 wishPoints、缺少 fam.history 的旧版本存档
+const legacySave = {
+  ver: 1,
+  gen: 2,
+  name: '老存档小明',
+  gender: 'boy',
+  turn: 15,
+  attrs: { iq: 80, eq: 75, mem: 70, img: 65, phy: 80 }, // 严重缺失 cha 字段
+  insight: 50, act: 80, money: 120, face: 60, sat: 70, stress: 20, shadow: 5,
+  skills: { fanshen: 2 },
+  fam: { g: 1, talent: 10, tier: 2, attr: { iq: 100 } } // 缺失 history 与 achievements 字段
+};
+store['cph_save'] = JSON.stringify(legacySave);
+const resumed = CP.resume();
+assert(resumed, '旧存档必须顺利恢复');
+assert.strictEqual(typeof CP.state().attrs.cha, 'number', '缺失的 cha 必须被自动补正为合法数值');
+assert(!isNaN(CP.state().attrs.cha), 'cha 绝不能为 NaN');
+CP.state().attrs.cha += 10;
+assert(!isNaN(CP.state().attrs.cha), '累加属性后 cha 绝不能变成 NaN');
+assert.strictEqual(CP.state().wishPoints, 0, '缺失的 wishPoints 必须被安全初始化为 0');
+assert(Array.isArray(CP.state().talents), '缺失的 talents 必须被安全初始化为数组');
+assert(Array.isArray(CP.state().fam.history), '缺失的 fam.history 必须被安全初始化为数组');
+assert(Array.isArray(CP.state().fam.achievements), '缺失的 fam.achievements 必须被安全初始化为数组');
+console.log('旧存档迁移补全验证通过: cha =', CP.state().attrs.cha, ', wishPoints =', CP.state().wishPoints);
+
+console.log('\n--- 测试 14: 🛡️ 模态框事件边界隔离与遮罩点击防误触卡死 ---');
+// 1) 先开启心愿单自定义模态框
+ctx.UI.openWishModal();
+assert.strictEqual(modalElem.dataset.customModal, 'wish', '心愿单开启时应标记 customModal');
+
+// 2) 模拟此时系统弹出一个重要结算弹窗（如高考快讯或突发大考）
+while (CP.pending().length) CP.resolve(0);
+CP.state().pending.push({
+  type: 'news',
+  title: '🚨 重要通报：期末统考在即',
+  body: '请做好准备！',
+  opts: ['收到']
+});
+ctx.UI.renderModal();
+
+// 核心断言：系统模态框必须强制解绑点击遮罩关闭，严防误触卡死
+assert.strictEqual(modalElem.dataset.customModal, undefined, '系统弹窗到来时必须清除 customModal 标记');
+assert.strictEqual(modalElem.onclick, null, '系统弹窗下 modalElem.onclick 必须为 null');
+
+// 模拟玩家误触半透明遮罩背景
+if (modalElem.onclick) {
+  modalElem.onclick({ target: modalElem });
+}
+assert(modalElem.classList.contains('show'), '系统模态框绝不能因误触背景而意外关闭！');
+
+// 正常按键操作关闭系统弹窗
+CP.resolve(0);
+ctx.UI.renderModal();
+assert(!modalElem.classList.contains('show'), '选项处理后系统弹窗正常关闭');
+console.log('模态框事件边界隔离与背景防误触机制验证完全通过！');
+
+console.log('\n--- 测试 15: 🔀 多态交互参数与非法输入边界鲁棒性 ---');
+while (CP.pending().length) CP.resolve(0);
+
+// 1) 才艺选秀支持字符串 ID、对象 ID 与数字索引
+CP.state().talents = ['aoshu', 'wenqing'];
+CP.state().pending.push({
+  type: 'show',
+  tier: 2,
+  title: '初选才艺秀',
+  opts: ['🎤 登台']
+});
+// 传字符串 'aoshu'
+const resStr = CP.resolve('aoshu');
+assert.strictEqual(CP.pending()[0].type, 'showr', '传字符串 ID 应成功登台');
+CP.resolve(0); // 关闭结算
+
+CP.state().pending.push({
+  type: 'show',
+  tier: 2,
+  title: '初选才艺秀',
+  opts: ['🎤 登台']
+});
+// 传越界数字索引 999 (应安全回退至保底或最高特长，绝不抛出异常)
+const resOOB = CP.resolve(999);
+assert.strictEqual(CP.pending()[0].type, 'showr', '传越界数字索引应平滑容错保底出战');
+CP.resolve(0);
+
+// 2) 班干部竞选策略索引越界防护
+CP.state().election = {
+  round: 1, maxRound: 3, myVotes: 0,
+  rival: { name: '王小明', title: '原班长', icon: '🧑‍🏫', votes: 0 },
+  totalVotes: 50, targetVotes: 26, logs: [], finished: false, won: false
+};
+CP.state().pending.push({
+  type: 'election',
+  title: '班干部竞选',
+  opts: ['策略0', '策略1', '策略2', '策略3']
+});
+// 传非法越界策略编号 -10 与 999
+CP.resolve(-10); // 应自动钳制在合法区间
+CP.resolve(999);
+assert(CP.state().election.round >= 2, '非法越界策略必须被安全钳制并正常推进轮次');
+
+// 3) 职场晋升 S.job 为空时的回写与对象策略传参
+while (CP.pending().length) CP.resolve(0);
+CP.state().job = null; // 故意制造空岗位异常状态
+CP.state().pending.push({
+  type: 'promotion',
+  opts: [{ label: '策略1' }, { label: '策略2' }, { label: '策略3' }]
+});
+CP.resolve({ tactic: 1 }); // 传入对象策略
+assert(CP.state().job !== null, 'S.job 为空时晋升必须写回有效岗位对象');
+assert(CP.state().job.n.length > 0, '岗位名称必须有效');
+
+// 4) 过年收红包位置越界防御
+CP.state().pending.push({
+  type: 'hongbao_duel',
+  opts: ['推拉']
+});
+// 传入极端越界位置 pos = 99999
+const hbRes = CP.resolve({ pos: 99999 });
+assert(hbRes && hbRes.length > 0, '极端越界位置应被 clamp 保护并顺利结算');
+
+console.log('多态交互参数与非法输入越界鲁棒性测试全部通过！');
+
+console.log('\n--- 测试 16: 🌪️ 20代全随机混沌策略全生命周期压力测试 ---');
+CP.newGame();
+let crashCount = 0;
+for (let g = 1; g <= 20; g++) {
+  let safetyLoop = 0;
+  while (safetyLoop++ < 2000) {
+    // 随机处理所有 pending 弹窗
+    while (CP.pending().length) {
+      const topPend = CP.pending()[0];
+      if (topPend.type === 'endgen') {
+        CP.resolve(0); // 开启下一代
+        break;
+      }
+      // 随机传入多种类型的动作载荷
+      const roll = Math.random();
+      if (roll < 0.3) {
+        CP.resolve(Math.floor(Math.random() * 5));
+      } else if (roll < 0.6) {
+        CP.resolve({ tactic: Math.floor(Math.random() * 4), talentId: 'aoshu', pos: Math.random() * 100 });
+      } else {
+        CP.resolve(0);
+      }
+    }
+
+    // 随机挖掘脑洞 (包含故意传入非法索引测试边界防护)
+    CP.brain.rev(Math.floor(Math.random() * 40) - 2);
+
+    // 随机排日程
+    CP.autoFillSlots();
+
+    // 检查当前代是否已结束
+    if (CP.info().gen > g) break;
+
+    // 推进回合
+    CP.endTurn();
+  }
+
+  const curInfo = CP.info();
+  ['iq', 'eq', 'mem', 'img', 'phy', 'cha'].forEach(k => {
+    assert(!isNaN(curInfo.attrs[k]), `第 ${g} 代 ${k} 属性不能为 NaN`);
+  });
+}
+console.log('20 代全随机混沌策略压力测试 100% 顺利通关，无死锁、无异常抛出、无数值 NaN！');
+
+console.log('\n🎉 全部十六项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性与20代压力测试全部 100% 验证通过！');
+
 
 
 

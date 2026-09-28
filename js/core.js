@@ -29,7 +29,12 @@ function effText(e) {
   if (e.exam) out.push('考分+' + e.exam);
   return out.join(' ');
 }
-function log(m) { S.log.unshift(m); if (S.log.length > 60) S.log.pop(); }
+function log(m) {
+  if (!S) return;
+  if (!S.log) S.log = [];
+  S.log.unshift(m);
+  if (S.log.length > 60) S.log.pop();
+}
 function toast(m) {
   if (!S) return;
   if (!S.toasts) S.toasts = [];
@@ -201,12 +206,30 @@ function resume() {
   if (s && s.ver) {
     S = s;
     S.toasts = [];
+    if (!S.attrs) S.attrs = { iq: 10, eq: 10, mem: 10, img: 10, phy: 10, cha: 10 };
+    ATTRS.forEach(k => {
+      if (typeof S.attrs[k] !== 'number' || isNaN(S.attrs[k])) {
+        S.attrs[k] = (k === 'cha' ? 10 : 20);
+      }
+    });
+    if (S.wishPoints == null) S.wishPoints = 0;
+    if (!S.talents) S.talents = [];
+    if (!S.bag) S.bag = {};
+    if (!S.flags) S.flags = {};
+    if (!S.used) S.used = {};
+    if (!S.npcAff) S.npcAff = {};
+    if (!S.log) S.log = [];
     if (!S.learnedCourses) {
-      S.learnedCourses = Object.keys(S.skills).length ? Object.keys(S.skills) : ['fanshen', 'wanju'];
+      S.learnedCourses = Object.keys(S.skills || {}).length ? Object.keys(S.skills) : ['fanshen', 'wanju'];
     }
     if (!S.tutorial) S.tutorial = { done: false, step: 0, claimed: false };
     if (!S.pending) S.pending = [];
     if (!S.brain) S.brain = { layer: 1, g: bGen() };
+    if (S.fam) {
+      if (!S.fam.history) S.fam.history = [];
+      if (!S.fam.achievements) S.fam.achievements = [];
+      if (!S.fam.atlas) S.fam.atlas = [];
+    }
     if (S.turn >= 60 && !S.pending.some(x => x.type === 'endgen')) {
       pendEndGen();
     }
@@ -1360,14 +1383,19 @@ function pendPromotion() {
 
 function promotionResolve(i) {
   const m = S.pending[0];
+  if (!m) return '';
   S.pending.shift();
   const job = S.job || { n: '职场骨干', icon: '💼', t: 1 };
+  if (!S.job) S.job = job;
   const attrs = S.attrs || { iq: 0, eq: 0, mem: 0, img: 0, phy: 0, cha: 0 };
 
+  const rawIdx = (typeof i === 'object' && i && i.tactic != null) ? i.tactic : (typeof i === 'number' ? i : 0);
+  const tacticIdx = clamp(rawIdx, 0, 2);
+
   let score = 0;
-  if (i === 0) {
+  if (tacticIdx === 0) {
     score = Math.floor((attrs.iq + attrs.mem) / 40) + RI(8, 14);
-  } else if (i === 1) {
+  } else if (tacticIdx === 1) {
     score = Math.floor((attrs.eq + attrs.cha) / 40) + RI(8, 14);
   } else {
     score = Math.floor((attrs.phy + attrs.iq) / 40) + RI(8, 14);
@@ -1482,9 +1510,11 @@ function pendMarry() {
 
 function marryResolve(i) {
   const m = S.pending[0];
+  if (!m) return '';
   S.pending.shift();
+  const choiceIdx = (typeof i === 'object' && i && i.choice != null) ? i.choice : (typeof i === 'number' ? i : 0);
   if (m.cand) {
-    if (i === 0) {
+    if (choiceIdx === 0) {
       S.spouse = {
         name: m.cand.name || m.cand.n,
         icon: m.cand.icon || '💑',
@@ -1499,10 +1529,10 @@ function marryResolve(i) {
     return '彼此都懂，但你决定暂时不打扰，把青葱回忆留在心底。保持单身。';
   }
   // 相亲模式
-  if (i === 3 || (m.blindCandidates && i >= m.blindCandidates.length)) {
+  if (choiceIdx === 3 || (m.blindCandidates && choiceIdx >= m.blindCandidates.length)) {
     return '你收起简历，决定专注于拼搏事业。七大姑八大姨在群里叹息：“这孩子怎么就不知道急呢？”';
   }
-  const target = (m.blindCandidates && m.blindCandidates[i]) || { name: '相亲良缘', icon: '💑', tag: '相亲良缘', bonus: { iq: 15, eq: 15 } };
+  const target = (m.blindCandidates && m.blindCandidates[choiceIdx]) || { name: '相亲良缘', icon: '💑', tag: '相亲良缘', bonus: { iq: 15, eq: 15 } };
   const ok = Math.random() <= (m.prob || 0.5);
   if (ok) {
     S.spouse = {
@@ -1741,6 +1771,7 @@ function buy(id) {
 function begWish(wishId) {
   const b = D.begs.find(x => x.id === wishId);
   if (!b) return { success: false, msg: '心愿不存在' };
+  if (!S.flags) S.flags = {};
   if (S.flags['beg_' + b.id]) return { success: false, msg: '该心愿已达成，无需重复索取' };
   if ((S.wishPoints || 0) < 1) return { success: false, msg: '索取次数不足！可保持高满意度或考取优异成绩获得' };
   if (S.face < (b.face || 0)) return { success: false, msg: '家庭面子不足(需要 ' + b.face + ' 点面子)' };
@@ -1953,7 +1984,7 @@ function resolvePend(i) {
       S.pending.shift();
       let pos = 52;
       if (typeof i === 'object' && i !== null && typeof i.pos === 'number') {
-        pos = i.pos;
+        pos = clamp(i.pos, 0, 100);
       } else if (i === 1) {
         pos = 15;
       } else if (i === 2) {
@@ -2030,8 +2061,13 @@ function resolvePend(i) {
     }
     case 'show': {
       let chosenId = null;
-      if (typeof i === 'object' && i && i.talentId) {
+      if (typeof i === 'string') {
+        chosenId = i;
+      } else if (typeof i === 'object' && i && i.talentId) {
         chosenId = i.talentId;
+      } else if (typeof i === 'number') {
+        const tList = (S.talents || []).map(id => D.talentData.find(x => x.id === id)).filter(Boolean);
+        if (tList[i]) chosenId = tList[i].id;
       }
       const resModal = talentShowPerform(chosenId);
       res = resModal && resModal.win ? '才艺选秀夺冠！' : '才艺选秀登台';
@@ -2043,7 +2079,8 @@ function resolvePend(i) {
       break;
     }
     case 'election': {
-      const tacticIdx = (typeof i === 'object' && i && i.tactic != null) ? i.tactic : (typeof i === 'number' ? i : 0);
+      const rawIdx = (typeof i === 'object' && i && i.tactic != null) ? i.tactic : (typeof i === 'number' ? i : 0);
+      const tacticIdx = clamp(rawIdx, 0, 3);
       const v = doElection(tacticIdx);
       if (S.election && S.election.finished) {
         S.pending.shift();

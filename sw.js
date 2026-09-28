@@ -1,7 +1,7 @@
 /* ============================================================
  * 中国式家长 H5 — Service Worker (PWA Offline Cache)
  * ============================================================ */
-const CACHE_NAME = 'chinese-parent-v1';
+const CACHE_NAME = 'chinese-parent-v2';
 const PRECACHE_ASSETS = [
   './',
   './index.html',
@@ -18,7 +18,14 @@ const PRECACHE_ASSETS = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(PRECACHE_ASSETS);
+      return Promise.allSettled(
+        PRECACHE_ASSETS.map(url =>
+          fetch(url).then(res => {
+            if (res.ok) return cache.put(url, res);
+            return Promise.reject(new Error(`Failed to load ${url}: ${res.status}`));
+          })
+        )
+      );
     }).then(() => self.skipWaiting())
   );
 });
@@ -44,7 +51,7 @@ self.addEventListener('fetch', event => {
   if (url.origin !== location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
+    caches.match(event.request, { ignoreSearch: true }).then(cachedResponse => {
       // 找到缓存则直接使用，同时在后台静默发起网络拉取更新（Stale-While-Revalidate）
       const fetchPromise = fetch(event.request).then(networkResponse => {
         if (networkResponse && networkResponse.status === 200) {

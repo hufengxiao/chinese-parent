@@ -171,12 +171,17 @@ function openWishModal() {
   m.dataset.customModal = 'wish';
   m.innerHTML = '';
 
+  const closeWishModal = () => {
+    m.onclick = null;
+    delete m.dataset.customModal;
+    m.classList.remove('show');
+    m.innerHTML = '';
+  };
+
   // 点击遮罩空白处直接关闭
   m.onclick = (e) => {
     if (e.target === m) {
-      delete m.dataset.customModal;
-      m.classList.remove('show');
-      m.innerHTML = '';
+      closeWishModal();
     }
   };
 
@@ -246,9 +251,7 @@ function openWishModal() {
   closeBtn.style.width = '100%';
   closeBtn.onclick = (e) => {
     e.stopPropagation();
-    delete m.dataset.customModal;
-    m.classList.remove('show');
-    m.innerHTML = '';
+    closeWishModal();
   };
   body.appendChild(closeBtn);
 
@@ -734,6 +737,8 @@ function renderModal() {
     if (!pend.length) return;
     delete m.dataset.customModal;
   }
+  // 系统模态框强制解绑点击遮罩关闭，防止误触导致重要系统交互（高考/竞选/选秀）中断卡死
+  m.onclick = null;
   if (!CP.state() || !pend.length) {
     m.classList.remove('show');
     m.innerHTML = '';
