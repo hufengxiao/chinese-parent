@@ -430,6 +430,65 @@ assert(swContent.includes('PRECACHE_ASSETS'), 'Service Worker 必须声明预缓
 assert(swContent.includes('caches.open'), 'Service Worker 必须支持离线缓存');
 console.log('PWA 离线桌面与移动端应用配置 (manifest.json, sw.js, 图标集) 验证通过！');
 
-console.log('\n🎉 全部五轮核心机制扩充、选秀/竞选/求婚/职场晋升/脑洞爆炸与PWA应用全部 100% 验证通过！');
+console.log('\n--- 测试 12: 🎁 索取大件心愿面板渲染与0机会状态鲁棒性 ---');
+// 建立轻量级 DOM Mock 测试 UI 层 openWishModal
+const modalClassList = new Set();
+let modalDataSet = {};
+let modalChildren = [];
+let modalInnerHtml = '';
+
+const modalElem = {
+  classList: {
+    add: c => modalClassList.add(c),
+    remove: c => modalClassList.delete(c),
+    contains: c => modalClassList.has(c)
+  },
+  dataset: modalDataSet,
+  children: modalChildren,
+  appendChild: c => modalChildren.push(c),
+  set innerHTML(val) { modalInnerHtml = val; if (val === '') modalChildren = []; },
+  get innerHTML() { return modalInnerHtml; }
+};
+
+ctx.document = {
+  querySelector: sel => (sel === '#modal' ? modalElem : { classList: { add: () => {}, remove: () => {} }, innerHTML: '', appendChild: () => {} }),
+  querySelectorAll: () => [],
+  createElement: tag => ({
+    tagName: tag,
+    className: '',
+    innerHTML: '',
+    style: {},
+    children: [],
+    appendChild(child) { this.children.push(child); }
+  }),
+  addEventListener: () => {}
+};
+ctx.AudioContext = class { createOscillator() { return { connect: () => {}, frequency: { setValueAtTime: () => {} } }; } createGain() { return { connect: () => {}, gain: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} } }; } };
+
+// 加载 ui.js
+vm.runInContext(fs.readFileSync(path.join(dir, 'ui.js'), 'utf8'), ctx);
+
+// 设置索取机会为 0
+CP.state().wishPoints = 0;
+ctx.UI.openWishModal();
+
+assert(modalElem.classList.contains('show'), '心愿模态框必须具备 show 类名');
+assert.strictEqual(modalElem.dataset.customModal, 'wish', '心愿模态框标记必须为 wish');
+assert(modalChildren.length > 0, '心愿模态框内容必须成功渲染（严禁白屏/仅模糊）');
+
+const bodyElem = modalChildren[0];
+const wishGrid = bodyElem.children.find(c => c.className === 'wish-grid');
+assert(wishGrid, '必须包含 wish-grid 心愿列表容器');
+assert.strictEqual(wishGrid.children.length, 6, '必须完整渲染 6 项大件心愿卡片');
+
+const cardFirst = wishGrid.children[0];
+const btnFirst = cardFirst.children.find(c => c.tagName === 'button');
+assert(btnFirst, '心愿卡片必须存在操作按钮');
+assert.strictEqual(btnFirst.textContent, '暂无次数', '0次数时按钮文本应为暂无次数');
+assert(btnFirst.disabled, '0次数时按钮必须禁用');
+console.log('0机会下点击心愿单渲染成功，全量卡片正常呈现，严禁白屏与函数未定义错误！');
+
+console.log('\n🎉 全部五轮核心机制扩充、选秀/竞选/求婚/职场晋升/脑洞爆炸/PWA与心愿单渲染测试全部 100% 验证通过！');
+
 
 

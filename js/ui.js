@@ -7,6 +7,7 @@ const CP = global.CP;
 const D = global.DATA;
 const $ = s => document.querySelector(s);
 const h = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.innerHTML = x; return e; };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 let ACTIVE = 'plan';
 const RARE_CN = { 1: '普通', 2: '稀有', 3: '史诗', 4: '传说' };
@@ -167,7 +168,18 @@ function setTab(t) {
 function openWishModal() {
   const m = $('#modal');
   m.classList.add('show');
+  m.dataset.customModal = 'wish';
   m.innerHTML = '';
+
+  // 点击遮罩空白处直接关闭
+  m.onclick = (e) => {
+    if (e.target === m) {
+      delete m.dataset.customModal;
+      m.classList.remove('show');
+      m.innerHTML = '';
+    }
+  };
+
   const body = h('div', 'm-body');
   const wishPts = CP.wishPoints();
   const info = CP.info();
@@ -176,13 +188,14 @@ function openWishModal() {
   body.appendChild(h('div', 'm-desc', '父母满意度 ≥ 80、阶段蜕变或考试名列前茅可积攒索取点数。\n家庭面子越高，父母越欣然准奏！\n<b>当前剩余索取次数: ' + wishPts + ' 次 · 家庭面子: ' + (info ? info.face : 0) + '</b>'));
 
   const grid = h('div', 'wish-grid');
-  (DATA.begs || []).forEach(b => {
-    const isDone = CP.state().flags['beg_' + b.id];
+  const begsList = (D && D.begs) || [];
+  begsList.forEach(b => {
+    const isDone = CP.state() && CP.state().flags && CP.state().flags['beg_' + b.id];
     const card = h('div', 'wish-card');
     const needFace = b.face || 0;
     const canFace = (info ? info.face : 0) >= needFace;
     const bonus = ((info ? info.sat : 0) >= 80 ? 0.15 : 0) + ((info ? info.face : 0) >= needFace * 1.5 ? 0.1 : 0);
-    const prob = Math.round(clamp(b.w + bonus, 0.25, 0.95) * 100);
+    const prob = Math.round(clamp((b.w || 0.4) + bonus, 0.25, 0.95) * 100);
 
     card.innerHTML =
       '<span class="wish-ico">' + b.icon + '</span>' +
@@ -197,25 +210,29 @@ function openWishModal() {
       btn.textContent = '已达成';
       btn.disabled = true;
       btn.className += ' ghost';
+    } else if (wishPts < 1) {
+      btn.textContent = '暂无次数';
+      btn.disabled = true;
+      btn.className += ' ghost';
+      btn.title = '当前回合暂无索取次数，推进到阶段蜕变或保持满意度积攒点数';
     } else if (!canFace) {
       btn.textContent = '面子不足';
       btn.disabled = true;
       btn.className += ' ghost';
-    } else if (wishPts < 1) {
-      btn.textContent = '次数不足';
-      btn.disabled = true;
-      btn.className += ' ghost';
+      btn.title = '家庭面子需达到 ' + needFace;
     } else {
       btn.textContent = '软磨硬泡索取';
-      btn.onclick = () => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
         const res = CP.begWish(b.id);
         if (res.success) {
           sound.win();
         } else {
           sound.fail();
         }
+        renderTop();
+        renderStage();
         openWishModal();
-        render();
       };
     }
     card.appendChild(btn);
@@ -227,7 +244,9 @@ function openWishModal() {
   const closeBtn = h('button', 'btn secondary plain', '关闭');
   closeBtn.style.marginTop = '14px';
   closeBtn.style.width = '100%';
-  closeBtn.onclick = () => {
+  closeBtn.onclick = (e) => {
+    e.stopPropagation();
+    delete m.dataset.customModal;
     m.classList.remove('show');
     m.innerHTML = '';
   };
@@ -711,6 +730,10 @@ function niceEff(e) {
 function renderModal() {
   const m = $('#modal');
   const pend = CP.pending();
+  if (m.dataset.customModal) {
+    if (!pend.length) return;
+    delete m.dataset.customModal;
+  }
   if (!CP.state() || !pend.length) {
     m.classList.remove('show');
     m.innerHTML = '';
@@ -1954,6 +1977,6 @@ function init() {
   }
 }
 
-global.UI = { renderPhaseTransition, showReport, renderModal, renderAll, init };
+global.UI = { renderPhaseTransition, showReport, renderModal, renderAll, openWishModal, init };
 document.addEventListener('DOMContentLoaded', init);
 })(typeof window !== 'undefined' ? window : globalThis);
