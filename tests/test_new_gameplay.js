@@ -159,4 +159,53 @@ assert(fam.achievements.includes('ach-love-true'), '应解锁青梅竹马成就'
 console.log('家族谱系记录:', fam.history[0]);
 console.log('家族解锁成就列表:', fam.achievements);
 
-console.log('\n🎉 全部六大核心玩法的底层机制单元测试全部 100% 通过！');
+console.log('\n--- 测试 7: 🌟 特长才艺选秀大会交互舞台与三评委亮灯 ---');
+while (CP.pending().length) CP.resolve(0);
+CP.state().turn = 31; // 初中青春季才艺汇演 (Tier 3)
+CP.state().talents = ['aoshu', 'wenqing', 'jiazui']; // 拥有 Rank 2 和 Rank 3 特长
+const talentList = CP.talentsList();
+assert.strictEqual(talentList.length, 3, '应检录出3项掌握特长');
+
+// 触发选秀
+CP.state().pending.push({
+  type: 'show',
+  tier: 3,
+  title: '初中青春季才艺汇演',
+  judges: [
+    { name: '张教授', icon: '🧐' },
+    { name: '麦克老师', icon: '🕶️' },
+    { name: '李主任', icon: '👩‍🏫' },
+  ],
+  rival: {
+    name: '初三文体委员',
+    talent: { id: 'qintong', n: '琴童', r: 2, icon: '🎹', atk: 49 }
+  },
+  opts: ['🎤 登台一展风采']
+});
+
+const preInsight = CP.state().insight;
+// 派出身怀史诗特长【压轴题杀手】(Rank 3) 出战
+const showRes = CP.resolve({ talentId: 'jiazui' });
+assert(CP.pending().length > 0 && CP.pending()[0].type === 'showr', '表演后应进入结算模态框');
+const showrModal = CP.pending()[0];
+assert(Array.isArray(showrModal.lights) && showrModal.lights.length === 3, '应包含三位评委亮灯数据');
+assert(Array.isArray(showrModal.judgeQuotes) && showrModal.judgeQuotes.length === 3, '应包含三位评委点评');
+assert(showrModal.gi >= 40, '应获得选秀悟性奖励');
+console.log('选秀表现结算:', {
+  win: showrModal.win,
+  greenCount: showrModal.greenCount,
+  lights: showrModal.lights,
+  mine: showrModal.mine.n,
+  rival: showrModal.rival.talent.n,
+  gi: showrModal.gi,
+  gf: showrModal.gf,
+  quotes: showrModal.judgeQuotes
+});
+
+// 点击走下舞台完成选秀
+CP.resolve(0);
+assert.strictEqual(CP.pending().length, 0, '走下舞台后模态框已关闭');
+assert(CP.state().insight >= preInsight + 40, '悟性已成功发放');
+console.log('特长才艺选秀专属交互舞台与三评委亮灯验证完全通过！');
+
+console.log('\n🎉 全部核心机制与选秀交互舞台单元测试全部 100% 通过！');
