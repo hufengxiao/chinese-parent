@@ -164,6 +164,78 @@ function setTab(t) {
 }
 
 /* ---------- 日程 ---------- */
+function openWishModal() {
+  const m = $('#modal');
+  m.classList.add('show');
+  m.innerHTML = '';
+  const body = h('div', 'm-body');
+  const wishPts = CP.wishPoints();
+  const info = CP.info();
+
+  body.appendChild(h('div', 'm-title', '🎁 向父母索取大件心愿'));
+  body.appendChild(h('div', 'm-desc', '父母满意度 ≥ 80、阶段蜕变或考试名列前茅可积攒索取点数。\n家庭面子越高，父母越欣然准奏！\n<b>当前剩余索取次数: ' + wishPts + ' 次 · 家庭面子: ' + (info ? info.face : 0) + '</b>'));
+
+  const grid = h('div', 'wish-grid');
+  (DATA.begs || []).forEach(b => {
+    const isDone = CP.state().flags['beg_' + b.id];
+    const card = h('div', 'wish-card');
+    const needFace = b.face || 0;
+    const canFace = (info ? info.face : 0) >= needFace;
+    const bonus = ((info ? info.sat : 0) >= 80 ? 0.15 : 0) + ((info ? info.face : 0) >= needFace * 1.5 ? 0.1 : 0);
+    const prob = Math.round(clamp(b.w + bonus, 0.25, 0.95) * 100);
+
+    card.innerHTML =
+      '<span class="wish-ico">' + b.icon + '</span>' +
+      '<div class="wish-info">' +
+        '<div class="wish-name">' + b.n + ' ' + (isDone ? '✅' : '') + '</div>' +
+        '<div class="wish-sub">' + b.desc + '</div>' +
+        '<div class="wish-sub" style="color:var(--gold-main);margin-top:2px">' + niceEff(b.eff) + ' · 需面子: ' + needFace + ' · 成功率: ' + prob + '%</div>' +
+      '</div>';
+
+    const btn = h('button', 'btn wish-btn');
+    if (isDone) {
+      btn.textContent = '已达成';
+      btn.disabled = true;
+      btn.className += ' ghost';
+    } else if (!canFace) {
+      btn.textContent = '面子不足';
+      btn.disabled = true;
+      btn.className += ' ghost';
+    } else if (wishPts < 1) {
+      btn.textContent = '次数不足';
+      btn.disabled = true;
+      btn.className += ' ghost';
+    } else {
+      btn.textContent = '软磨硬泡索取';
+      btn.onclick = () => {
+        const res = CP.begWish(b.id);
+        if (res.success) {
+          sound.win();
+        } else {
+          sound.fail();
+        }
+        openWishModal();
+        render();
+      };
+    }
+    card.appendChild(btn);
+    grid.appendChild(card);
+  });
+
+  body.appendChild(grid);
+
+  const closeBtn = h('button', 'btn secondary plain', '关闭');
+  closeBtn.style.marginTop = '14px';
+  closeBtn.style.width = '100%';
+  closeBtn.onclick = () => {
+    m.classList.remove('show');
+    m.innerHTML = '';
+  };
+  body.appendChild(closeBtn);
+
+  m.appendChild(body);
+}
+
 function renderPlan() {
   const st = $('#stage');
   st.innerHTML = '';
@@ -180,6 +252,18 @@ function renderPlan() {
   quickActions.appendChild(clearBtn);
   titleRow.appendChild(quickActions);
   wrap.appendChild(titleRow);
+
+  const wishPts = CP.wishPoints();
+  const wishBanner = h('div', 'wish-header-banner');
+  wishBanner.innerHTML =
+    '<div class="wish-banner-left"><span>🎁 向父母索取大件心愿</span>' +
+    (wishPts > 0 ? '<span class="wish-count-pill">' + wishPts + ' 次机会</span>' : '<span style="font-size:11px;color:#8d6e63">(暂无机会)</span>') +
+    '</div><span class="small" style="color:#d48806">查看心愿清单 ➔</span>';
+  wishBanner.onclick = () => {
+    sound.click();
+    openWishModal();
+  };
+  wrap.appendChild(wishBanner);
 
   // 槽位板
   const board = h('div', 'plan-board');
@@ -313,34 +397,87 @@ function renderSocial() {
   const st = $('#stage');
   st.innerHTML = '';
   const wrap = h('div');
-  wrap.appendChild(h('div', 'pool-cat', '👥 同学往来 (初中及以上开放互动)'));
+  wrap.appendChild(h('div', 'pool-cat', '👥 同学往来 (初中及以上开放深度互动)'));
   const list = CP.social();
   if (!list.length) {
     wrap.appendChild(h('div', 'hint', '当前阶段大家都在忙着上课，还没有能深入互动的同学。'));
   } else {
     list.forEach(n => {
       const d = h('div', 'card npc-card');
-      d.innerHTML = '<span class="av">' + n.icon + '</span>' +
-        '<span class="npc-body"><span class="nm">' + n.name + '</span> <span class="af">好感度 ' + n.aff + '</span><br><span class="small">' + n.intro + '</span></span>' +
-        '<span class="heart-bar">' + (n.aff >= 60 ? '💖' : n.aff >= 30 ? '💛' : '🤍') + '</span>' +
-        '<span class="btns"><button class="sub-btn" data-c="' + n.id + '">💬 聊天(-3⚡)</button>' +
-        '<button class="sub-btn" data-g="' + n.id + '">🎁 送礼(-25¥)</button></span>';
+      const aff = n.aff || 0;
+      const hearts = aff >= 80 ? '💖💖💖💖' : aff >= 60 ? '💖💖💖🤍' : aff >= 30 ? '💛💛🤍🤍' : '🤍🤍🤍🤍';
+      const bondTitle = aff >= 80 ? '💖 青梅竹马 · 心照不宣' : aff >= 60 ? '💕 放学同行 · 独一无二' : aff >= 30 ? '💌 课间小纸条 · 默契渐生' : '点头之交';
+      const likeTags = (n.like && n.like.length) ? n.like.join('、') : '精美礼物';
+
+      d.innerHTML =
+        '<div style="display:flex;align-items:flex-start;gap:10px">' +
+          '<span class="av">' + n.icon + '</span>' +
+          '<div class="npc-body" style="flex:1">' +
+            '<div class="flex-between"><span class="nm">' + n.name + '</span><span class="af">' + hearts + ' ' + aff + '/100</span></div>' +
+            '<div class="small" style="color:var(--gold-main);margin:2px 0">' + bondTitle + '</div>' +
+            '<div class="small">' + n.intro + '</div>' +
+            '<div class="small" style="color:var(--ink-secondary);margin-top:2px">🎁 喜好: <b>' + likeTags + '</b></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="btns" style="margin-top:10px">' +
+          '<button class="sub-btn" data-c="' + n.id + '">💬 课间闲聊 (-3⚡)</button>' +
+          '<button class="sub-btn" data-g="' + n.id + '">🎁 赠送心意礼物...</button>' +
+        '</div>' +
+        '<div class="gift-drawer hidden" id="gift-drawer-' + n.id + '">' +
+          '<div class="gift-drawer-title">从随身包或小卖部挑选一份心意礼物：</div>' +
+          '<div class="gift-items-wrap" id="gift-items-' + n.id + '"></div>' +
+        '</div>';
+
       d.querySelector('[data-c]').onclick = () => {
         sound.click();
         const g = CP.chat(n.id);
         if (g != null) toast('和 ' + n.name + ' 聊得很投机，好感+' + g);
         render();
       };
+
+      const giftDrawer = d.querySelector('#gift-drawer-' + n.id);
+      const giftItemsWrap = d.querySelector('#gift-items-' + n.id);
       d.querySelector('[data-g]').onclick = () => {
-        sound.coin();
-        const g = CP.gift(n.id);
-        if (g != null) toast('送了 ' + n.name + ' 一份小礼物，好感+' + g);
-        render();
+        sound.click();
+        giftDrawer.classList.toggle('hidden');
+        if (!giftDrawer.classList.contains('hidden') && !giftItemsWrap.children.length) {
+          const giftCandidates = [
+            { id: 'st-biscuit', n: '妮妮\'s饼干', icon: '🍪', price: 15 },
+            { id: 'st-cai',     n: '彩笔',       icon: '🖍️', price: 25 },
+            { id: 'st-ice',     n: '西瓜冰',     icon: '🍉', price: 10 },
+            { id: 'st-candy',   n: '棒棒糖',     icon: '🍭', price: 5 },
+            { id: 'st-latiao',  n: '辣条',       icon: '🌶️', price: 8 },
+            { id: 'st-tea',     n: '奶茶兑换券', icon: '🧋', price: 20 },
+            { id: 'st-toy',     n: '毛绒玩具',   icon: '🧸', price: 35 },
+            { id: 'st-card',    n: '经典游戏卡', icon: '🕹️', price: 25 },
+            { id: 'st-shoes',   n: '重点鞋',     icon: '👟', price: 80 },
+            { id: 'st-juice',   n: '运动饮料',   icon: '🧃', price: 15 },
+            { id: 'st-bk',      n: '三年模拟',   icon: '📙', price: 70 },
+            { id: 'st-book',    n: '课外书',     icon: '📖', price: 30 },
+            { id: 'st-glass',   n: '单筒望远镜', icon: '🔭', price: 50 },
+          ];
+          const bag = CP.bag();
+          giftCandidates.forEach(gc => {
+            const isFav = n.like && n.like.some(lk => gc.n.indexOf(lk) >= 0 || lk.indexOf(gc.n) >= 0);
+            const inBagCount = bag[gc.id] || 0;
+            const btn = h('button', 'gift-pill-btn' + (isFav ? ' fav' : ''));
+            btn.innerHTML = gc.icon + ' ' + gc.n + (isFav ? ' ✨' : '') + '<span style="font-size:9px;opacity:0.8">(' + (inBagCount > 0 ? '背包x' + inBagCount : gc.price + '¥') + ')</span>';
+            btn.onclick = () => {
+              const res = CP.giftItem(n.id, gc.id);
+              if (res) {
+                sound.win();
+                render();
+              }
+            };
+            giftItemsWrap.appendChild(btn);
+          });
+        }
       };
+
       wrap.appendChild(d);
     });
   }
-  wrap.appendChild(h('div', 'hint', '好感到 60 以上，大学成家阶段将有机会携手一生，为下一代带来更高的先天遗传！'));
+  wrap.appendChild(h('div', 'hint', '投其所好可获得喜好暴击与专属台词！好感达到 60 以上，大学成家阶段将有机会携手一生，注入优异的家族基因！'));
   st.appendChild(wrap);
 }
 
@@ -355,7 +492,9 @@ function renderShop() {
   CP.shop().forEach(it => {
     const d = h('div', 'shop-item' + (it.can ? '' : ' disabled'));
     d.innerHTML = '<span class="s-ico">' + it.icon + '</span>' +
-      '<span class="s-info"><span class="s-name">' + it.n + '</span><br><span class="s-desc">' + (it.eff ? niceEff(it.eff) : '') + '</span></span>' +
+      '<span class="s-info"><span class="s-name">' + it.n + '</span>' +
+      (it.count > 0 ? ' <span class="chip" style="font-size:10px">包内x' + it.count + '</span>' : '') +
+      '<br><span class="s-desc">' + (it.eff ? niceEff(it.eff) : '') + '</span></span>' +
       '<span class="s-price">' + it.price + '¥</span>';
     if (it.can) {
       d.onclick = () => {
@@ -369,11 +508,12 @@ function renderShop() {
     list.appendChild(d);
   });
   wrap.appendChild(list);
-  wrap.appendChild(h('div', 'hint', '零花钱自小学阶段开始发放。想要更高品质的大件物品，可在「日程」里向爸妈提出索取。'));
+  wrap.appendChild(h('div', 'hint', '小卖部购买的文具、零食与玩具均可存入随身包，用于课间送给同学增进好感！'));
   st.appendChild(wrap);
 }
 
-/* ---------- 图鉴 ---------- */
+/* ---------- 图鉴与家族百年谱系 ---------- */
+let atlasTab = 'talents';
 function renderAtlas() {
   const st = $('#stage');
   st.innerHTML = '';
@@ -382,7 +522,7 @@ function renderAtlas() {
   const fam = CP.fam();
   const tierNames = ['白手起家', '温饱家庭', '小康之家', '中产家庭', '高收入阶层', '社会领军精英'];
 
-  wrap.appendChild(h('div', 'card fam-stat-card', '<b>📜 家族档案簿</b><br>' +
+  wrap.appendChild(h('div', 'card fam-stat-card', '<b>📜 家族百年档案簿</b><br>' +
     '<div class="fam-details">' +
     '<span>已结算世代: 第 <b>' + (fam.g || 0) + '</b> 代</span><br>' +
     '<span>家族特长图鉴: <b>' + (fam.atlas ? fam.atlas.length : 0) + '</b> 个</span><br>' +
@@ -390,17 +530,78 @@ function renderAtlas() {
     '<span>当前门第阶层: <b>' + (tierNames[fam.tier || 0] || '工薪') + '</b></span>' +
     '</div>'));
 
-  wrap.appendChild(h('div', 'pool-cat', '🏆 本代特长收录 (' + a.total + ' 个)' + (a.stats[4] ? ' · 🌟 包含传说特长!' : '')));
-  if (!a.list.length) {
-    wrap.appendChild(h('div', 'hint', '本代尚未觉醒特长。在日程中深入学习、体验娱乐、或参加特长选秀，均有机会领悟特长！'));
-  } else {
-    const grid = h('div');
-    grid.className = 'grid-atlas';
-    const RCLS = { 1: 'rar1', 2: 'rar2', 3: 'rar3', 4: 'rar4' };
-    a.list.forEach(t => {
-      grid.appendChild(h('div', 'tal-item', '<div class="t-ico">' + t.icon + '</div><div class="t-name ' + RCLS[t.r] + '">' + t.n + '</div><div class="small">' + RARE_CN[t.r] + '</div>'));
+  // 三大子选项卡
+  const subTabs = h('div', 'atlas-subtabs');
+  const tabsConfig = [
+    { id: 'talents', label: '🌟 家族特长 (' + a.total + ')' },
+    { id: 'tree', label: '🌳 百年世代谱系' },
+    { id: 'achievements', label: '🏆 传家荣誉殿堂' }
+  ];
+  tabsConfig.forEach(tc => {
+    const tabBtn = h('button', 'atlas-stab' + (atlasTab === tc.id ? ' active' : ''), tc.label);
+    tabBtn.onclick = () => {
+      sound.click();
+      atlasTab = tc.id;
+      renderAtlas();
+    };
+    subTabs.appendChild(tabBtn);
+  });
+  wrap.appendChild(subTabs);
+
+  if (atlasTab === 'talents') {
+    if (!a.list.length) {
+      wrap.appendChild(h('div', 'hint', '本代尚未觉醒特长。在日程中深入学习、体验娱乐、或参加特长选秀，均有机会领悟特长！'));
+    } else {
+      const grid = h('div');
+      grid.className = 'grid-atlas';
+      const RCLS = { 1: 'rar1', 2: 'rar2', 3: 'rar3', 4: 'rar4' };
+      a.list.forEach(t => {
+        grid.appendChild(h('div', 'tal-item', '<div class="t-ico">' + t.icon + '</div><div class="t-name ' + RCLS[t.r] + '">' + t.n + '</div><div class="small">' + RARE_CN[t.r] + '</div>'));
+      });
+      wrap.appendChild(grid);
+    }
+  } else if (atlasTab === 'tree') {
+    const history = CP.familyHistory();
+    if (!history.length) {
+      wrap.appendChild(h('div', 'hint', '暂无已结算世代，本代人生圆满结束后，生平功绩将自动镌刻于此家族树中！'));
+    } else {
+      const treeList = h('div', 'ancestor-timeline');
+      history.forEach(anc => {
+        const c = h('div', 'ancestor-card');
+        c.innerHTML =
+          '<div class="anc-head">' +
+            '<span class="anc-gen">第 ' + anc.gen + ' 代祖先 · 「' + anc.name + '」(' + (anc.gender === 'girl' ? '女' : '男') + ')</span>' +
+            '<span class="anc-rating">' + anc.rating + ' 级 · ' + anc.score + '分</span>' +
+          '</div>' +
+          '<div class="anc-details">' +
+            '<span>💼 最终职业: <b>' + (anc.jobIcon || '🛋️') + ' ' + anc.job + '</b></span>' +
+            '<span>💑 伴侣: <b>' + anc.spouse + '</b></span>' +
+            '<span>🎓 高考: <b>' + (anc.gk ? anc.gk + ' 分' : '推荐') + '</b></span>' +
+            '<span>✨ 特长: <b>' + (anc.talentsCount || 0) + ' 项</b></span>' +
+          '</div>' +
+          '<div class="anc-hl">🌟 <b>生平纪事：</b>' + (anc.highlight || '精彩的一生') + '</div>';
+        treeList.appendChild(c);
+      });
+      wrap.appendChild(treeList);
+    }
+  } else if (atlasTab === 'achievements') {
+    const achs = CP.achievements();
+    const unlocked = (fam && fam.achievements) || [];
+    const achGrid = h('div', 'ach-grid');
+    achs.forEach(ac => {
+      const isUn = unlocked.indexOf(ac.id) >= 0;
+      const acCard = h('div', 'ach-card' + (isUn ? ' unlocked' : ''));
+      acCard.innerHTML =
+        '<span class="ach-ico">' + ac.icon + '</span>' +
+        '<div class="ach-info">' +
+          '<div class="ach-name">' + ac.n + '</div>' +
+          '<div class="ach-desc">' + ac.desc + '</div>' +
+          '<div class="ach-perk">庇佑: ' + ac.perk + '</div>' +
+        '</div>' +
+        '<span class="ach-status">' + (isUn ? '✨ 已达成' : '🔒 未解锁') + '</span>';
+      achGrid.appendChild(acCard);
     });
-    wrap.appendChild(grid);
+    wrap.appendChild(achGrid);
   }
 
   wrap.appendChild(h('div', 'pool-cat', ''));
@@ -498,6 +699,24 @@ function renderModal() {
   // 针对阶段蜕变与成长画卷，展示专属阶段结算提示
   if (p.type === 'phase_transition') {
     renderPhaseTransition(p, m);
+    return;
+  }
+
+  // 针对过年收红包推拉小游戏
+  if (p.type === 'hongbao_duel' || p.type === 'mini_hb') {
+    renderHongbaoModal(p, m);
+    return;
+  }
+
+  // 针对面子对决回合制战斗
+  if (p.type === 'face_duel') {
+    renderFaceDuelModal(p, m);
+    return;
+  }
+
+  // 针对高考专业志愿填报
+  if (p.type === 'gaokao_apply') {
+    renderGaokaoApplyModal(p, m);
     return;
   }
 
@@ -613,6 +832,194 @@ function renderPhaseTransition(p, m) {
     renderAll();
   };
   body.appendChild(btn);
+  m.appendChild(body);
+}
+
+/* ---------- 🧧 过年收红包推拉拉扯小游戏 ---------- */
+let hbTimer = null;
+function renderHongbaoModal(p, m) {
+  if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+  m.classList.add('show');
+  m.innerHTML = '';
+  const body = h('div', 'm-body hb-modal');
+  body.appendChild(h('div', 'm-title', p.title || '🧧 过年收红包 · 推拉拉扯战'));
+
+  const diagWrap = h('div', 'hb-dialogues');
+  diagWrap.innerHTML =
+    '<div class="hb-bubble hb-rel-bubble"><b>' + (p.rel || '长辈') + '</b>: ' + (p.quote || '“拿着拿着，给孩子的压岁钱！”') + '</div>' +
+    '<div class="hb-bubble hb-mom-bubble"><b>妈妈</b>: ' + (p.momQuote || '“哎呀使不得使不得，他小孩子要什么钱！”') + '</div>';
+  body.appendChild(diagWrap);
+
+  const gaugeBox = h('div', 'hb-gauge-container');
+  gaugeBox.innerHTML =
+    '<div class="hb-gauge-labels"><span>✋ 客套推脱 (拒收)</span><span style="color:#2e7d32">🌟 黄金平衡区</span><span>🤲 急切收下 (夺取)</span></div>' +
+    '<div class="hb-gauge-track">' +
+      '<div class="hb-golden-zone">黄金得体</div>' +
+      '<div class="hb-pointer" id="hbPointer" style="left:52%">🧧</div>' +
+    '</div>' +
+    '<div class="hb-timer-wrap"><div class="hb-timer-bar" id="hbTimerBar" style="width:100%"></div></div>';
+  body.appendChild(gaugeBox);
+
+  let curPos = 52;
+  let timeLeft = 4.5;
+  const totalTime = 4.5;
+
+  const updatePointer = () => {
+    const pt = $('#hbPointer');
+    if (pt) pt.style.left = clamp(curPos, 4, 96) + '%';
+  };
+
+  const finishHb = (posVal) => {
+    if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+    sound.win();
+    const r = CP.resolve({ pos: posVal });
+    if (r) toast(r);
+    renderAll();
+  };
+
+  hbTimer = setInterval(() => {
+    timeLeft -= 0.1;
+    curPos = clamp(curPos + 1.2 + (Math.random() * 1.6 - 0.8), 2, 98);
+    updatePointer();
+    const bar = $('#hbTimerBar');
+    if (bar) bar.style.width = Math.max(0, (timeLeft / totalTime) * 100) + '%';
+    if (timeLeft <= 0) {
+      finishHb(Math.round(curPos));
+    }
+  }, 100);
+
+  const actGrid = h('div', 'hb-action-grid');
+  const btnPush = h('button', 'btn secondary hb-btn-nudge', '✋ 假意推辞 (-14%)');
+  btnPush.onclick = () => {
+    sound.click();
+    curPos = clamp(curPos - 14, 5, 95);
+    updatePointer();
+  };
+  const btnPull = h('button', 'btn secondary hb-btn-nudge', '🤲 勉为其实 (+14%)');
+  btnPull.onclick = () => {
+    sound.click();
+    curPos = clamp(curPos + 14, 5, 95);
+    updatePointer();
+  };
+  const btnTake = h('button', 'btn hb-btn-take', '🧧 顺势收下 (立刻定局结算)');
+  btnTake.onclick = () => {
+    finishHb(Math.round(curPos));
+  };
+  actGrid.appendChild(btnPush);
+  actGrid.appendChild(btnPull);
+  actGrid.appendChild(btnTake);
+  body.appendChild(actGrid);
+
+  const fallbackRow = h('div', 'sub-btns flex-between');
+  fallbackRow.style.marginTop = '12px';
+  const fastBtn = h('button', 'mini-btn ghost', '⏩ 快速直接收下(跳过拉扯)');
+  fastBtn.onclick = () => { finishHb(52); };
+  fallbackRow.appendChild(fastBtn);
+  body.appendChild(fallbackRow);
+
+  m.appendChild(body);
+}
+
+/* ---------- ⚔️ 面子对决卡牌对战场 ---------- */
+function renderFaceDuelModal(p, m) {
+  m.classList.add('show');
+  m.innerHTML = '';
+  const duel = CP.faceDuel() || p.duel;
+  const body = h('div', 'm-body fd-arena');
+  body.appendChild(h('div', 'm-title', p.title || '⚔️ 家族面子大对决'));
+
+  if (!duel) {
+    body.appendChild(h('div', 'm-desc', p.body || '对决准备中'));
+    const btn = h('button', 'btn big', '出招');
+    btn.onclick = () => { CP.resolve(0); renderAll(); };
+    body.appendChild(btn);
+    m.appendChild(body);
+    return;
+  }
+
+  const fighters = h('div', 'fd-fighters');
+  const myHpPct = Math.max(0, Math.min(100, Math.round((duel.myHp / duel.maxMyHp) * 100)));
+  const oppHpPct = Math.max(0, Math.min(100, Math.round((duel.opp.hp / duel.opp.maxHp) * 100)));
+
+  fighters.innerHTML =
+    '<div class="fd-fighter left">' +
+      '<div class="fd-f-header"><span class="av">👶</span><span class="fd-f-name">我家宝儿</span><span class="fd-f-badge">我方</span></div>' +
+      '<div class="fd-hp-wrap"><div class="fd-hp-fill mine" style="width:' + myHpPct + '%"></div></div>' +
+      '<div class="fd-hp-val">面子: ' + duel.myHp + ' / ' + duel.maxMyHp + '</div>' +
+    '</div>' +
+    '<div class="fd-vs-col">' +
+      '<span>VS</span>' +
+      '<span class="fd-vs-round">' + (duel.finished ? '战局结束' : '第 ' + duel.round + ' / ' + duel.maxRound + ' 轮') + '</span>' +
+    '</div>' +
+    '<div class="fd-fighter right">' +
+      '<div class="fd-f-header"><span class="av">' + (duel.opp.icon || '🧑‍🎓') + '</span><span class="fd-f-name">' + duel.opp.name + '</span><span class="fd-f-badge">' + (duel.opp.style || '学神') + '</span></div>' +
+      '<div class="fd-hp-wrap"><div class="fd-hp-fill opp" style="width:' + oppHpPct + '%"></div></div>' +
+      '<div class="fd-hp-val">面子: ' + duel.opp.hp + ' / ' + duel.opp.maxHp + '</div>' +
+    '</div>';
+  body.appendChild(fighters);
+
+  const logBox = h('div', 'fd-combat-box');
+  const recentLogs = duel.logs.slice(-4);
+  logBox.innerHTML = recentLogs.map(l => '<div>' + l + '</div>').join('');
+  body.appendChild(logBox);
+
+  if (duel.finished) {
+    const finBtn = h('button', 'btn big ' + (duel.won ? 'pulse' : 'secondary'), duel.won ? '🏆 扬眉吐气！(面子+120)' : '默默低头 (面子-40)');
+    finBtn.onclick = () => {
+      sound.win();
+      CP.resolve(0);
+      renderAll();
+    };
+    body.appendChild(finBtn);
+  } else {
+    const cardsGrid = h('div', 'fd-cards-grid');
+    (p.opts || []).forEach((opt, idx) => {
+      const card = h('button', 'fd-card-btn');
+      const label = (typeof opt === 'string') ? opt : opt.label;
+      const sub = (opt && typeof opt === 'object' && opt.sub) ? opt.sub : '';
+      card.innerHTML = '<span class="fd-c-title">' + label + '</span>' + (sub ? '<span class="fd-c-sub">' + sub + '</span>' : '');
+      card.onclick = () => {
+        sound.click();
+        const r = CP.resolve(idx);
+        if (r) toast(r);
+        renderAll();
+      };
+      cardsGrid.appendChild(card);
+    });
+    body.appendChild(cardsGrid);
+  }
+
+  m.appendChild(body);
+}
+
+/* ---------- 🎓 高考志愿填报 ---------- */
+function renderGaokaoApplyModal(p, m) {
+  m.classList.add('show');
+  m.innerHTML = '';
+  const body = h('div', 'm-body');
+  body.appendChild(h('div', 'm-title', p.title || '🎓 高考放榜 & 志愿填报'));
+  if (p.body) body.appendChild(h('div', 'm-desc', p.body.replace(/\n/g, '<br>')));
+
+  const majorGrid = h('div', 'major-cards-grid');
+  const majors = CP.majors();
+  majors.forEach((mj, idx) => {
+    const card = h('button', 'major-card-btn');
+    card.innerHTML =
+      '<span class="major-ico">' + mj.icon + '</span>' +
+      '<div class="major-info">' +
+        '<div class="major-title">' + mj.n + '</div>' +
+        '<div class="major-desc">' + mj.desc + '</div>' +
+      '</div>' +
+      '<span class="major-tag">填报志愿</span>';
+    card.onclick = () => {
+      sound.win();
+      const r = CP.resolve(idx);
+      if (r) toast(r);
+      renderAll();
+    };
+    majorGrid.appendChild(card);
+  });
+  body.appendChild(majorGrid);
   m.appendChild(body);
 }
 

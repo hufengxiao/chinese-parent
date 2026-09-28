@@ -1351,3 +1351,557 @@ button:active { transform: scale(0.96); }
   border-radius: var(--radius-md);
   box-shadow: 0 4px 16px rgba(211, 56, 36, 0.35);
 }
+
+/* ============================================================
+ * 🧧 过年收红包 · 推拉拉扯小游戏
+ * ============================================================ */
+.hb-modal {
+  padding: 16px 18px;
+}
+.hb-dialogues {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.hb-bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  position: relative;
+}
+.hb-rel-bubble {
+  background: #fff3e0;
+  border: 1px solid #ffe0b2;
+  color: #e65100;
+  align-self: flex-start;
+  border-bottom-left-radius: 2px;
+}
+.hb-mom-bubble {
+  background: #fce4ec;
+  border: 1px solid #f8bbd0;
+  color: #c2185b;
+  align-self: flex-end;
+  border-bottom-right-radius: 2px;
+}
+.hb-gauge-container {
+  background: #fff;
+  border: 1px solid var(--border-line);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 12px 0 16px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.04);
+}
+.hb-gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-secondary);
+  margin-bottom: 8px;
+}
+.hb-gauge-track {
+  height: 24px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #90caf9 0%, #a5d6a7 35%, #66bb6a 50%, #a5d6a7 68%, #ffab91 80%, #ef5350 100%);
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+}
+.hb-golden-zone {
+  position: absolute;
+  left: 38%;
+  width: 30%;
+  height: 100%;
+  border-left: 2px dashed #2e7d32;
+  border-right: 2px dashed #2e7d32;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #1b5e20;
+  pointer-events: none;
+}
+.hb-pointer {
+  position: absolute;
+  top: -8px;
+  width: 38px;
+  height: 38px;
+  margin-left: -19px;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: left 0.1s ease-out;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25));
+  pointer-events: none;
+}
+.hb-timer-wrap {
+  margin-top: 10px;
+  height: 6px;
+  background: #eee;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.hb-timer-bar {
+  height: 100%;
+  background: var(--red-main);
+  transition: width 0.1s linear;
+}
+.hb-action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+.hb-btn-nudge {
+  padding: 11px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 10px;
+}
+.hb-btn-take {
+  grid-column: span 2;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  border-radius: 10px;
+  background: var(--gold-main);
+  color: #ffffff;
+  border: 1px solid #d48806;
+}
+
+/* ============================================================
+ * ⚔️ 面子对决卡牌战斗场
+ * ============================================================ */
+.fd-arena {
+  padding: 16px;
+}
+.fd-fighters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.fd-fighter {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fd-fighter.right {
+  align-items: flex-end;
+  text-align: right;
+}
+.fd-f-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fd-fighter.right .fd-f-header {
+  flex-direction: row-reverse;
+}
+.fd-f-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink-primary);
+}
+.fd-f-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--card-subtle);
+  color: var(--ink-secondary);
+}
+.fd-hp-wrap {
+  width: 100%;
+  height: 12px;
+  background: #eee;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.fd-hp-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+.fd-hp-fill.mine {
+  background: linear-gradient(90deg, #66bb6a, #43a047);
+}
+.fd-hp-fill.opp {
+  background: linear-gradient(90deg, #ef5350, #d32f2f);
+}
+.fd-hp-val {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-secondary);
+}
+.fd-vs-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--red-main);
+  padding: 0 4px;
+}
+.fd-vs-round {
+  font-size: 10px;
+  color: var(--ink-secondary);
+  font-weight: 600;
+}
+.fd-combat-box {
+  background: rgba(245, 235, 218, 0.4);
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  max-height: 110px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-primary);
+  margin-bottom: 14px;
+}
+.fd-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.fd-card-btn {
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 10px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.fd-card-btn:hover {
+  border-color: var(--gold-main);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+  transform: translateY(-1px);
+}
+.fd-c-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-primary);
+}
+.fd-c-sub {
+  font-size: 10px;
+  color: var(--ink-secondary);
+  line-height: 1.4;
+}
+
+/* ============================================================
+ * 🎓 高考志愿填报
+ * ============================================================ */
+.major-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.major-card-btn {
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 11px 14px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.major-card-btn:hover {
+  border-color: var(--red-main);
+  box-shadow: 0 4px 12px rgba(211, 56, 36, 0.15);
+  transform: translateY(-1px);
+}
+.major-ico {
+  font-size: 26px;
+  flex-shrink: 0;
+}
+.major-info {
+  flex: 1;
+}
+.major-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink-primary);
+}
+.major-desc {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.major-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+ * 🎁 独立向父母索取面板
+ * ============================================================ */
+.wish-header-banner {
+  background: linear-gradient(135deg, #fff8e1, #ffecb3);
+  border: 1px solid #ffe082;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+.wish-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #f57f17;
+}
+.wish-count-pill {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--red-main);
+  color: #fff;
+}
+.wish-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.wish-card {
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wish-ico {
+  font-size: 26px;
+  flex-shrink: 0;
+}
+.wish-info {
+  flex: 1;
+}
+.wish-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink-primary);
+}
+.wish-sub {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  line-height: 1.4;
+}
+.wish-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+}
+
+/* ============================================================
+ * 👥 同学社交定向送礼抽屉
+ * ============================================================ */
+.gift-drawer {
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(245, 235, 218, 0.4);
+  border-radius: 10px;
+  border: 1px dashed var(--border-line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gift-drawer-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-secondary);
+}
+.gift-items-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gift-pill-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #fff;
+  border: 1px solid var(--border-line);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.gift-pill-btn.fav {
+  border-color: #f48fb1;
+  background: #fce4ec;
+  color: #ad1457;
+}
+.gift-pill-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* ============================================================
+ * 📜 家族百年谱系树 & 荣誉成就殿堂
+ * ============================================================ */
+.atlas-subtabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.atlas-stab {
+  flex: 1;
+  padding: 8px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  border-radius: 10px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.atlas-stab.active {
+  background: var(--red-main);
+  color: #ffffff;
+  border-color: var(--red-deep);
+  box-shadow: 0 2px 6px rgba(211, 56, 36, 0.25);
+}
+.ancestor-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ancestor-card {
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+.anc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.anc-gen {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink-primary);
+}
+.anc-rating {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: #fff8e1;
+  color: #f57f17;
+  border: 1px solid #ffe082;
+}
+.anc-details {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.anc-hl {
+  font-size: 11px;
+  color: var(--ink-primary);
+  background: var(--card-subtle);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border-left: 3px solid var(--gold-main);
+}
+.ach-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.ach-card {
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0.55;
+  filter: grayscale(60%);
+  transition: all 0.2s ease;
+}
+.ach-card.unlocked {
+  opacity: 1;
+  filter: none;
+  border-color: var(--gold-main);
+  background: linear-gradient(135deg, #ffffff, #fffdf8);
+  box-shadow: 0 3px 10px rgba(217, 119, 6, 0.12);
+}
+.ach-ico {
+  font-size: 26px;
+  flex-shrink: 0;
+}
+.ach-info {
+  flex: 1;
+}
+.ach-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink-primary);
+}
+.ach-desc {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  margin-top: 2px;
+}
+.ach-perk {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--green-main);
+  margin-top: 2px;
+}
+.ach-status {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.ach-card.unlocked .ach-status {
+  background: #e8f5e9;
+  color: #2e7d32;
+}

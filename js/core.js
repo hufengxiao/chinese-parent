@@ -90,11 +90,26 @@ function loadFam() { if (!LS) return null; try { return JSON.parse(LS.getItem('c
 function saveFam(f) { if (LS) LS.setItem('cph_fam', JSON.stringify(f)); }
 function save() { persist(); }
 function pendHongbao() {
-  S.pending.push({ type: 'mini_hb', title: '🧧 过年收红包', body: '七大姑八大姨的红包一股脑递过来,爸妈在旁边疯狂推辞——', opts: [
-    { label: '大方接下左袋(100-200元)' },
-    { label: '眼疾手快抢右袋(100-220元)' },
-    { label: '懂事地上缴给爸妈(面子+15)' },
-  ] });
+  const relatives = [
+    { n: '大姑妈', line: '“哎呀小宝又长高了！拿着，大姑给买新书包的！”', mom: '“使不得使不得，大姐你留着买菜！”' },
+    { n: '二叔叔', line: '“小男子汉/漂亮姑娘！二叔给的压岁钱，必须收着！”', mom: '“二弟你太客气了，小孩子不能惯着！”' },
+    { n: '表舅爷', line: '“舅爷的一点心意！好好读书考大学！”', mom: '“舅爷快收回去，我们怎么能要您的钱！”' },
+    { n: '隔壁王阿姨', line: '“压岁钱给孩子讨个好彩头，大吉大利！”', mom: '“王姐真不用，平时承蒙您多关照了！”' },
+  ];
+  const rel = pick(relatives);
+  S.pending.push({
+    type: 'hongbao_duel',
+    title: '🧧 过年收红包 · 推拉拉扯战',
+    rel: rel.n,
+    quote: rel.line,
+    momQuote: rel.mom,
+    body: rel.n + '递过一个沉甸甸的红信封！\n' + rel.line + '\n\n妈妈在旁边拼命拉扯推脱：\n' + rel.mom,
+    opts: [
+      { label: '🤝 适度推脱，见好就收 (黄金平衡)', sub: '得体客套，既拿红包又赚面子' },
+      { label: '✋ 坚决推辞到底 (推脱过猛)', sub: '过于客气，亲戚可能真收回去了' },
+      { label: '🤲 一把夺入囊中 (急切贪婪)', sub: '拿到红包，但被老妈当场白眼' }
+    ]
+  });
 }
 
 /* ---------- 开局 ---------- */
@@ -116,11 +131,15 @@ function newGame() {
     flags: {}, used: {},
     tutorial: { done: false, step: 0, claimed: false },
     pending: [], log: [], toasts: [],
+    wishPoints: 1,
+    bag: {},
+    major: null,
   };
   if (fam.g > 0) {
     // 父母 18% 属性遗传 + 伴侣基因增益 + 家族特长底蕴
+    const inheritRatio = (fam.achievements && fam.achievements.indexOf('ach-gen-5') >= 0) ? 0.25 : 0.18;
     ATTRS.forEach(k => {
-      const parentShare = Math.round(((fam.attr && fam.attr[k]) || 0) * 0.18);
+      const parentShare = Math.round(((fam.attr && fam.attr[k]) || 0) * inheritRatio);
       S.attrs[k] += parentShare + (fam.talent || 0);
       if (fam.spouseBonus && fam.spouseBonus[k]) {
         S.attrs[k] += fam.spouseBonus[k];
@@ -130,6 +149,14 @@ function newGame() {
     const uniTier = fam.uniTier || 0;
     if (uniTier >= 3) { S.insight += 15; S.face += 8; }
     if (uniTier >= 5) { S.insight += 15; S.face += 7; }
+    // 家族成就先天天赋庇佑
+    const achs = fam.achievements || [];
+    if (achs.indexOf('ach-gk-top') >= 0) S.insight += 20;
+    if (achs.indexOf('ach-first-rich') >= 0) S.money += 50;
+    if (achs.indexOf('ach-zero-break') >= 0) S.face += 35;
+    if (achs.indexOf('ach-perfect-life') >= 0) {
+      ATTRS.forEach(k => S.attrs[k] += 10);
+    }
     // 心态遗传: 父母心理阴影/长期高压会留下先天紧绷感
     const pShadow = fam.shadow || 0;
     if (pShadow >= 50) S.stress = Math.min(40, Math.round(pShadow / 4));
@@ -917,7 +944,23 @@ function pendGaokao() {
   const fd = [-15, -5, 5, 15, 25, 40][idx];
   S.face = Math.max(0, S.face + fd);
   if (tg >= 19000) rollTalent('gaokao', 1);
-  S.pending.push({ type: 'news', title: '高考放榜!!!', body: '总分 ' + tg + ' / 20000\n『' + band.t + '』\n' + (idx >= 4 ? '—— 班主任在群里发了三次红包!' : idx <= 1 ? '—— 年轻人,人生还有很多赛道。' : '—— 还不错,向前看吧。'), opts: ['好'] });
+
+  const majorOpts = (D.majors || []).map(m => ({
+    label: m.icon + ' ' + m.n,
+    sub: m.desc,
+    id: m.id
+  }));
+
+  S.pending.push({
+    type: 'gaokao_apply',
+    title: '🎓 高考放榜 & 志愿填报',
+    score: tg,
+    tierName: band.t,
+    body: '高考总分: ' + tg + ' / 20000\n录取位次: 『' + band.t + '』\n' +
+          (idx >= 4 ? '班主任在群里连发三次红包！全校拉起大红横幅！' : idx <= 1 ? '年轻人,人生还有很多赛道，未来依然可期。' : '还不错,向前看吧。') +
+          '\n\n请填报你的大学专业志向：',
+    opts: majorOpts.length ? majorOpts : ['文理兼修']
+  });
 }
 
 /* ---------- 选秀 ---------- */
@@ -946,23 +989,112 @@ function bestTalent() {
 function pendFace(n) {
   const opp = D.rivals[n % 4] || pick(D.rivals);
   const mine = bestTalent();
-  const myAtk = mine ? RATK[mine.r] : 7;
-  const opAtk = n === 1 ? RI(49, 343) : RI(7, 49);
-  const logs = [];
-  let mh = 400, oh = 400;
-  for (let r = 1; r <= 4 && mh > 0 && oh > 0; r++) {
-    const d = Math.round(myAtk * (0.9 + Math.random() * 0.4));
-    oh -= d;
-    logs.push('第' + r + '轮: 你使出「' + (mine ? mine.n : '大嗓门') + '」打掉对方 ' + d + ' 面子');
-    if (oh <= 0) break;
-    const d2 = Math.round(opAtk * (0.8 + Math.random() * 0.4) * (r === 1 ? 0.5 : 1));
-    mh -= d2;
-    logs.push('对手回敬「' + opp.l[0] + '」,你掉了 ' + d2 + ' 面子');
+  const oppMaxHp = opp.face || 300;
+  S.faceDuel = {
+    n,
+    opp: {
+      id: opp.id,
+      name: opp.n,
+      icon: opp.icon || '🧑‍🎓',
+      style: opp.style || '炫耀',
+      hp: oppMaxHp,
+      maxHp: oppMaxHp,
+      atk: opp.atk || (n === 1 ? 55 : 35),
+      lines: opp.l || ['我家孩子很优秀']
+    },
+    myHp: 400,
+    maxMyHp: 400,
+    round: 1,
+    maxRound: 4,
+    logs: ['「' + opp.n + '」带着孩子昂首走来，眼神中充满攀比火药味！'],
+    defending: false,
+    distracted: false,
+    finished: false,
+    won: false
+  };
+
+  S.pending.push({
+    type: 'face_duel',
+    title: '⚔️ 家族面子大对决 vs ' + opp.n,
+    duel: S.faceDuel,
+    body: '「' + opp.n + '」: 我家孩子 ' + (opp.l[0] || '很优秀') + '！\n\n四目相对，火药味弥漫全场，请亮出你的战术！',
+    opts: [
+      { label: '🌟 亮出主打特长: 「' + (mine ? mine.n : '大嗓门') + '」', sub: mine ? '威力 ' + RATK[mine.r] : '威力 18' },
+      { label: '😏 心理战术: 凡尔赛冷嘲热讽', sub: '基于智商与情商造成真实心理伤害' },
+      { label: '🛡️ 防守反击: 谦虚客套并反弹', sub: '大幅减伤并暗中反弹反击，回复气势' },
+      { label: '📢 战术干扰: 先声夺人打乱节奏', sub: '打断对方节奏，降低其下轮输出' }
+    ]
+  });
+}
+
+function faceDuelStep(actionIdx) {
+  const duel = S.faceDuel;
+  if (!duel || duel.finished) return;
+  const mine = bestTalent();
+  let myDmg = 0;
+  let playerLog = '';
+
+  if (actionIdx === 0) {
+    const baseAtk = mine ? RATK[mine.r] : 18;
+    myDmg = Math.round(baseAtk * (0.9 + Math.random() * 0.4));
+    duel.opp.hp = Math.max(0, duel.opp.hp - myDmg);
+    playerLog = '第' + duel.round + '轮: 你亮出特长「' + (mine ? mine.n : '大嗓门') + '」，打掉对方 ' + myDmg + ' 点面子！';
+  } else if (actionIdx === 1) {
+    myDmg = Math.round(35 + (S.attrs.iq / 8) + (S.attrs.eq / 8) + RI(0, 15));
+    duel.opp.hp = Math.max(0, duel.opp.hp - myDmg);
+    playerLog = '第' + duel.round + '轮: 你轻描淡写地凡尔赛了几句，字字诛心！打掉对方 ' + myDmg + ' 点面子！';
+  } else if (actionIdx === 2) {
+    duel.defending = true;
+    myDmg = Math.round(25 + RI(5, 15));
+    duel.opp.hp = Math.max(0, duel.opp.hp - myDmg);
+    duel.myHp = Math.min(duel.maxMyHp, duel.myHp + 30);
+    playerLog = '第' + duel.round + '轮: 你笑呵呵地连称“哪里哪里，差得远”，化解攻势并暗讽反弹 ' + myDmg + ' 点面子，自身气势回复 30！';
+  } else {
+    duel.distracted = true;
+    myDmg = Math.round(20 + RI(5, 15));
+    duel.opp.hp = Math.max(0, duel.opp.hp - myDmg);
+    playerLog = '第' + duel.round + '轮: 你突然岔开话题聊起养生，对方一时语塞！受到 ' + myDmg + ' 点面子动摇，下轮攻势被削弱！';
   }
-  const win = oh <= 0 || mh > oh;
-  const gain = win ? 120 : -40;
-  S.face = Math.max(0, S.face + gain);
-  S.pending.push({ type: 'news', title: '面子对决 vs ' + opp.n, body: '「' + opp.n + '」: 我家孩子 ' + opp.l.join('、') + '!\n\n' + logs.join('\n') + '\n' + (win ? '🎉 大获全胜! 面子+' + gain : '输了半场。妈妈说今晚不吃鸡肉了。面子' + gain), opts: ['好'] });
+  duel.logs.push(playerLog);
+
+  if (duel.opp.hp <= 0) {
+    duel.finished = true;
+    duel.won = true;
+    duel.logs.push('💥 ' + duel.opp.name + '面子彻底崩溃，借口灶上炖着汤悻悻离席！');
+    S.face += 120;
+    return;
+  }
+
+  let oppAtk = Math.round((duel.opp.atk || 35) * (0.8 + Math.random() * 0.4));
+  if (duel.defending) oppAtk = Math.round(oppAtk * 0.35);
+  if (duel.distracted) oppAtk = Math.round(oppAtk * 0.5);
+  duel.defending = false;
+  duel.distracted = false;
+
+  const oppLine = duel.opp.lines[(duel.round - 1) % duel.opp.lines.length] || '我家孩子很棒！';
+  duel.myHp = Math.max(0, duel.myHp - oppAtk);
+  duel.logs.push('对手回敬「' + oppLine + '」，你损失了 ' + oppAtk + ' 点面子。');
+
+  if (duel.myHp <= 0) {
+    duel.finished = true;
+    duel.won = false;
+    duel.logs.push('🌧️ 我方面子告罄，在亲戚的吹捧声中败下阵来……');
+    S.face = Math.max(0, S.face - 40);
+    return;
+  }
+
+  duel.round++;
+  if (duel.round > duel.maxRound) {
+    duel.finished = true;
+    duel.won = duel.myHp >= duel.opp.hp;
+    if (duel.won) {
+      duel.logs.push('🎉 4轮交锋结束，我方面子更胜一筹！全场称赞！');
+      S.face += 120;
+    } else {
+      duel.logs.push('败下阵来……妈妈说今晚回家不吃鸡肉了。');
+      S.face = Math.max(0, S.face - 40);
+    }
+  }
 }
 
 /* ---------- 班干部竞选 ---------- */
@@ -1101,6 +1233,40 @@ function pushEndGen() {
   else if (S.gaokaoScore >= 14000) highlight = '高考勇夺名牌大学，爸妈在亲戚群里连发三天大红包！';
   else if ((job.t || 0) >= 3) highlight = '跻身社会精英阶层，生活体面宽裕，爸妈逢人便夸！';
 
+  const prevHistory = (S.fam && S.fam.history) || [];
+  const historyItem = {
+    gen: S.gen,
+    name: S.name,
+    gender: S.gender,
+    job: jobName,
+    jobIcon: job.icon || '🛋️',
+    jobTier: job.t || 0,
+    spouse: S.spouse ? S.spouse.name : '独善其身 (单身)',
+    spouseTag: S.spouse ? S.spouse.tag : '',
+    uniTier: S.uniTier || 0,
+    gk: S.gaokaoScore || 0,
+    score: totalLifeScore,
+    rating: rating,
+    ratingDesc: ratingDesc,
+    talentsCount: (S.talents || []).length,
+    highlight: highlight
+  };
+  const updatedHistory = [...prevHistory, historyItem];
+
+  // 家族传家荣誉成就检测
+  const prevAchievements = (S.fam && S.fam.achievements) || [];
+  const updatedAchievements = [...prevAchievements];
+  function addAch(id) {
+    if (updatedAchievements.indexOf(id) < 0) updatedAchievements.push(id);
+  }
+  if ((S.gaokaoScore || 0) >= 19000) addAch('ach-gk-top');
+  if (job.id === 'j-first' || (job.t || 0) >= 5) addAch('ach-first-rich');
+  if (S.spouse && S.spouse.tag === '校园恋人') addAch('ach-love-true');
+  if ((S.talents || []).length >= 8) addAch('ach-talent-all');
+  if (S.gen >= 5) addAch('ach-gen-5');
+  if ((S.fam ? S.fam.tier : 0) <= 1 && ((job.t || 0) >= 4 || S.uniTier >= 4)) addAch('ach-zero-break');
+  if (totalLifeScore >= 90) addAch('ach-perfect-life');
+
   const fam = {
     g: S.gen,
     name: S.name,
@@ -1109,6 +1275,8 @@ function pushEndGen() {
     talent: newFamTalent,
     attr: { ...S.attrs },
     atlas: mergedAtlas,
+    history: updatedHistory,
+    achievements: updatedAchievements,
     lastJob: jobName,
     lastScore: S.gaokaoScore || 0,
     uniTier: S.uniTier || 0,
@@ -1151,37 +1319,111 @@ function atlas() {
 }
 function socialList() {
   const meG = S.gender === 'boy' ? '女' : '男';
-  return D.npcs.filter(n => n.gender === meG).map(n => ({ id: n.id, name: n.n, icon: n.icon, aff: S.npcAff[n.id] || 0, intro: n.intro }));
+  return D.npcs.filter(n => n.gender === meG).map(n => ({
+    id: n.id,
+    name: n.n,
+    icon: n.icon,
+    aff: S.npcAff[n.id] || 0,
+    intro: n.intro,
+    like: n.like || [],
+    quotes: n.quotes || {}
+  }));
 }
 function chat(id) {
-  if (S.act < 3) { toast('行动力不足'); return; }
+  if (S.act < 3) { toast('行动力不足(需3)'); return; }
   S.act -= 3;
   const g = RI(3, 8);
   S.npcAff[id] = clamp((S.npcAff[id] || 0) + g, 0, 100);
   const nm = (D.npcs.find(n => n.id === id) || {}).n || 'ta';
   log('和' + nm + '聊了聊,好感+' + g);
   if (S.npcAff[id] >= 60) toast('💕 ' + nm + '好像对你有点特别……');
+  save();
   return g;
 }
-function gift(id) {
-  if (S.money < 25) { toast('零花钱不够'); return; }
-  if (S.act < 3) { toast('行动力不足'); return; }
-  S.money -= 25; S.act -= 3;
-  const g = RI(10, 18);
-  S.npcAff[id] = clamp((S.npcAff[id] || 0) + g, 0, 100);
-  log('送' + ((D.npcs.find(n => n.id === id) || {}).n) + '小礼物:-25元 好感+' + g);
-  return g;
+function gift(id, itemId) {
+  if (S.act < 3) { toast('行动力不足(需3)'); return null; }
+  const npc = D.npcs.find(n => n.id === id);
+  if (!npc) return null;
+  if (!S.bag) S.bag = {};
+
+  let giftItem = null;
+  if (itemId && S.bag[itemId] > 0) {
+    giftItem = D.store.find(s => s.id === itemId);
+    S.bag[itemId]--;
+    if (S.bag[itemId] <= 0) delete S.bag[itemId];
+  } else if (itemId) {
+    giftItem = D.store.find(s => s.id === itemId);
+    if (!giftItem || S.money < giftItem.price) { toast('道具不足且零钱不够购买'); return null; }
+    S.money -= giftItem.price;
+  } else {
+    if (S.money < 25) { toast('零花钱不够(需25元)'); return null; }
+    S.money -= 25;
+  }
+
+  S.act -= 3;
+  const isFav = giftItem && npc.like && npc.like.some(lk => giftItem.n.indexOf(lk) >= 0 || lk.indexOf(giftItem.n) >= 0);
+  const g = isFav ? RI(22, 32) : (giftItem ? RI(12, 18) : RI(10, 16));
+  const prevAff = S.npcAff[id] || 0;
+  S.npcAff[id] = clamp(prevAff + g, 0, 100);
+
+  let quote = '';
+  if (isFav && npc.quotes && npc.quotes.like) {
+    quote = npc.quotes.like;
+  } else if (npc.quotes && npc.quotes.normal) {
+    quote = npc.quotes.normal;
+  }
+
+  const giftName = giftItem ? giftItem.n : '精选小礼物';
+  log('送给「' + npc.n + '」' + giftName + '，好感+' + g + (isFav ? ' (喜好暴击!)' : ''));
+  if (quote) toast(npc.n + ': ' + quote);
+
+  if (prevAff < 30 && S.npcAff[id] >= 30) toast('💌 与 ' + npc.n + ' 建立了默契，课间会互相传小纸条了。');
+  else if (prevAff < 60 && S.npcAff[id] >= 60) toast('💕 ' + npc.n + ' 对你的心意与众不同，放学经常一起推单车。');
+  else if (prevAff < 80 && S.npcAff[id] >= 80) toast('💖 与 ' + npc.n + ' 许下青葱约定，情愫渐深……');
+
+  save();
+  return { g, isFav, quote, aff: S.npcAff[id] };
 }
-function shopList() { return D.store.map(s => ({ ...s, can: S.money >= s.price })); }
+function shopList() { return D.store.map(s => ({ ...s, can: S.money >= s.price, count: (S.bag && S.bag[s.id]) || 0 })); }
 function buy(id) {
   const it = D.store.find(s => s.id === id);
   if (!it) return false;
   if (S.money < it.price) { toast('零钱不够'); return false; }
   S.money -= it.price;
   applyEff(it.eff);
+  if (!S.bag) S.bag = {};
+  S.bag[it.id] = (S.bag[it.id] || 0) + 1;
   log('买了「' + it.n + '」' + (effText(it.eff) ? '(' + effText(it.eff) + ')' : ''));
   save();
   return true;
+}
+function begWish(wishId) {
+  const b = D.begs.find(x => x.id === wishId);
+  if (!b) return { success: false, msg: '心愿不存在' };
+  if (S.flags['beg_' + b.id]) return { success: false, msg: '该心愿已达成，无需重复索取' };
+  if ((S.wishPoints || 0) < 1) return { success: false, msg: '索取次数不足！可保持高满意度或考取优异成绩获得' };
+  if (S.face < (b.face || 0)) return { success: false, msg: '家庭面子不足(需要 ' + b.face + ' 点面子)' };
+
+  S.wishPoints = Math.max(0, (S.wishPoints || 1) - 1);
+  const bonus = (S.sat >= 80 ? 0.15 : 0) + (S.face >= (b.face || 0) * 1.5 ? 0.1 : 0);
+  const prob = clamp(b.w + bonus, 0.25, 0.95);
+  const success = Math.random() < prob;
+
+  if (success) {
+    S.flags['beg_' + b.id] = 1;
+    applyEff(b.eff);
+    S.sat = clamp(S.sat + 10, 0, 140);
+    log('🎉 索取成功! 父母同意了「' + b.n + '」的心愿(' + effText(b.eff) + ')');
+    toast('🎉 索取成功! 获得「' + b.n + '」');
+    save();
+    return { success: true, name: b.n, eff: b.eff, prob: Math.round(prob * 100) };
+  } else {
+    S.sat = Math.max(0, S.sat - 8);
+    log('索取「' + b.n + '」未通过: 父母对视三秒表示下次再说');
+    toast('爸妈和你对视三秒:"前几天不是才买过?"(索取未通过)');
+    save();
+    return { success: false, name: b.n, prob: Math.round(prob * 100) };
+  }
 }
 
 /* ---------- 脑洞 ---------- */
@@ -1330,10 +1572,17 @@ const API = {
   resolve: resolvePend,
   examBuff: () => S.exambuff,
   brain: { grid: bGrid, rev: bRev, info: bInfo },
-  social: socialList, chat, gift,
-  shop: shopList, buy,
+  social: socialList, chat, gift, giftItem: gift,
+  shop: shopList, buy, bag: () => (S && S.bag) || {},
   atlas, fam: getFam,
   claimNovicePack,
+  faceDuel: () => (S && S.faceDuel),
+  faceAction: faceDuelStep,
+  wishPoints: () => ((S && S.wishPoints != null) ? S.wishPoints : 0),
+  begWish,
+  majors: () => D.majors || [],
+  achievements: () => D.achievements || [],
+  familyHistory: () => (S && S.fam && S.fam.history) || (loadFam() && loadFam().history) || [],
 };
 function getFam() { return S ? S.fam : (loadFam() || { g: 0, talent: 0, tier: 0, attr: {}, atlas: [] }); }
 
@@ -1355,12 +1604,84 @@ function resolvePend(i) {
       res = o ? o.label : '';
       break;
     }
-    case 'mini_hb': {
+    case 'mini_hb':
+    case 'hongbao_duel': {
       S.pending.shift();
-      if (i === 2) { S.face += 15; res = '你主动把红包交给爸妈,父母欣慰(面子+15)'; break; }
-      const v = RI(100, 200);
-      S.money += v;
-      res = '你抢到了红包,拿到 ' + v + ' 元!' + (i === 0 ? '(左兜)' : '(右兜)');
+      let pos = 52;
+      if (typeof i === 'object' && i !== null && typeof i.pos === 'number') {
+        pos = i.pos;
+      } else if (i === 1) {
+        pos = 15;
+      } else if (i === 2) {
+        pos = 92;
+      } else {
+        pos = 52;
+      }
+
+      if (pos >= 38 && pos <= 68) {
+        const v = RI(180, 260);
+        S.money += v;
+        S.face += 20;
+        S.sat = clamp(S.sat + 6, 0, 140);
+        res = '🎉 进退得体，堪称红包推拉大师！长辈欣慰塞下红包，父母在旁倍感有面！拿到 ' + v + ' 元压岁钱，面子+20！';
+      } else if (pos < 35) {
+        S.face += 10;
+        res = '✋ 推辞得过于逼真，长辈叹口气收了回去：“这孩子太老实了！”(拿到 0 元，面子+10)';
+      } else if (pos > 75) {
+        const v = RI(120, 180);
+        S.money += v;
+        S.face = Math.max(0, S.face - 25);
+        S.sat = Math.max(0, S.sat - 8);
+        res = '💨 伸手太急！长辈尬笑塞给你，老妈在旁边狠狠掐了你一把……(拿到 ' + v + ' 元，面子-25)';
+      } else {
+        const v = RI(120, 180);
+        S.money += v;
+        S.face += 5;
+        res = '🧧 几番客套拉扯下顺利收下，长辈笑得合不拢嘴。(拿到 ' + v + ' 元，面子+5)';
+      }
+      break;
+    }
+    case 'face_duel': {
+      if (!S.faceDuel || S.faceDuel.finished) {
+        const won = S.faceDuel ? S.faceDuel.won : true;
+        S.pending.shift();
+        S.faceDuel = null;
+        res = won ? '🎉 面子对决大获全胜！面子+120' : '输了面子对决，面子-40';
+      } else {
+        const actIdx = (typeof i === 'number') ? i : 0;
+        faceDuelStep(actIdx);
+        if (S.faceDuel.finished) {
+          m.finished = true;
+          m.won = S.faceDuel.won;
+          m.body = S.faceDuel.logs.slice(-3).join('\n\n');
+          m.opts = [S.faceDuel.won ? '🏆 扬眉吐气！(面子+120)' : '默默低头 (面子-40)'];
+          res = S.faceDuel.won ? '🎉 面子对决大获全胜！' : '输了半场对决。';
+        } else {
+          m.body = '【第 ' + S.faceDuel.round + ' / ' + S.faceDuel.maxRound + ' 轮交锋】\n' +
+                   '我方面子: ' + S.faceDuel.myHp + ' / ' + S.faceDuel.maxMyHp + '  vs  ' +
+                   S.faceDuel.opp.name + ': ' + S.faceDuel.opp.hp + ' / ' + S.faceDuel.opp.maxHp + '\n\n' +
+                   S.faceDuel.logs.slice(-2).join('\n');
+          res = '交锋中…';
+        }
+      }
+      break;
+    }
+    case 'gaokao_apply': {
+      const mj = (D.majors && D.majors[i]) ? D.majors[i] : (D.majors ? D.majors[0] : null);
+      if (mj) {
+        S.major = mj.id;
+        if (mj.bonus) applyEff(mj.bonus);
+        const courseMap = { cs: 'u-cs', med: 'u-med', fin: 'u-fin', art: 'u-film', eng: 'u-eng' };
+        const cId = courseMap[mj.id];
+        if (cId && S.learnedCourses && S.learnedCourses.indexOf(cId) < 0) {
+          S.learnedCourses.push(cId);
+          S.skills[cId] = 1;
+        }
+        res = '成功录取至【' + mj.n + '】专业！' + (mj.desc || '');
+      } else {
+        res = '顺利进入大学！';
+      }
+      S.pending.shift();
       break;
     }
     case 'show': {

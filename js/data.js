@@ -73,6 +73,11 @@ courses: [
   {id:'u-gao',   name:'高等数学线代',icon:'🎓', phase:'college', attr:{iq:5,mem:2}, stress:3, sat:2},
   {id:'u-zhuan', name:'专业课·绩点大作战',icon:'📚', phase:'college', attr:{mem:4,iq:2}, stress:3, sat:2},
   {id:'u-art',   name:'创作·作品集',icon:'🎨', phase:'college', attr:{img:5,cha:1}, stress:3, sat:2},
+  {id:'u-cs',    name:'计算机·算法与全栈',icon:'💻', phase:'college', attr:{iq:6,mem:3}, stress:4, sat:2, tal:{id:'chengxuyuan', p:.2}},
+  {id:'u-med',   name:'医学·临床解剖实操',icon:'🩺', phase:'college', attr:{mem:6,phy:3}, stress:4, sat:2},
+  {id:'u-fin',   name:'商科·量化金融与投行',icon:'💹', phase:'college', attr:{eq:6,cha:3}, stress:4, sat:2},
+  {id:'u-film',  name:'传媒·视听语言与导演',icon:'🎬', phase:'college', attr:{img:6,cha:3}, stress:4, sat:2, tal:{id:'yishujia', p:.2}},
+  {id:'u-eng',   name:'工科·理论力学与攻坚',icon:'⚙️', phase:'college', attr:{iq:6,phy:3}, stress:4, sat:2},
 ],
 
 /* ---------- 娱乐 ---------- */
@@ -597,21 +602,21 @@ jobs: [
 
 /* 面子对决的对手 */
 rivals: [
-  {id:'wangyi', n:'王姨的学霸儿子', icon:'🧑‍🎓', face:300, l:['史诗特长','奥数金牌','全科满分'], style:'学神'},
-  {id:'fang', n:'有钱叔叔的孩子', icon:'👦', face:200, l:['钢琴十级','双语幼儿园'], style:'凡尔赛'},
-  {id:'liu', n:'隔壁刘婶的孙女', icon:'👧', face:180, l:['舞蹈比赛第一','长得还好看'], style:'美育战士'},
-  {id:'chen', n:'表哥家小孙子', icon:'👶', face:120, l:['三岁背诗五十首'], style:'天才婴儿'},
+  {id:'wangyi', n:'王姨的学霸儿子', icon:'🧑‍🎓', face:300, atk:55, l:['我家孩子奥数满分','全校大榜第一名','每天刷题到深夜'], style:'学神'},
+  {id:'fang', n:'有钱叔叔的孩子', icon:'👦', face:200, atk:45, l:['钢琴早过十级了','双语幼儿园直升外校','暑假刚去欧洲游学'], style:'凡尔赛'},
+  {id:'liu', n:'隔壁刘婶的孙女', icon:'👧', face:180, atk:40, l:['市少儿舞蹈金奖','长得标致还懂事','每次来都主动洗碗'], style:'美育战士'},
+  {id:'chen', n:'表哥家小孙子', icon:'👶', face:120, atk:30, l:['三岁就能背唐诗三百首','心算比大人还快','邻居都夸是神童'], style:'天才婴儿'},
 ],
 
 /* 同学(可攻略) */
 npcs: [
-  {id:'summer', n:'苏软软', icon:'🌸', gender:'女', like:['妮妮\'s饼干','荧光笔'], intro:'后排安静的女孩,抽屉里贴满贴纸。', phase:'kinder'},
-  {id:'shenhan', n:'沈寒', icon:'❄️', gender:'男', like:['游戏卡','篮球'], intro:'校队后卫,话少但很可靠。', phase:'junior'},
-  {id:'xiaomei', n:'夏小美', icon:'🍡', gender:'女', like:['漫画书','小熊玩偶'], intro:'爱笑,笑声一响全班都知道。', phase:'pri'},
-  {id:'lizhen', n:'李振', icon:'🔥', gender:'男', like:['跑鞋','游戏机'], intro:'体育委员,运动会上发光。', phase:'junior'},
-  {id:'yuanyuan', n:'媛媛', icon:'🧸', gender:'女', like:['奶茶券','化妆品'], intro:'喜欢化妆和可爱的东西。', phase:'junior'},
-  {id:'kongde', n:'孔德', icon:'🤠', gender:'男', like:['望远镜','漫画'], intro:'天文社社长,偶尔中二。', phase:'senior'},
-  {id:'qixue', n:'棋子', icon:'🎮', gender:'女', like:['游戏卡','漫画'], intro:'电竞梦想家,操场上开黑王。', phase:'senior'},
+  {id:'summer', n:'苏软软', icon:'🌸', gender:'女', like:['妮妮\'s饼干','彩笔','棒棒糖'], intro:'后排安静的女孩,抽屉里贴满可爱贴纸。', phase:'kinder', quotes:{ like:'“哇！你怎么知道我一直在找这个！手账正好用得上，谢谢你~”', normal:'“谢谢你的小礼物，我很喜欢！”', meet:'正坐在窗边静静画着手账……' }},
+  {id:'shenhan', n:'沈寒', icon:'❄️', gender:'男', like:['经典游戏卡','重点鞋','运动饮料'], intro:'校队后卫,高冷话少但球风极其霸气。', phase:'junior', quotes:{ like:'“谢了兄弟！下半场篮球赛我们好好配合。”', normal:'“谢了，先放桌上吧。”', meet:'正在球场边单手转球。' }},
+  {id:'xiaomei', n:'夏小美', icon:'🍡', gender:'女', like:['毛绒玩具','西瓜冰','辣条'], intro:'爱笑开心果,笑声一响全班都被治愈。', phase:'pri', quotes:{ like:'“哈哈哈哈太棒啦！我最喜欢这个了，放学一起吃呀！”', normal:'“哇塞，给我的吗？太感动啦！”', meet:'正和前排同学笑得前仰后合。' }},
+  {id:'lizhen', n:'李振', icon:'🔥', gender:'男', like:['重点鞋','运动饮料','辣条'], intro:'热血体委,运动会上为班级屡创辉煌。', phase:'junior', quotes:{ like:'“好哥们儿！够义气，下次体测1000米我罩你！”', normal:'“谢啦，下次打球叫你！”', meet:'正在操场上给班级搬矿泉水。' }},
+  {id:'yuanyuan', n:'媛媛', icon:'🧸', gender:'女', like:['奶茶兑换券','彩虹卷笔刀','毛绒玩具'], intro:'喜欢化妆和精致可爱事物的前桌。', phase:'junior', quotes:{ like:'“哇塞好可爱！你眼光真好，明天我带奶茶分你一半~”', normal:'“谢谢你呀，你人真体贴~”', meet:'正对着小圆镜整理刘海。' }},
+  {id:'kongde', n:'孔德', icon:'🤠', gender:'男', like:['单筒望远镜','三年模拟','课外书'], intro:'天文社社长,理科奇才,偶尔中二。', phase:'senior', quotes:{ like:'“知音啊！这套资料正好解决了我的物理疑难，太感谢了！”', normal:'“收到！多谢同学互助。”', meet:'正在黑板上推演宇宙引力公式。' }},
+  {id:'qixue', n:'棋子', icon:'🎮', gender:'女', like:['经典游戏卡','棒棒糖','辣条'], intro:'电竞梦想家少女,操场联机开黑女王。', phase:'senior', quotes:{ like:'“够意思！今晚连机开黑我带你吃鸡上大分！”', normal:'“谢啦！回头有空开黑找我。”', meet:'正低头研究掌机上的格斗出招表。' }},
 ],
 
 /* 商店 */
@@ -629,6 +634,10 @@ store: [
   {id:'st-toy',   n:'毛绒玩具', icon:'🧸', price:35, eff:{eq:5}},
   {id:'st-shoes', n:'重点鞋',    icon:'👟', price:80, eff:{phy:8}},
   {id:'st-bk',    n:'三年模拟',  icon:'📙', price:70, eff:{exam:40}},
+  {id:'st-biscuit',n:'妮妮\'s饼干',icon:'🍪', price:15, eff:{stress:-3, sat:2}},
+  {id:'st-card',  n:'经典游戏卡',icon:'🕹️', price:25, eff:{img:4, stress:-5}},
+  {id:'st-tea',   n:'奶茶兑换券',icon:'🧋', price:20, eff:{stress:-4, eq:2}},
+  {id:'st-glass', n:'单筒望远镜',icon:'🔭', price:50, eff:{iq:5, mem:3}},
 ],
 
 /* 索取 (向父母索取物资/道具) */
@@ -639,6 +648,26 @@ begs: [
   {id:'bg-rw',        n:'品牌运动跑鞋', icon:'👟', face:80,  sat:30, w:0.50, eff:{phy:8, cha:4}, desc:'穿上它感觉体育中考稳了'},
   {id:'bg-piano',     n:'真木立式大钢琴',icon:'🎼', face:150, sat:55, w:0.35, eff:{cha:12, img:10, sat:15}, desc:'全家的大投资，亲戚串门都要看你弹一曲'},
   {id:'bg-huanggang', n:'黄冈密卷强化版',icon:'📗', face:90, sat:40, w:0.65, eff:{iq:8, mem:8, exam:35}, desc:'主动要试卷做，父母热泪盈眶欣然准奏'},
+],
+
+/* 大学专业方向与学院体系 */
+majors: [
+  {id:'cs',  n:'计算机与人工智能', icon:'💻', desc:'算法代码与前沿科技，直通大厂架构师与独角兽CEO', bonus:{iq:15, img:10}, matchJobs:['j-code','j-ai','j-game','j-first','j-vp']},
+  {id:'med', n:'临床医学与现代医疗', icon:'🩺', desc:'救死扶伤与医学科研，直通三甲主刀名医与医药巨子', bonus:{mem:15, phy:10}, matchJobs:['j-doc','j-teach','j-ceo','j-first']},
+  {id:'fin', n:'经济金融与商学院', icon:'📈', desc:'资本运作与商业领袖，直通投行合伙人与时代首富', bonus:{eq:15, cha:10}, matchJobs:['j-first','j-vp','j-ceo','j-law','j-boss']},
+  {id:'art', n:'数字传媒与视听艺术', icon:'🎬', desc:'编导创作与视觉风潮，直通知名导演、大作家与影帝', bonus:{img:15, cha:10}, matchJobs:['j-art','j-star','j-stream','j-first']},
+  {id:'eng', n:'大国重器与硬核工科', icon:'⚙️', desc:'精密制造与前沿探索，直通总工程师与大国工匠', bonus:{iq:12, mem:12}, matchJobs:['j-code','j-first','j-teach','j-gov']},
+],
+
+/* 家族传家荣誉成就 */
+achievements: [
+  {id:'ach-gk-top',      n:'状元及第',   icon:'🥇', desc:'高考斩获 19000 分以上，登顶清北', perk:'后代初始悟性 +20'},
+  {id:'ach-first-rich',  n:'时代首富',   icon:'👑', desc:'达成全行业终极顶点「首富」职业', perk:'后代每回合额外零花 +50'},
+  {id:'ach-love-true',   n:'青梅竹马',   icon:'💖', desc:'与学生时代校园恋人终成眷属', perk:'后代情商与魅力成长 +10%'},
+  {id:'ach-talent-all',  n:'技惊四座',   icon:'🌟', desc:'单代累计领悟 8 项以上特长技能', perk:'面子对决伤害提升 20%'},
+  {id:'ach-gen-5',       n:'百年望族',   icon:'🏛️', desc:'家族火炬连续传承达 5 代以上', perk:'全属性先天遗传系数提升至 25%'},
+  {id:'ach-zero-break',  n:'寒门逆袭',   icon:'🚀', desc:'以工薪阶层起步逆袭考入985或任高级职务', perk:'后代初始面子 +35'},
+  {id:'ach-perfect-life',n:'完美人生',   icon:'💎', desc:'单代人生综合评分达到 90 分以上', perk:'下一代所有基础属性 +10'},
 ],
 
 /* 高考分数线档位 */
