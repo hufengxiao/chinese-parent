@@ -730,6 +730,12 @@ function renderModal() {
     return;
   }
 
+  // 针对班干部三向竞选演说博弈台
+  if (p.type === 'election') {
+    renderElectionModal(p, m);
+    return;
+  }
+
   m.classList.add('show');
   m.innerHTML = '';
   const body = h('div', 'm-body');
@@ -1196,6 +1202,92 @@ function renderTalentShowResultModal(p, m) {
     renderAll();
   };
   body.appendChild(btn);
+
+  m.appendChild(body);
+}
+
+/* ---------- 🗳️ 班干部三向竞选演说博弈台 ---------- */
+function renderElectionModal(p, m) {
+  m.classList.add('show');
+  m.innerHTML = '';
+  const body = h('div', 'm-body el-modal');
+  const el = (CP.election ? CP.election() : null) || p.election || {
+    round: 1, maxRound: 3, myVotes: 0,
+    rival: { name: '王小明', title: '原班长', icon: '🧑‍🏫', votes: 0 },
+    targetVotes: 26, totalVotes: 50, logs: []
+  };
+
+  // 1) 竞选讲台横幅
+  const head = h('div', 'el-header');
+  head.innerHTML =
+    '<div class="el-badge">🗳️ 班干部三向竞选演说大会</div>' +
+    '<div class="el-title">第 ' + (el.round || 1) + ' / ' + (el.maxRound || 3) + ' 轮演说 · 争夺班级中队长</div>' +
+    '<div class="el-sub">向全班 50 名同学发表施政演说，拉取过半关键选票！</div>';
+  body.appendChild(head);
+
+  // 2) 双方得票与候选人PK看台
+  const arena = h('div', 'el-arena');
+  const genderIcon = (CP.state && CP.state().gender === 'girl') ? '👧' : '👦';
+  const myPct = Math.min(100, Math.round(((el.myVotes || 0) / (el.targetVotes || 26)) * 100));
+  const rivalPct = Math.min(100, Math.round(((el.rival.votes || 0) / (el.targetVotes || 26)) * 100));
+
+  arena.innerHTML =
+    '<div class="el-cand left">' +
+      '<div class="el-avatar">' + genderIcon + '</div>' +
+      '<div class="el-cand-name">我 (候选人)</div>' +
+      '<div class="el-vote-badge mine">' + (el.myVotes || 0) + ' 票</div>' +
+      '<div class="el-bar-wrap"><div class="el-bar mine" style="width:' + myPct + '%"></div></div>' +
+    '</div>' +
+    '<div class="el-vs-box">' +
+      '<span class="el-vs-tag">VS</span>' +
+      '<span class="el-target-tag">当选门槛: ' + (el.targetVotes || 26) + ' 票</span>' +
+    '</div>' +
+    '<div class="el-cand right">' +
+      '<div class="el-avatar">' + (el.rival.icon || '🧑‍🏫') + '</div>' +
+      '<div class="el-cand-name">' + el.rival.name + '</div>' +
+      '<div class="el-vote-badge rival">' + (el.rival.votes || 0) + ' 票</div>' +
+      '<div class="el-bar-wrap"><div class="el-bar rival" style="width:' + rivalPct + '%"></div></div>' +
+    '</div>';
+  body.appendChild(arena);
+
+  // 3) 讲台黑板报实时速记
+  const blackboard = h('div', 'el-blackboard');
+  const logs = el.logs || [];
+  blackboard.innerHTML =
+    '<div class="el-bb-title">📝 讲台竞选速记与同学反响</div>' +
+    '<div class="el-bb-list">' +
+      logs.slice(-4).map(line => '<div class="el-bb-line">' + line + '</div>').join('') +
+    '</div>';
+  body.appendChild(blackboard);
+
+  // 4) 四大施政演说策略卡牌
+  const tacticsBox = h('div', 'el-tactics-box');
+  tacticsBox.innerHTML = '<div class="el-tactics-title">🗣️ 请选择本轮演说与拉票策略：</div>';
+  const grid = h('div', 'el-tactics-grid');
+
+  const defaultOpts = [
+    { label: '🤝 亲民路线·倾听心声', sub: '基于情商，拉拢广大同学支持' },
+    { label: '🌟 才艺展示·硬核特长', sub: '亮出最高特长才华，惊艳全场' },
+    { label: '🍭 零食许诺·请客公关', sub: '花费 20 元买零食，吸引调皮同学' },
+    { label: '📜 严密施政·学业互助', sub: '基于智商，赢得学霸与老师信赖' }
+  ];
+  const opts = (p.opts && p.opts.length === 4) ? p.opts : defaultOpts;
+
+  opts.forEach((opt, idx) => {
+    const card = h('button', 'el-tactic-btn');
+    card.innerHTML =
+      '<div class="el-tactic-title">' + (opt.label || opt) + '</div>' +
+      '<div class="el-tactic-desc">' + (opt.sub || '') + '</div>';
+    card.onclick = () => {
+      sound.click();
+      const r = CP.resolve(idx);
+      if (r) toast(r);
+      renderAll();
+    };
+    grid.appendChild(card);
+  });
+  tacticsBox.appendChild(grid);
+  body.appendChild(tacticsBox);
 
   m.appendChild(body);
 }

@@ -208,4 +208,55 @@ assert.strictEqual(CP.pending().length, 0, '走下舞台后模态框已关闭');
 assert(CP.state().insight >= preInsight + 40, '悟性已成功发放');
 console.log('特长才艺选秀专属交互舞台与三评委亮灯验证完全通过！');
 
-console.log('\n🎉 全部核心机制与选秀交互舞台单元测试全部 100% 通过！');
+console.log('\n--- 测试 8: 🗳️ 班干部三向竞选演说策略博弈台 ---');
+while (CP.pending().length) CP.resolve(0);
+CP.state().turn = 18;
+CP.state().attrs.eq = 120;
+CP.state().attrs.iq = 120;
+CP.state().money = 100;
+CP.state().talents = ['aoshu'];
+const preFace = CP.state().face;
+
+// 触发班干部竞选
+CP.state().pending.push({
+  type: 'election',
+  title: '🗳️ 班干部三向竞选演说大会',
+  opts: [
+    { label: '🤝 亲民路线·倾听心声' },
+    { label: '🌟 才艺展示·硬核特长' },
+    { label: '🍭 零食许诺·请客公关' },
+    { label: '📜 严密施政·学业互助' }
+  ]
+});
+// 手动同步初始化 election 数据模型
+CP.state().election = {
+  round: 1, maxRound: 3, myVotes: 0,
+  rival: { name: '王小明', title: '原班长', icon: '🧑‍🏫', motto: '带领全班第一！', votes: 0 },
+  totalVotes: 50, targetVotes: 26, logs: [], finished: false, won: false
+};
+
+// 第1轮演说: 出招亲民路线 (index 0)
+CP.resolve(0);
+const el1 = CP.state().election;
+assert(el1.myVotes > 0, '第1轮演说应斩获票数');
+assert(el1.rival.votes > 0, '对手也应拉到选票');
+assert.strictEqual(el1.round, 2, '应进入第2轮');
+console.log('第1轮拉票得票:', el1.myVotes, '对手:', el1.rival.votes);
+
+// 持续演说拉票直到决出胜负 (过半门槛或3轮结标)
+let safety = 0;
+while (!CP.state().election.finished && safety++ < 5) {
+  CP.resolve(1);
+}
+assert(CP.state().election.finished, '竞选演说必须决出胜负并结算完成');
+assert(CP.pending().length > 0 && CP.pending()[0].type === 'news', '应弹出竞选终局任命公报');
+const newsModal = CP.pending()[0];
+console.log('竞选终局得票: 我方 ' + CP.state().election.myVotes + ' vs 对手 ' + CP.state().election.rival.votes);
+console.log('竞选结果公报:', newsModal.title, newsModal.body.split('\n')[0]);
+
+// 确认就任并关闭任命公报
+CP.resolve(0);
+assert.strictEqual(CP.pending().length, 0, '就任后任命公报应已关闭');
+console.log('班干部竞选演说多轮博弈与胜选任命验证全部通过！');
+
+console.log('\n🎉 全部核心机制、选秀舞台与班干部竞选演说单元测试全部 100% 通过！');

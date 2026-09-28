@@ -1200,26 +1200,124 @@ function faceDuelStep(actionIdx) {
   }
 }
 
-/* ---------- 班干部竞选 ---------- */
+/* ---------- 🗳️ 班干部竞选演说策略博弈 (Class Committee Election) ---------- */
 function pendElection() {
-  S.election = { round: 0, votes: 0 };
-  S.pending.push({ type: 'election', title: '班干部竞选', body: '和两个竞争者抢一个劳动委 + 学习委。拉票吧!\n(两轮拉票,票数决定胜负)', opts: ['🤝 辅导同学(eq)', '🎤 才艺展示(qe)', '🍬 请客吃糖(钱-20)'] });
+  const rivals = [
+    { name: '王小明', title: '原班长·全科代表', icon: '🧑‍🏫', motto: '“带领全班考第一是我的责任！”', votes: 0 },
+    { name: '李华', title: '文艺课代表', icon: '🎨', motto: '“让大家的校园生活更多姿多彩！”', votes: 0 },
+    { name: '赵小刚', title: '热血体育委员', icon: '🏀', motto: '“选我！以后体育课我带大家练球！”', votes: 0 }
+  ];
+  const rival = rivals[Math.floor(Math.random() * rivals.length)];
+  const totalVotes = 50;
+  const targetVotes = 26; // 过半当选门槛
+
+  S.election = {
+    round: 1,
+    maxRound: 3,
+    myVotes: 0,
+    rival,
+    totalVotes,
+    targetVotes,
+    logs: ['班级黑板报下，全班 50 名同学的班干部竞选演说大会正式开幕！'],
+    finished: false,
+    won: false
+  };
+
+  S.pending.push({
+    type: 'election',
+    title: '🗳️ 班干部三向竞选演说大会',
+    body: '登上讲台，向全班同学发表施政演说！争夺班级中队长/班长席位！',
+    election: S.election,
+    opts: [
+      { label: '🤝 亲民路线·倾听心声', sub: '基于情商，拉拢广大同学支持' },
+      { label: '🌟 才艺展示·硬核特长', sub: '亮出最高特长才华，惊艳全场' },
+      { label: '🍭 零食许诺·请客公关', sub: '花费 20 元买零食，吸引调皮同学' },
+      { label: '📜 严密施政·学业互助', sub: '基于智商，赢得学霸与老师信赖' }
+    ]
+  });
 }
+
 function doElection(o) {
   const el = S.election;
-  let v = 0;
-  if (o === 0) { v = RI(8, 16); S.sat = clamp(S.sat + 4, 0, 140); log('辅导同学做作业,好感上来'); }
-  if (o === 1) { v = RI(6, 12) + (bestTalent() ? 4 : 0); }
-  if (o === 2) { v = RI(5, 10); S.money = Math.max(0, S.money - 20); S.sat = clamp(S.sat - 3, 0, 140); }
-  el.votes += v; el.round++;
-  return v;
+  if (!el || el.finished) return 0;
+
+  let myGain = 0;
+  let logText = '';
+
+  // 1) 玩家演讲拉票策略结算
+  if (o === 0) {
+    // 亲民路线: 依赖情商
+    const eqBonus = Math.min(6, Math.floor(((S.attrs && S.attrs.eq) || 0) / 35));
+    myGain = RI(8, 14) + eqBonus;
+    S.sat = clamp(S.sat + 3, 0, 140);
+    logText = '第' + el.round + '轮: 🤝 你真挚地倾听同学心声并承诺课后互助辅导，打动了普通同学，斩获 ' + myGain + ' 票！';
+  } else if (o === 1) {
+    // 才艺特长: 依赖特长稀有度
+    const t = bestTalent();
+    const rBonus = t ? t.r * 3 : 0;
+    myGain = RI(7, 12) + rBonus;
+    logText = '第' + el.round + '轮: 🌟 你当众亮出拿手绝活【' + (t ? t.n : '大嗓门') + '】，技惊四座，赢得 ' + myGain + ' 票！';
+  } else if (o === 2) {
+    // 零食公关: 消耗金钱
+    S.money = Math.max(0, S.money - 20);
+    S.sat = clamp(S.sat - 2, 0, 140);
+    myGain = RI(10, 16);
+    logText = '第' + el.round + '轮: 🍭 你许诺考后请大家吃校门口雪糕辣条，后排同学欢声雷动，获得 ' + myGain + ' 票！(零花钱-20)';
+  } else {
+    // 严密施政: 依赖智商
+    const iqBonus = Math.min(6, Math.floor(((S.attrs && S.attrs.iq) || 0) / 35));
+    myGain = RI(8, 13) + iqBonus;
+    logText = '第' + el.round + '轮: 📜 你有条不紊地列出班级学习互助管理方案，学霸群体纷纷举手表决，获得 ' + myGain + ' 票！';
+  }
+
+  // 2) 对手竞选拉票
+  const rivalGain = RI(6, 12);
+  el.rival.votes += rivalGain;
+  const rivalLog = '对手【' + el.rival.name + '】' + el.rival.motto + '，拉走了 ' + rivalGain + ' 票！';
+
+  el.myVotes += myGain;
+  el.logs.push(logText);
+  el.logs.push(rivalLog);
+  el.round++;
+
+  // 3) 判定是否达成过半或轮次用尽
+  if (el.round > el.maxRound || el.myVotes >= el.targetVotes || el.rival.votes >= el.targetVotes) {
+    el.finished = true;
+    el.won = el.myVotes >= el.rival.votes;
+  }
+
+  log('班干部竞选拉票: 我方得票+' + myGain + ', 对手+' + rivalGain + ' (当前 ' + el.myVotes + ' vs ' + el.rival.votes + ')');
+  return myGain;
 }
+
 function electionFinish() {
-  const need = RI(20, 30);
-  const win = S.election.votes >= need;
-  S.face = Math.max(0, S.face + (win ? 60 : -10));
-  const r = win ? '你当选了!' : '差一点点,下次再来!';
-  S.pending.push({ type: 'news', title: '竞选结果', body: '你的票数 ' + S.election.votes + '/>' + need + '\n' + r + (win ? '\n(面子+60,同学好感+)' : '\n(面子-10)'), opts: ['好'] });
+  const el = S.election;
+  if (!el) return;
+  const win = el.myVotes >= el.rival.votes;
+  el.finished = true;
+  el.won = win;
+
+  if (win) {
+    S.face += 60;
+    S.sat = clamp(S.sat + 15, 0, 140);
+    Object.keys(S.npcAff || {}).forEach(k => {
+      S.npcAff[k] = (S.npcAff[k] || 0) + 8;
+    });
+    S.pending.push({
+      type: 'news',
+      title: '🏆 成功当选班级中队长！',
+      body: '经过三轮激烈的竞选演说，你以 ' + el.myVotes + ' 票力压对手【' + el.rival.name + '】(' + el.rival.votes + '票)！\n\n🎉 班主任郑重为你佩戴上光荣的“三道杠”中队长臂章！全班掌声雷动！\n(家庭面子+60, 父母满意+15, 同学全员好感+8)',
+      opts: ['光荣就任 🎖️']
+    });
+  } else {
+    S.face = Math.max(0, S.face - 10);
+    S.pending.push({
+      type: 'news',
+      title: '竞选惜败：就任劳动委员',
+      body: '最终得票 ' + el.myVotes + ' 票 vs ' + el.rival.votes + ' 票，对手【' + el.rival.name + '】胜选。\n\n班主任走下讲台拍拍你：“表现非常出色！虽然没当上班长，老师特委任你为劳动委员，继续发光发热！”\n(面子-10, 演说技巧大获提升)',
+      opts: ['欣然受任 🧹']
+    });
+  }
 }
 
 /* ---------- 职业 / 婚姻 / 世代 ---------- */
@@ -1688,6 +1786,7 @@ const API = {
   familyHistory: () => (S && S.fam && S.fam.history) || (loadFam() && loadFam().history) || [],
   talentShowPerform,
   talentsList: () => (S ? (S.talents || []).map(id => D.talentData.find(x => x.id === id)).filter(Boolean) : []),
+  election: () => (S && S.election),
 };
 function getFam() { return S ? S.fam : (loadFam() || { g: 0, talent: 0, tier: 0, attr: {}, atlas: [] }); }
 
@@ -1804,10 +1903,15 @@ function resolvePend(i) {
       break;
     }
     case 'election': {
-      const v = doElection(i);
-      if (S.election.round >= 2) { S.pending.shift(); electionFinish(); }
-      else S.pending[0].body = '拉了一票(+' + v + ')。再来一轮!当前票: ' + S.election.votes;
-      res = '拉到 ' + v + ' 票';
+      const tacticIdx = (typeof i === 'object' && i && i.tactic != null) ? i.tactic : (typeof i === 'number' ? i : 0);
+      const v = doElection(tacticIdx);
+      if (S.election && S.election.finished) {
+        S.pending.shift();
+        electionFinish();
+      } else if (S.pending[0]) {
+        S.pending[0].body = '第 ' + (S.election.round - 1) + ' 轮演说斩获 ' + v + ' 票！请选择下一轮施政演说策略！';
+      }
+      res = '竞选拉票斩获 ' + v + ' 票';
       break;
     }
     case 'marry': res = marryResolve(i); break;
