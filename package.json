@@ -1,0 +1,31 @@
+{
+  "name": "chinese-parent-h5",
+  "version": "2.1.1",
+  "description": "🎮 纯前端深度还原《中国式家长》H5自娱版：原生单页/PWA离线/脑洞日程/特长选秀/高考相亲/百年家族传承",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "test": "node tests/test_new_gameplay.js && node tests/sim.js && node tests/test_events.js && node tests/test_optimizations.js",
+    "test:gameplay": "node tests/test_new_gameplay.js",
+    "test:sim": "node tests/sim.js",
+    "test:events": "node tests/test_events.js",
+    "test:opts": "node tests/test_optimizations.js"
+  },
+  "keywords": [
+    "chinese-parents",
+    "h5-game",
+    "game-development",
+    "pwa",
+    "html5-game",
+    "simulation-game",
+    "javascript",
+    "single-page-application"
+  ],
+  "author": "hufengxiao",
+  "license": "MIT",
+  "homepage": "https://chinese-parent.pages.dev/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hufengxiao/chinese-parent.git"
+  }
+}
