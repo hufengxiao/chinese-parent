@@ -1300,6 +1300,7 @@ function endTurn() {
   if (t === 18) pendElection();
   if (t === 24) pendFinal();
   if (t === 32) pendZhongkao();
+  if (t === 43) pendGraduationToken();
   if (t === 44) pendGaokao();
   if (t === 28) pendFace(0);
   if (t === 37) pendFace(1);
@@ -1349,6 +1350,10 @@ function endTurn() {
         S.pending.push({ type: 'news', title: ev.n, body: ev.d + (effText(ev.eff) ? '\n【' + effText(ev.eff) + '】' : ''), opts: ['好'] });
       }
     }
+  }
+  // ---- 随机同学邀约大事件 (Turn 25~42, 25% 几率触发) ----
+  if (t >= 25 && t <= 42 && Math.random() < 0.25) {
+    pendSpontaneousDate();
   }
   S.slots = new Array(6).fill(null);
   captureTurnStart();
@@ -2136,29 +2141,271 @@ function atlas() {
   list.forEach(t => { stats[t.r] = (stats[t.r] || 0) + 1; });
   return { list, stats, total: list.length, fam: S.fam };
 }
+/* ---------- 👥 同学社交双向羁绊与偶发约会大事件 (Round 5 SOC-BONDS) ---------- */
+function getBondTier(aff) {
+  if (aff >= 120) return { tier: 5, title: '青梅竹马', desc: '独一无二的青春密友，未来婚恋享有至高默契与基因爆发加成' };
+  if (aff >= 81) return { tier: 4, title: '莫逆之交', desc: '周末互相串门，遇到挫折给予暖心减压' };
+  if (aff >= 51) return { tier: 3, title: '志趣相投', desc: '放学校门口推车闲逛，倾诉彼此心事与理想' };
+  if (aff >= 21) return { tier: 2, title: '同窗好友', desc: '互相借阅课堂笔记、课间结伴吃食堂' };
+  return { tier: 1, title: '点头之交', desc: '日常礼貌问候，偶遇打个招呼' };
+}
+
+function pendSpontaneousDate() {
+  if (!S || !S.npcAff) return;
+  const meG = S.gender === 'boy' ? '女' : '男';
+  const cands = D.npcs.filter(n => n.gender === meG && (S.npcAff[n.id] || 0) >= 25);
+  if (!cands.length) return;
+
+  cands.sort((a, b) => (S.npcAff[b.id] || 0) - (S.npcAff[a.id] || 0));
+  const npc = cands[0];
+
+  const dateConfigs = {
+    xiaomei: {
+      title: '🍡 夏小美 · 校门口关东煮之约',
+      body: '夏小美神秘兮兮地拉了拉你的衣角：“今天校门口关东煮买一送一，老板还送秘制萝卜汤，放学一起去呀！”',
+      opts: [
+        {
+          label: '🍡 欣然同往 (花费10元零钱)',
+          sub: '零钱-10, 情商+18, 压力-25, 好感+15',
+          costMoney: 10,
+          eff: { eq: 18, stress: -25 },
+          affGain: 15,
+          logText: '和夏小美在校门口热腾腾地吃着关东煮，聊得前仰后合！'
+        },
+        {
+          label: '🚲 改天再去 (礼貌推托)',
+          sub: '压力-5',
+          eff: { stress: -5 },
+          affGain: 0,
+          logText: '夏小美有些遗憾地挥手告别：“好吧，那下次你请客哦！”'
+        }
+      ]
+    },
+    shenhan: {
+      title: '🏀 沈寒 · 周末球场三对三对抗',
+      body: '沈寒单手抱着篮球走到你桌前：“隔壁班带人来踢馆，我们队缺个冷静的控球后卫，你来帮我一把！”',
+      opts: [
+        {
+          label: '🏀 全力应战 (消耗20行动力)',
+          sub: '体力-20, 体魄+25, 沈寒好感+15, 压力-15',
+          costAct: 20,
+          eff: { phy: 25, stress: -15 },
+          affGain: 15,
+          logText: '你在三分线外妙传助攻沈寒暴扣！拿下比赛扬眉吐气！'
+        },
+        {
+          label: '🥤 场边加油 (观战助威)',
+          sub: '体魄+6, 沈寒好感+5',
+          eff: { phy: 6 },
+          affGain: 5,
+          logText: '你在场边递上冰镇矿泉水，沈寒擦着汗对你比了个大拇指。'
+        }
+      ]
+    },
+    summer: {
+      title: '🎨 苏软软 · 美术馆周末写生之邀',
+      body: '苏软软有些微红着脸轻声说：“那个……我有两张市美术馆画展的赠票，周末你想和我一起去看看吗……”',
+      opts: [
+        {
+          label: '🎨 欣然赴约 (消耗15悟性)',
+          sub: '悟性-15, 想象力+30, 苏软软好感+18, 压力-20',
+          costInsight: 15,
+          eff: { img: 30, stress: -20 },
+          affGain: 18,
+          logText: '在艺术画廊的静谧光影中，你与苏软软并肩漫步，心灵共鸣。'
+        },
+        {
+          label: '📖 在家看书 (客气婉拒)',
+          sub: '悟性+8',
+          eff: { insight: 8 },
+          affGain: 0,
+          logText: '苏软软轻轻点头：“嗯嗯，那你好好复习，下次再约~”'
+        }
+      ]
+    },
+    kongde: {
+      title: '📐 孔德 · 奥数竞赛难题深夜攻关',
+      body: '孔德推了推眼镜，兴奋地指着草稿纸：“这道全省数学竞赛压轴立体几何我想了一整晚，快来看看这条辅助线！”',
+      opts: [
+        {
+          label: '📐 共同推导 (消耗20行动力)',
+          sub: '体力-20, 智商+25, 孔德好感+16',
+          costAct: 20,
+          eff: { iq: 25 },
+          affGain: 16,
+          logText: '两人演算了整整三大张稿纸终于破题，相视大笑！'
+        },
+        {
+          label: '💡 虚心求教 (直接听讲)',
+          sub: '智商+10, 孔德好感+6',
+          eff: { iq: 10 },
+          affGain: 6,
+          logText: '孔德头头是道地为你讲解了题眼，受益匪浅。'
+        }
+      ]
+    },
+    lizhen: {
+      title: '🔥 李振 · 体育场冲刺强化特训',
+      body: '李振吹响口哨：“体测长跑快到了，兄弟别趴着，起来跟我跑个五公里拉拉体能！”',
+      opts: [
+        {
+          label: '🔥 一起冲刺 (消耗20行动力)',
+          sub: '体力-20, 体魄+28, 李振好感+15',
+          costAct: 20,
+          eff: { phy: 28 },
+          affGain: 15,
+          logText: '顶风冲过终点线，夕阳下拉长的影子充满了青春汗水！'
+        },
+        {
+          label: '👟 慢跑陪练',
+          sub: '体魄+10, 李振好感+5',
+          eff: { phy: 10 },
+          affGain: 5,
+          logText: '在塑胶跑道上有说有笑慢跑两圈，身心放松。'
+        }
+      ]
+    },
+    yuanyuan: {
+      title: '🧸 媛媛 · 潮流街区文具淘金',
+      body: '媛媛晃着新买的可爱发夹：“听说新开的那家文创店上了全套限定贴纸和小文具，陪我去逛逛嘛！”',
+      opts: [
+        {
+          label: '🧸 结伴淘宝 (花费15元零钱)',
+          sub: '零钱-15, 魅力+22, 媛媛好感+16, 压力-18',
+          costMoney: 15,
+          eff: { cha: 22, stress: -18 },
+          affGain: 16,
+          logText: '在琳琅满目的货架间挑选精美文具，媛媛送了你一枚可爱挂件！'
+        },
+        {
+          label: '✨ 推荐好物',
+          sub: '魅力+8, 媛媛好感+5',
+          eff: { cha: 8 },
+          affGain: 5,
+          logText: '你为媛媛推荐了一款热销书签，她开心地收下了。'
+        }
+      ]
+    },
+    qixue: {
+      title: '🎮 棋子 · 街机厅双人通关挑战',
+      body: '棋子压了压鸭舌帽：“合金弹头双人合作模式今天有人刷新了全服记录，来，上机带我破了它！”',
+      opts: [
+        {
+          label: '🕹️ 投币开黑 (消耗15行动力)',
+          sub: '体力-15, 智商+18, 想象力+15, 棋子好感+16',
+          costAct: 15,
+          eff: { iq: 18, img: 15 },
+          affGain: 16,
+          logText: '摇杆狂搓，炸弹连发！两人绝地翻盘打破榜首纪录！'
+        },
+        {
+          label: '🍿 场边助威',
+          sub: '智商+8, 棋子好感+5',
+          eff: { iq: 8 },
+          affGain: 5,
+          logText: '你在边上递可乐呐喊助威，棋子一命通关爽快击掌！'
+        }
+      ]
+    }
+  };
+
+  const conf = dateConfigs[npc.id] || {
+    title: '🤝 ' + npc.n + ' · 课间真挚交谈',
+    body: npc.n + ' 走到你身边，与你聊起了近期的理想与心愿。',
+    opts: [
+      { label: '倾心畅聊', sub: '情商+15, 好感+10', eff: { eq: 15 }, affGain: 10, logText: '与 ' + npc.n + ' 畅谈青春理想，彼此勉励。' },
+      { label: '点头微笑', sub: '情商+5', eff: { eq: 5 }, affGain: 3, logText: '礼貌微笑，彼此默契。' }
+    ]
+  };
+
+  S.pending.push({
+    type: 'social_spontaneous_date',
+    title: conf.title,
+    body: conf.body,
+    npcId: npc.id,
+    npcName: npc.n,
+    opts: conf.opts.map(o => ({
+      label: o.label,
+      sub: o.sub,
+      costMoney: o.costMoney,
+      costAct: o.costAct,
+      costInsight: o.costInsight,
+      eff: o.eff,
+      affGain: o.affGain,
+      logText: o.logText
+    }))
+  });
+}
+
+function pendGraduationToken() {
+  if (!S || !S.npcAff) return;
+  const meG = S.gender === 'boy' ? '女' : '男';
+  const bestFriends = D.npcs.filter(n => n.gender === meG && (S.npcAff[n.id] || 0) >= 80);
+  if (!bestFriends.length) return;
+
+  bestFriends.sort((a, b) => (S.npcAff[b.id] || 0) - (S.npcAff[a.id] || 0));
+  const topBff = bestFriends[0];
+  const tokenMap = {
+    summer: { name: '🌸 苏软软的草稿画本', eff: { img: 50 }, quote: '“三年韶华，每一页速写里都有你的侧影。愿你高考金榜题名，岁岁如意。”' },
+    shenhan: { name: '🏀 沈寒的珍藏战靴', eff: { phy: 50 }, quote: '“球场上最好的搭档，高考考场上也不许输！毕业之后，我们大学球场再见！”' },
+    xiaomei: { name: '🍡 夏小美的手作纪念册', eff: { eq: 50 }, quote: '“哈哈哈哈，高中这三年能遇见你是我最大的幸运！苟富贵，勿相忘呀！”' },
+    kongde: { name: '🔭 孔德的星空图鉴', eff: { iq: 50 }, quote: '“向星空仰望的人，终将在更高处相逢。愿你如恒星般璀璨生辉！”' },
+    yuanyuan: { name: '🧸 媛媛的手作香囊', eff: { cha: 50 }, quote: '“把所有的好运气都缝在里面啦，祝我的同桌在考场上一路开挂！”' },
+    lizhen: { name: '🔥 李振的冠军哨子', eff: { phy: 50 }, quote: '“哨声一响，全力冲刺！高考冲线，必须给我拿第一！”' },
+    qixue: { name: '🎮 棋子的限定纪念卡', eff: { iq: 25, img: 25 }, quote: '“通关了高中这个大副本，大学见！这枚限定卡是我最高荣誉的徽记，送你！”' }
+  };
+
+  const tok = tokenMap[topBff.id] || { name: '💌 ' + topBff.n + ' 的亲笔毕业留言', eff: { eq: 40 }, quote: '“同窗数载，情谊长青。祝未来前程似锦！”' };
+
+  S.pending.push({
+    type: 'graduation_token',
+    title: '🎓 高三终局 · 毕业留言册与信物互赠',
+    body: '在高中毕业典礼前夕，同窗密友「' + topBff.n + '」红着眼眶来到你的课桌前，郑重递给你一份亲手准备的毕业纪念信物：\n\n' +
+          '“' + tok.quote + '”\n\n获得永久信物【' + tok.name + '】！',
+    tokenName: tok.name,
+    tokenEff: tok.eff,
+    npcId: topBff.id,
+    npcName: topBff.n,
+    opts: ['💌 郑重珍藏入怀，互道珍重与前程似锦！']
+  });
+}
+
 function socialList() {
   const meG = S.gender === 'boy' ? '女' : '男';
-  return D.npcs.filter(n => n.gender === meG).map(n => ({
-    id: n.id,
-    name: n.n,
-    icon: n.icon,
-    aff: S.npcAff[n.id] || 0,
-    intro: n.intro,
-    like: n.like || [],
-    quotes: n.quotes || {}
-  }));
+  return D.npcs.filter(n => n.gender === meG).map(n => {
+    const aff = S.npcAff[n.id] || 0;
+    const bond = getBondTier(aff);
+    return {
+      id: n.id,
+      name: n.n,
+      icon: n.icon,
+      aff: aff,
+      bondTier: bond.tier,
+      bondTitle: bond.title,
+      bondDesc: bond.desc,
+      intro: n.intro,
+      like: n.like || [],
+      quotes: n.quotes || {}
+    };
+  });
 }
+
 function chat(id) {
   if (S.act < 3) { toast('行动力不足(需3)'); return; }
   S.act -= 3;
   const g = RI(3, 8);
-  S.npcAff[id] = clamp((S.npcAff[id] || 0) + g, 0, 100);
+  const prevAff = S.npcAff[id] || 0;
+  S.npcAff[id] = clamp(prevAff + g, 0, 150);
   const nm = (D.npcs.find(n => n.id === id) || {}).n || 'ta';
   log('和' + nm + '聊了聊,好感+' + g);
-  if (S.npcAff[id] >= 60) toast('💕 ' + nm + '好像对你有点特别……');
+  if (prevAff < 21 && S.npcAff[id] >= 21) toast('🤝 与 ' + nm + ' 熟络起来，晋升为【同窗好友】！');
+  else if (prevAff < 51 && S.npcAff[id] >= 51) toast('💌 与 ' + nm + ' 无话不谈，晋升为【志趣相投】！');
+  else if (prevAff < 81 && S.npcAff[id] >= 81) toast('💕 与 ' + nm + ' 患难与共，晋升为【莫逆之交】！');
+  else if (prevAff < 120 && S.npcAff[id] >= 120) toast('💖 与 ' + nm + ' 达成最高羁绊【青梅竹马】！');
   save();
   return g;
 }
+
 function gift(id, itemId) {
   if (S.act < 3) { toast('行动力不足(需3)'); return null; }
   const npc = D.npcs.find(n => n.id === id);
@@ -2183,7 +2430,7 @@ function gift(id, itemId) {
   const isFav = giftItem && npc.like && npc.like.some(lk => giftItem.n.indexOf(lk) >= 0 || lk.indexOf(giftItem.n) >= 0);
   const g = isFav ? RI(22, 32) : (giftItem ? RI(12, 18) : RI(10, 16));
   const prevAff = S.npcAff[id] || 0;
-  S.npcAff[id] = clamp(prevAff + g, 0, 100);
+  S.npcAff[id] = clamp(prevAff + g, 0, 150);
 
   let quote = '';
   if (isFav && npc.quotes && npc.quotes.like) {
@@ -2196,9 +2443,10 @@ function gift(id, itemId) {
   log('送给「' + npc.n + '」' + giftName + '，好感+' + g + (isFav ? ' (喜好暴击!)' : ''));
   if (quote) toast(npc.n + ': ' + quote);
 
-  if (prevAff < 30 && S.npcAff[id] >= 30) toast('💌 与 ' + npc.n + ' 建立了默契，课间会互相传小纸条了。');
-  else if (prevAff < 60 && S.npcAff[id] >= 60) toast('💕 ' + npc.n + ' 对你的心意与众不同，放学经常一起推单车。');
-  else if (prevAff < 80 && S.npcAff[id] >= 80) toast('💖 与 ' + npc.n + ' 许下青葱约定，情愫渐深……');
+  if (prevAff < 21 && S.npcAff[id] >= 21) toast('🤝 与 ' + npc.n + ' 熟络起来，晋升为【同窗好友】！');
+  else if (prevAff < 51 && S.npcAff[id] >= 51) toast('💌 与 ' + npc.n + ' 无话不谈，晋升为【志趣相投】！');
+  else if (prevAff < 81 && S.npcAff[id] >= 81) toast('💕 与 ' + npc.n + ' 患难与共，晋升为【莫逆之交】！');
+  else if (prevAff < 120 && S.npcAff[id] >= 120) toast('💖 与 ' + npc.n + ' 许下青葱之约，达成最高羁绊【青梅竹马】！');
 
   save();
   return { g, isFav, quote, aff: S.npcAff[id] };
@@ -2456,6 +2704,10 @@ const API = {
   },
   activeSlot: () => activeSlot,
   saveSlots: listSlots,
+  bondTier: getBondTier,
+  pendDate: pendSpontaneousDate,
+  pendToken: pendGraduationToken,
+  tokens: () => (S && S.tokens) || [],
 };
 function getFam() { return S ? S.fam : (loadFam() || { g: 0, talent: 0, tier: 0, attr: {}, atlas: [] }); }
 
@@ -2597,6 +2849,39 @@ function resolvePend(i) {
       }
       S.pending.shift();
       res = m.trans ? ('成功开启「' + m.trans.nextName + '」阶段！' + (m.trans.giftDesc ? ' ' + m.trans.giftDesc : '')) : '开启新阶段';
+      break;
+    }
+    case 'social_spontaneous_date': {
+      const idx = typeof i === 'number' ? i : 0;
+      const opt = (m.opts && m.opts[idx]) ? m.opts[idx] : (m.opts && m.opts[0]);
+      if (opt) {
+        if (opt.costMoney && S.money < opt.costMoney) {
+          toast('零钱不足，改天再去');
+        } else {
+          if (opt.costMoney) S.money -= opt.costMoney;
+          if (opt.costAct) S.act = Math.max(0, S.act - opt.costAct);
+          if (opt.costInsight) S.insight = Math.max(0, S.insight - opt.costInsight);
+          if (opt.eff) applyEff(opt.eff);
+          if (opt.affGain && m.npcId) {
+            S.npcAff[m.npcId] = clamp((S.npcAff[m.npcId] || 0) + opt.affGain, 0, 150);
+          }
+          if (opt.logText) log(opt.logText);
+        }
+      }
+      S.pending.shift();
+      res = (opt && opt.label) || '完成同窗约会';
+      break;
+    }
+    case 'graduation_token': {
+      if (!S.tokens) S.tokens = [];
+      if (m.tokenName && S.tokens.indexOf(m.tokenName) < 0) {
+        S.tokens.push(m.tokenName);
+        if (m.tokenEff) applyEff(m.tokenEff);
+        log('获得高三毕业纪念信物【' + m.tokenName + '】！');
+        toast('🎓 获得毕业纪念信物【' + m.tokenName + '】！');
+      }
+      S.pending.shift();
+      res = '珍藏毕业信物';
       break;
     }
     case 'endgen': {

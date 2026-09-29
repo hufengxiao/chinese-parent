@@ -781,16 +781,16 @@ function renderSocial() {
     list.forEach(n => {
       const d = h('div', 'card npc-card');
       const aff = n.aff || 0;
-      const hearts = aff >= 80 ? '💖💖💖💖' : aff >= 60 ? '💖💖💖🤍' : aff >= 30 ? '💛💛🤍🤍' : '🤍🤍🤍🤍';
-      const bondTitle = aff >= 80 ? '💖 青梅竹马 · 心照不宣' : aff >= 60 ? '💕 放学同行 · 独一无二' : aff >= 30 ? '💌 课间小纸条 · 默契渐生' : '点头之交';
+      const hearts = aff >= 120 ? '💖💖💖💖💖' : aff >= 81 ? '💖💖💖💖🤍' : aff >= 51 ? '💖💖💖🤍🤍' : aff >= 21 ? '💛💛🤍🤍🤍' : '🤍🤍🤍🤍🤍';
+      const bondHeader = n.bondTitle ? ('【' + n.bondTitle + '】' + n.bondDesc) : (aff >= 120 ? '💖 青梅竹马 · 独一无二' : aff >= 81 ? '💕 莫逆之交 · 倾心以待' : aff >= 51 ? '💌 志趣相投 · 放学同行' : aff >= 21 ? '🤝 同窗好友 · 课间互动' : '点头之交');
       const likeTags = (n.like && n.like.length) ? n.like.join('、') : '精美礼物';
 
       d.innerHTML =
         '<div style="display:flex;align-items:flex-start;gap:10px">' +
           '<span class="av">' + n.icon + '</span>' +
           '<div class="npc-body" style="flex:1">' +
-            '<div class="flex-between"><span class="nm">' + n.name + '</span><span class="af">' + hearts + ' ' + aff + '/100</span></div>' +
-            '<div class="small" style="color:var(--gold-main);margin:2px 0">' + bondTitle + '</div>' +
+            '<div class="flex-between"><span class="nm">' + n.name + '</span><span class="af">' + hearts + ' ' + aff + '/150</span></div>' +
+            '<div class="small" style="color:var(--gold-main);margin:2px 0">' + bondHeader + '</div>' +
             '<div class="small">' + n.intro + '</div>' +
             '<div class="small" style="color:var(--ink-secondary);margin-top:2px">🎁 喜好: <b>' + likeTags + '</b></div>' +
           '</div>' +

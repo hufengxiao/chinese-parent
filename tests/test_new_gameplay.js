@@ -1043,7 +1043,74 @@ testSound.stopBGM(); // 测试完成后清理调度器，确保测试进程干�
 
 console.log('WebAudio 五声 BGM 合成、三态切换、历史键位兼容与高潮音效全生命周期断言通过！');
 
-console.log('\n🎉 全部二十二项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD与原生古典BGM全部 100% 验证通过！');
+console.log('\n--- 测试 23: 👥 同学社交「双向羁绊」与偶发约会大事件 (Round 5) ---');
+CP.newGame();
+while (CP.pending().length) CP.resolve(0);
+
+// 1) 五阶羁绊体系评定函数断言
+assert.strictEqual(CP.bondTier(15).tier, 1);
+assert.strictEqual(CP.bondTier(15).title, '点头之交');
+assert.strictEqual(CP.bondTier(35).tier, 2);
+assert.strictEqual(CP.bondTier(35).title, '同窗好友');
+assert.strictEqual(CP.bondTier(70).tier, 3);
+assert.strictEqual(CP.bondTier(70).title, '志趣相投');
+assert.strictEqual(CP.bondTier(100).tier, 4);
+assert.strictEqual(CP.bondTier(100).title, '莫逆之交');
+assert.strictEqual(CP.bondTier(135).tier, 5);
+assert.strictEqual(CP.bondTier(135).title, '青梅竹马');
+
+// 2) 好感度突破 100 封顶与 150 阶段属性断言
+const socList = CP.social();
+assert(socList.length > 0, '开局应存在同窗列表');
+const targetNpc = socList[0];
+CP.state().npcAff[targetNpc.id] = 135;
+
+const updatedList = CP.social();
+const updatedNpc = updatedList.find(n => n.id === targetNpc.id);
+assert.strictEqual(updatedNpc.aff, 135, '好感度成功突破老版本的 100 限制达到 135');
+assert.strictEqual(updatedNpc.bondTier, 5, '好感 135 时晋升为五阶青梅竹马');
+assert.strictEqual(updatedNpc.bondTitle, '青梅竹马');
+
+// 3) 偶发约会大事件触发与交互结算断言
+CP.state().money = 100;
+CP.state().act = 100;
+CP.state().insight = 100;
+
+CP.pendDate();
+const datePends = CP.pending().filter(p => p.type === 'social_spontaneous_date');
+assert.strictEqual(datePends.length, 1, '必须如期生成专属同学偶发约会事件');
+const dateEv = datePends[0];
+assert(dateEv.title.includes(targetNpc.name), '邀约事件标题必须匹配最高好感同窗');
+assert(dateEv.opts && dateEv.opts.length >= 2, '约会事件必须提供两个以上互动分支');
+
+const affBefore = CP.state().npcAff[targetNpc.id];
+const opt0 = dateEv.opts[0];
+const moneyBefore = CP.state().money;
+const actBefore = CP.state().act;
+CP.resolve(0); // 执行欣然赴约分支
+
+if (opt0.costMoney) assert.strictEqual(CP.state().money, moneyBefore - opt0.costMoney, '正确扣除约会零钱');
+if (opt0.costAct) assert.strictEqual(CP.state().act, actBefore - opt0.costAct, '正确扣除约会体力');
+assert(CP.state().npcAff[targetNpc.id] >= affBefore, '约会成功后好感度进一步增长');
+
+// 4) 高三终局毕业纪念信物互赠断言
+CP.state().turn = 43; // 高三终局前夕
+CP.state().npcAff['summer'] = 110; // 苏软软好感破百
+CP.pendToken();
+
+const tokenPends = CP.pending().filter(p => p.type === 'graduation_token');
+assert.strictEqual(tokenPends.length, 1, '必须如期生成高三毕业纪念信物事件');
+const tokenEv = tokenPends[0];
+assert(tokenEv.tokenName.includes('苏软软'), '信物名称必须匹配高好感密友');
+const imgBefore = CP.state().attrs.img;
+
+CP.resolve(0); // 珍藏信物入怀
+assert(CP.tokens().some(t => t.includes('苏软软')), '信物必须成功存入主角永久信物集');
+assert(CP.state().attrs.img >= imgBefore + 40, '毕业纪念信物提供的永久属性必须生效');
+
+console.log('五阶同窗羁绊、突破100上限、偶发约会大事件与高三毕业纪念信物断言全部通过！');
+
+console.log('\n🎉 全部二十三项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM与双向社交羁绊全部 100% 验证通过！');
 
 
 
