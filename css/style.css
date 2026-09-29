@@ -2633,6 +2633,216 @@ button:active { transform: scale(0.96); }
   border-color: var(--red-deep);
   box-shadow: 0 2px 6px rgba(211, 56, 36, 0.25);
 }
+/* 🏛️ 宗祠牌匾与树状画卷 (Round 6 TREE-VIS) */
+.ancestral-hall-banner {
+  background: linear-gradient(135deg, #2c1810, #422006);
+  border: 2px solid #d97706;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  color: #fef3c7;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(66, 32, 6, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+.ancestral-hall-banner::after {
+  content: '宗';
+  position: absolute;
+  right: -8px;
+  bottom: -16px;
+  font-size: 80px;
+  font-family: serif;
+  color: rgba(217, 119, 6, 0.12);
+  pointer-events: none;
+}
+.hall-plaque {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 2px;
+  text-align: center;
+  margin-bottom: 10px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.hall-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+.hall-stat-item {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 4px;
+  border-radius: 6px;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+.hall-stat-item .h-lbl {
+  display: block;
+  font-size: 10px;
+  color: #fde68a;
+  margin-bottom: 2px;
+}
+.hall-stat-item .h-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* 树状代际画卷 */
+.tree-scroll-container {
+  overflow-x: auto;
+  padding: 6px 0;
+}
+.genealogy-tree {
+  position: relative;
+  padding-left: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.genealogy-tree::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 14px;
+  bottom: 24px;
+  width: 3px;
+  background: linear-gradient(180deg, #d97706, #059669);
+  border-radius: 2px;
+}
+.tree-node-wrap {
+  position: relative;
+}
+.tree-node-dot {
+  position: absolute;
+  left: -24px;
+  top: 16px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid #d97706;
+  box-shadow: 0 0 6px rgba(217, 119, 6, 0.5);
+  z-index: 2;
+}
+.tree-node-dot.founder {
+  background: #fbbf24;
+  border-color: #92400e;
+  width: 16px;
+  height: 16px;
+  left: -25px;
+}
+.tree-node-dot.current {
+  background: #10b981;
+  border-color: #047857;
+  animation: currentPulse 1.8s infinite ease-in-out;
+}
+@keyframes currentPulse {
+  0%, 100% { box-shadow: 0 0 4px #10b981; }
+  50% { box-shadow: 0 0 12px #34d399; }
+}
+
+.tree-card {
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease;
+}
+.tree-card:hover {
+  transform: translateX(3px);
+  border-color: var(--gold-main);
+}
+.tree-card.founder {
+  border: 1.5px solid #f59e0b;
+  background: linear-gradient(180deg, #fffbeb, #ffffff);
+}
+.tree-card.current {
+  border: 1.5px solid #10b981;
+  background: linear-gradient(180deg, #f0fdf4, #ffffff);
+}
+
+.tree-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.tree-gen-tag {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+.tree-card.founder .tree-gen-tag {
+  background: #f59e0b;
+  color: #ffffff;
+  border-color: #d97706;
+}
+.tree-card.current .tree-gen-tag {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #059669;
+}
+.tree-person-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.tree-rating-stamp {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #fff8e1;
+  color: #b45309;
+  border: 1px solid #fcd34d;
+}
+
+.tree-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.tree-badge-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--card-subtle);
+  border: 1px solid var(--border-line);
+  color: var(--ink-primary);
+}
+.tree-badge-chip b {
+  color: var(--ink-primary);
+}
+
+.tree-spouse-box {
+  font-size: 11px;
+  color: #475569;
+  background: #f8fafc;
+  padding: 5px 8px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  border-left: 3px solid #ec4899;
+}
+.tree-hl-box {
+  font-size: 11px;
+  color: var(--ink-primary);
+  background: #fffdf5;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border-left: 3px solid #f59e0b;
+}
+
+/* 兼容旧版 ancestor 类名 */
 .ancestor-timeline {
   display: flex;
   flex-direction: column;
@@ -2647,40 +2857,6 @@ button:active { transform: scale(0.96); }
   flex-direction: column;
   gap: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-}
-.anc-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.anc-gen {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--ink-primary);
-}
-.anc-rating {
-  font-size: 11px;
-  font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 8px;
-  background: #fff8e1;
-  color: #f57f17;
-  border: 1px solid #ffe082;
-}
-.anc-details {
-  font-size: 11px;
-  color: var(--ink-secondary);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-}
-.anc-hl {
-  font-size: 11px;
-  color: var(--ink-primary);
-  background: var(--card-subtle);
-  padding: 4px 8px;
-  border-radius: 6px;
-  border-left: 3px solid var(--gold-main);
 }
 .ach-grid {
   display: grid;

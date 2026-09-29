@@ -941,8 +941,26 @@ const sndSandboxCtx = {
     querySelectorAll: () => [],
     getElementById: () => null,
     addEventListener: () => {},
-    removeEventListener: () => {},
-    createElement: () => ({ style: {}, classList: { add() {}, remove() {} }, appendChild() {} })
+    createElement: (tag) => {
+      const el = {
+        tag,
+        className: '',
+        innerHTML: '',
+        children: [],
+        style: {},
+        classList: {
+          add(c) { el.className = (el.className + ' ' + c).trim(); },
+          remove() {},
+          contains() { return false; },
+          toggle() {}
+        },
+        appendChild(child) {
+          el.children.push(child);
+          return child;
+        }
+      };
+      return el;
+    }
   },
   addEventListener: () => {},
   removeEventListener: () => {},
@@ -1094,6 +1112,7 @@ if (opt0.costAct) assert.strictEqual(CP.state().act, actBefore - opt0.costAct, '
 assert(CP.state().npcAff[targetNpc.id] >= affBefore, '约会成功后好感度进一步增长');
 
 // 4) 高三终局毕业纪念信物互赠断言
+CP.state().gender = 'boy'; // 显式设定男主以匹配异性好友苏软软
 CP.state().turn = 43; // 高三终局前夕
 CP.state().npcAff['summer'] = 110; // 苏软软好感破百
 CP.pendToken();
@@ -1110,7 +1129,100 @@ assert(CP.state().attrs.img >= imgBefore + 40, '毕业纪念信物提供的永�
 
 console.log('五阶同窗羁绊、突破100上限、偶发约会大事件与高三毕业纪念信物断言全部通过！');
 
-console.log('\n🎉 全部二十三项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM与双向社交羁绊全部 100% 验证通过！');
+console.log('\n--- 测试 24: 📜 可视化百年家族族谱树状画卷 (Round 6 TREE-VIS) ---');
+// 构造包含始祖与多代传承的家族谱系
+const fakeFam = {
+  g: 3,
+  talent: 18,
+  tier: 4,
+  atlas: ['t1', 't2', 't3', 't4', 't5'],
+  history: [
+    {
+      gen: 1,
+      name: '铁蛋',
+      gender: 'boy',
+      job: '高级程序员',
+      jobIcon: '💻',
+      jobTier: 3,
+      spouse: '苏软软',
+      spouseTag: '校园恋人',
+      gk: 18500,
+      score: 85,
+      rating: 'S',
+      highlight: '带领家族走出寒门，第一位考入985名校的先祖！'
+    },
+    {
+      gen: 2,
+      name: '小满',
+      gender: 'girl',
+      job: '三甲主任医师',
+      jobIcon: '🩺',
+      jobTier: 4,
+      spouse: '林骨干',
+      spouseTag: '良缘相伴',
+      gk: 19200,
+      score: 92,
+      rating: 'SS',
+      highlight: '医者仁心，为家族积攒深厚声望与体面门第！'
+    }
+  ]
+};
+
+// 注入测试沙箱验证图谱生成与在世苗裔联动
+CP.fam().history = fakeFam.history;
+CP.fam().g = 3;
+CP.fam().tier = 4;
+CP.fam().talent = 18;
+CP.fam().atlas = fakeFam.atlas;
+
+// 1) 验证家族历史数据读取
+const historyList = CP.familyHistory();
+assert.strictEqual(historyList.length, 2, '历史先祖数量应为 2');
+assert.strictEqual(historyList[0].gen, 1, '第一代必须是开基始祖');
+assert.strictEqual(historyList[0].name, '铁蛋');
+assert.strictEqual(historyList[1].gen, 2, '第二代必须是小满');
+
+// 2) 验证在 UI 沙箱中渲染画卷
+const treeStage = {
+  innerHTML: '',
+  children: [],
+  appendChild(el) {
+    if (el) this.children.push(el);
+  }
+};
+sndSandboxCtx.document.querySelector = (sel) => {
+  if (sel === '#stage') return treeStage;
+  return null;
+};
+
+// 调用沙箱中的 renderAtlas 渲染树状谱系
+sndSandboxCtx.UI.setAtlasTab('tree');
+sndSandboxCtx.UI.renderAtlas();
+
+assert(treeStage.children.length > 0, 'Stage 必须成功挂载族谱画卷组件');
+const htmlDump = JSON.stringify(treeStage.children);
+
+// 3) 断言宗祠总览牌匾及四个核心指标
+assert(htmlDump.includes('ancestral-hall-banner'), '必须包含宗祠总览牌匾');
+assert(htmlDump.includes('百年氏族 · 宗祠总谱画卷'), '牌匾题字必须准确');
+assert(htmlDump.includes('绵延世系'), '包含绵延世系统计');
+assert(htmlDump.includes('最高门第'), '包含最高门第统计');
+assert(htmlDump.includes('传家特长'), '包含传家特长统计');
+assert(htmlDump.includes('先天底蕴'), '包含先天底蕴统计');
+
+// 4) 断言树状代际枝脉与先祖卡片
+assert(htmlDump.includes('genealogy-tree'), '必须包含纵深树状枝脉容器');
+assert(htmlDump.includes('👑 开基始祖'), '第一代必须赋予👑开基始祖专属荣誉印章');
+assert(htmlDump.includes('📜 第 2 代宗亲'), '第二代必须赋予📜宗亲图章');
+assert(htmlDump.includes('铁蛋') && htmlDump.includes('小满'), '必须呈现历代先祖姓名');
+
+// 5) 断言当代在世苗裔节点 (Living Scion)
+assert(htmlDump.includes('🌱 第') && htmlDump.includes('在世苗裔'), '必须呈现当代在世苗裔节点');
+assert(htmlDump.includes('正在书写生平…'), '当代节点必须包含动态书写状态印章');
+
+console.log('宗祠画卷总览牌匾、开基始祖图章、代际青墨主干与在世苗裔联动断言全部通过！');
+
+console.log('\n🎉 全部二十四项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM、双向社交与树状家族画卷全部 100% 验证通过！');
 
 
 

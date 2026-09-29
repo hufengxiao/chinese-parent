@@ -890,6 +890,9 @@ function renderShop() {
 
 /* ---------- 图鉴与家族百年谱系 ---------- */
 let atlasTab = 'talents';
+function setAtlasTab(tab) {
+  atlasTab = tab;
+}
 function renderAtlas() {
   const st = $('#stage');
   st.innerHTML = '';
@@ -938,28 +941,95 @@ function renderAtlas() {
     }
   } else if (atlasTab === 'tree') {
     const history = CP.familyHistory();
-    if (!history.length) {
-      wrap.appendChild(h('div', 'hint', '暂无已结算世代，本代人生圆满结束后，生平功绩将自动镌刻于此家族树中！'));
+    const curState = CP.state();
+    const totalGens = Math.max((fam.g || 0), history.length + (curState ? 1 : 0), 1);
+    const tierName = tierNames[fam.tier || 0] || '工薪之家';
+    const talentsCount = (fam.atlas ? fam.atlas.length : 0);
+    const talentBonus = (fam.talent || 0);
+
+    // 1. 宗族总览牌匾 (Ancestral Hall Banner)
+    const banner = h('div', 'ancestral-hall-banner');
+    banner.innerHTML =
+      '<div class="hall-plaque">🏛️ 百年氏族 · 宗祠总谱画卷</div>' +
+      '<div class="hall-stats-grid">' +
+        '<div class="hall-stat-item"><span class="h-lbl">绵延世系</span><span class="h-val">第 <b>' + totalGens + '</b> 代</span></div>' +
+        '<div class="hall-stat-item"><span class="h-lbl">最高门第</span><span class="h-val"><b>' + tierName + '</b></span></div>' +
+        '<div class="hall-stat-item"><span class="h-lbl">传家特长</span><span class="h-val"><b>' + talentsCount + '</b> 项</span></div>' +
+        '<div class="hall-stat-item"><span class="h-lbl">先天底蕴</span><span class="h-val"><b>+' + talentBonus + '</b></span></div>' +
+      '</div>';
+    wrap.appendChild(banner);
+
+    // 2. 树状代际画卷 (Genealogy Tree)
+    const treeContainer = h('div', 'tree-scroll-container');
+    const tree = h('div', 'genealogy-tree');
+
+    if (history.length === 0 && !curState) {
+      tree.appendChild(h('div', 'hint', '暂无已结算世代，本代人生圆满结束后，生平功绩将自动镌刻于此家族树中！'));
     } else {
-      const treeList = h('div', 'ancestor-timeline');
-      history.forEach(anc => {
-        const c = h('div', 'ancestor-card');
-        c.innerHTML =
-          '<div class="anc-head">' +
-            '<span class="anc-gen">第 ' + anc.gen + ' 代祖先 · 「' + anc.name + '」(' + (anc.gender === 'girl' ? '女' : '男') + ')</span>' +
-            '<span class="anc-rating">' + anc.rating + ' 级 · ' + anc.score + '分</span>' +
+      // 历代先祖节点
+      history.forEach((anc) => {
+        const isFounder = anc.gen === 1;
+        const nodeWrap = h('div', 'tree-node-wrap');
+        const dot = h('div', 'tree-node-dot' + (isFounder ? ' founder' : ''));
+        nodeWrap.appendChild(dot);
+
+        const card = h('div', 'tree-card' + (isFounder ? ' founder' : ''));
+        const genLabel = isFounder ? '👑 开基始祖' : ('📜 第 ' + anc.gen + ' 代宗亲');
+        const genderIcon = anc.gender === 'girl' ? '👧' : '👦';
+        const spouseTxt = (anc.spouse && anc.spouse !== '单身')
+          ? ('💑 联姻配偶: <b>' + anc.spouse + '</b> (' + (anc.spouseTag || '良缘') + ')')
+          : '💑 终身求索 · 志在四方 (单身)';
+
+        card.innerHTML =
+          '<div class="tree-card-top">' +
+            '<span class="tree-gen-tag">' + genLabel + '</span>' +
+            '<span class="tree-person-name">' + genderIcon + ' ' + anc.name + '</span>' +
+            '<span class="tree-rating-stamp">' + anc.rating + ' 级 · ' + anc.score + '分</span>' +
           '</div>' +
-          '<div class="anc-details">' +
-            '<span>💼 最终职业: <b>' + (anc.jobIcon || '🛋️') + ' ' + anc.job + '</b></span>' +
-            '<span>💑 伴侣: <b>' + anc.spouse + '</b></span>' +
-            '<span>🎓 高考: <b>' + (anc.gk ? anc.gk + ' 分' : '推荐') + '</b></span>' +
-            '<span>✨ 特长: <b>' + (anc.talentsCount || 0) + ' 项</b></span>' +
+          '<div class="tree-badges-row">' +
+            '<span class="tree-badge-chip">💼 官职: <b>' + (anc.jobIcon || '🛋️') + ' ' + anc.job + '</b></span>' +
+            '<span class="tree-badge-chip">🎓 高考: <b>' + (anc.gk ? anc.gk + ' 分' : '保送') + '</b></span>' +
+            '<span class="tree-badge-chip">✨ 特长: <b>' + (anc.talentsCount || 0) + ' 项</b></span>' +
           '</div>' +
-          '<div class="anc-hl">🌟 <b>生平纪事：</b>' + (anc.highlight || '精彩的一生') + '</div>';
-        treeList.appendChild(c);
+          '<div class="tree-spouse-box">' + spouseTxt + '</div>' +
+          '<div class="tree-hl-box">🌟 <b>生平纪事：</b>' + (anc.highlight || '精彩的一生') + '</div>';
+
+        nodeWrap.appendChild(card);
+        tree.appendChild(nodeWrap);
       });
-      wrap.appendChild(treeList);
+
+      // 当前在世苗裔节点 (Living Scion)
+      if (curState) {
+        const curGen = curState.gen || (history.length + 1);
+        const nodeWrap = h('div', 'tree-node-wrap');
+        const dot = h('div', 'tree-node-dot current');
+        nodeWrap.appendChild(dot);
+
+        const card = h('div', 'tree-card current');
+        const genderIcon = curState.gender === 'girl' ? '👧' : '👦';
+        card.innerHTML =
+          '<div class="tree-card-top">' +
+            '<span class="tree-gen-tag">🌱 第 ' + curGen + ' 代在世苗裔</span>' +
+            '<span class="tree-person-name">' + genderIcon + ' ' + curState.name + '</span>' +
+            '<span class="tree-rating-stamp" style="background:#ecfdf5;color:#059669;border-color:#6ee7b7">正在书写生平…</span>' +
+          '</div>' +
+          '<div class="tree-badges-row">' +
+            '<span class="tree-badge-chip">📍 阶段: <b>' + ((CP.info() && CP.info().phase) || '成长中') + '</b></span>' +
+            '<span class="tree-badge-chip">⚡ 行动力: <b>' + curState.act + '</b></span>' +
+            '<span class="tree-badge-chip">💰 积蓄: <b>' + curState.money + ' 元</b></span>' +
+            '<span class="tree-badge-chip">✨ 觉醒特长: <b>' + (curState.talents ? curState.talents.length : 0) + ' 项</b></span>' +
+          '</div>' +
+          '<div class="tree-hl-box" style="border-left-color:#10b981;background:#f0fdf4">' +
+            '🚀 <b>当代寄语：</b>承袭先祖百年积淀与智慧，书写属于本代的辉煌篇章！' +
+          '</div>';
+
+        nodeWrap.appendChild(card);
+        tree.appendChild(nodeWrap);
+      }
     }
+
+    treeContainer.appendChild(tree);
+    wrap.appendChild(treeContainer);
   } else if (atlasTab === 'achievements') {
     const achs = CP.achievements();
     const unlocked = (fam && fam.achievements) || [];
@@ -2741,6 +2811,9 @@ global.UI = {
   openSaveModal,
   closeSaveModal,
   renderSaveSlots,
+  renderAtlas,
+  setAtlasTab,
+  setTab,
   init
 };
 document.addEventListener('DOMContentLoaded', init);
