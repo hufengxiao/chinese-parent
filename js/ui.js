@@ -980,15 +980,20 @@ function renderAtlas() {
           ? ('💑 联姻配偶: <b>' + anc.spouse + '</b> (' + (anc.spouseTag || '良缘') + ')')
           : '💑 终身求索 · 志在四方 (单身)';
 
+        const ratingText = (anc.rating || 'S') + ' 级 · ' + (anc.score != null ? anc.score : '--') + '分';
+        const jobText = (anc.jobIcon || '🛋️') + ' ' + (anc.job || '自由职业');
+        const gkText = anc.gk ? anc.gk + ' 分' : '统招升学';
+        const ancName = anc.name || '家族先祖';
+
         card.innerHTML =
           '<div class="tree-card-top">' +
             '<span class="tree-gen-tag">' + genLabel + '</span>' +
-            '<span class="tree-person-name">' + genderIcon + ' ' + anc.name + '</span>' +
-            '<span class="tree-rating-stamp">' + anc.rating + ' 级 · ' + anc.score + '分</span>' +
+            '<span class="tree-person-name">' + genderIcon + ' ' + ancName + '</span>' +
+            '<span class="tree-rating-stamp">' + ratingText + '</span>' +
           '</div>' +
           '<div class="tree-badges-row">' +
-            '<span class="tree-badge-chip">💼 官职: <b>' + (anc.jobIcon || '🛋️') + ' ' + anc.job + '</b></span>' +
-            '<span class="tree-badge-chip">🎓 高考: <b>' + (anc.gk ? anc.gk + ' 分' : '保送') + '</b></span>' +
+            '<span class="tree-badge-chip">💼 官职: <b>' + jobText + '</b></span>' +
+            '<span class="tree-badge-chip">🎓 高考: <b>' + gkText + '</b></span>' +
             '<span class="tree-badge-chip">✨ 特长: <b>' + (anc.talentsCount || 0) + ' 项</b></span>' +
           '</div>' +
           '<div class="tree-spouse-box">' + spouseTxt + '</div>' +
@@ -2610,6 +2615,16 @@ function init() {
   if (soundBtn) soundBtn.onclick = () => sound.toggle();
   const splashSoundBtn = $('#splash-sound-btn');
   if (splashSoundBtn) splashSoundBtn.onclick = () => sound.toggle();
+
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (sound.bgmPlaying) sound.stopBGM();
+      } else {
+        sound.tryStartBGM();
+      }
+    });
+  }
 
   guide.init();
   const guideBtn = $('#guide-btn');

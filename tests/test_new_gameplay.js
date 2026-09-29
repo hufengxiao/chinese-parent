@@ -1333,7 +1333,117 @@ lateEventIds.forEach(evId => {
 
 console.log('大学进阶论文课程、实验室攻坚、大厂顶尖实习与五大时代浪潮中年抉择断言全部通过！');
 
-console.log('\n🎉 全部二十五项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM、双向社交、树状家族画卷与成年期深度设计 100% 验证通过！');
+console.log('\n--- 测试 26: 🛡️ 全局逻辑漏洞扫描专项回归与边缘防御断言 ---');
+
+// 1) 工程师之魂特长 (gongchengshi) 数据闭环
+const gongTal = DATA.talentData.find(t => t.id === 'gongchengshi');
+assert(gongTal, 'talentData 中必须补全 gongchengshi 特长');
+assert.strictEqual(gongTal.n, '工程师之魂');
+assert.strictEqual(gongTal.icon, '⚙️');
+assert.strictEqual(gongTal.r, 3);
+const engCourse = DATA.courses.find(c => c.id === 'u-eng');
+assert(engCourse && engCourse.tal && engCourse.tal.id === 'gongchengshi', '工科课程应正确关联工程师之魂特长');
+
+// 2) 多槽位彻底清空与 slot 0 存储键彻底擦除
+CP.newGame('槽位测试生', 'boy');
+CP.save();
+assert(store['cph_save'] || store['cph_save_0'], '槽位0保存后应存在键值');
+CP.saveManager.clearSlot(0);
+assert.strictEqual(store['cph_save'], undefined, 'cph_save 必须被彻底删除');
+assert.strictEqual(store['cph_save_0'], undefined, 'cph_save_0 必须被彻底删除');
+assert.strictEqual(store['cph_fam'], undefined, 'cph_fam 必须被彻底删除');
+assert.strictEqual(store['cph_fam_0'], undefined, 'cph_fam_0 必须被彻底删除');
+const clearedSlots = CP.saveManager.listSlots();
+assert.strictEqual(clearedSlots[0].empty, true, '槽位0清空后必须呈现为 empty: true');
+
+// 3) 空状态 S === null 极值鲁棒性测试 (防崩溃防御)
+// 确保在任何未初始化、槽位刚清空等场景下调用对外 API 均安全
+assert.strictEqual(CP.state(), null);
+assert.strictEqual(Array.isArray(CP.pending()), true);
+assert.strictEqual(CP.pending().length, 0);
+assert.strictEqual(Array.isArray(CP.slots()), true);
+assert.strictEqual(CP.slots().length, 0);
+assert.strictEqual(CP.resolve(0), '');
+assert.strictEqual(typeof CP.brain.info(), 'object');
+assert.strictEqual(CP.brain.info().canExplore, false);
+assert.strictEqual(CP.brain.grid().length, 0);
+assert.strictEqual(CP.brain.rev(0), null);
+assert.strictEqual(Array.isArray(CP.pool()), true);
+assert.strictEqual(CP.pool().length, 0);
+assert.strictEqual(Array.isArray(CP.social()), true);
+assert.strictEqual(CP.social().length, 0);
+assert.strictEqual(Array.isArray(CP.shop()), true);
+assert.strictEqual(CP.shop().length > 0, true);
+assert.strictEqual(CP.shop()[0].can, false);
+assert.strictEqual(typeof CP.atlas(), 'object');
+assert.strictEqual(CP.atlas().total, 0);
+
+// 4) 成家立业期 (home 阶段) 薪水如期发放断言
+CP.newGame('立业测试生', 'boy');
+while (CP.pending().length) CP.resolve(0);
+CP.state().turn = 58; // 成家立业期
+assert.strictEqual(CP.info().phase, '成家后');
+CP.state().workSalary = 450;
+CP.state().act = 100;
+CP.state().money = 200;
+CP.autoFillSlots();
+const mBeforeTurn58 = CP.state().money;
+CP.endTurn();
+assert.strictEqual(CP.state().money >= mBeforeTurn58 + 450, true, '成家立业期每回合必须如期发放职场月薪');
+
+// 5) 同学约会资源不足平滑优雅降级断言
+CP.newGame('约会测试生', 'boy');
+while (CP.pending().length) CP.resolve(0);
+CP.state().gender = 'boy';
+CP.state().npcAff['xiaomei'] = 60; // 夏小美高好感
+CP.pendDate();
+const dateList = CP.pending().filter(p => p.type === 'social_spontaneous_date');
+assert.strictEqual(dateList.length, 1);
+const dEv = dateList[0];
+// 将金钱全部清零，故意选择需消费10元零钱的选项 0
+CP.state().money = 0;
+CP.state().act = 50;
+const affBeforeDate = CP.state().npcAff['xiaomei'];
+CP.resolve(0); // 尝试赴约
+assert.strictEqual(CP.state().money, 0, '资金不足时不应扣成负数');
+assert.strictEqual(CP.state().npcAff['xiaomei'], affBeforeDate, '资源不足退回礼貌推托时不应非法暴涨好感');
+
+// 6) 家族谱系树残缺先祖卡片防崩溃渲染断言
+const brokenFam = {
+  g: 1,
+  talent: 10,
+  tier: 2,
+  atlas: ['t1'],
+  history: [
+    {
+      gen: 1,
+      name: '远古先祖'
+      // 故意不传 rating, score, job, jobIcon, gk, spouse
+    }
+  ]
+};
+CP.fam().history = brokenFam.history;
+const treeStageMock = {
+  innerHTML: '',
+  children: [],
+  appendChild(el) { if (el) this.children.push(el); }
+};
+sndSandboxCtx.document.querySelector = (sel) => {
+  if (sel === '#stage') return treeStageMock;
+  return null;
+};
+sndSandboxCtx.UI.setAtlasTab('tree');
+sndSandboxCtx.UI.renderAtlas();
+const brokenTreeDump = JSON.stringify(treeStageMock.children);
+assert(brokenTreeDump.includes('远古先祖'), '先祖姓名渲染正常');
+assert(brokenTreeDump.includes('自由职业'), '未填写职务时优雅回退为自由职业');
+assert(brokenTreeDump.includes('统招升学'), '未填写高考时优雅回退为统招升学');
+assert(!brokenTreeDump.includes('undefined'), '树状卡片绝不包含未定义字符 undefined');
+
+console.log('工程师之魂特长闭环、槽位0完全擦除、S=null防崩容错、成家立业月薪与约会优雅降级全部断言通过！');
+
+console.log('\n🎉 全部二十六项全系统核心机制、逻辑漏洞修复、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM、双向社交、树状家族画卷、成年期深度设计与边缘防御 100% 验证通过！');
+
 
 
 

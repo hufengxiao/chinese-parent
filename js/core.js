@@ -317,6 +317,11 @@ function clearSlot(targetSlot) {
       if (idx === 0) {
         LS.removeItem('cph_save');
         LS.removeItem('cph_fam');
+        LS.removeItem('cph_save_0');
+        LS.removeItem('cph_fam_0');
+      } else {
+        LS.removeItem('cph_save_' + idx);
+        LS.removeItem('cph_fam_' + idx);
       }
     } catch (e) {}
   }
@@ -340,11 +345,17 @@ function copySlot(fromSlot, toSlot) {
     try {
       if (s) {
         LS.setItem(slotSaveKey(t), JSON.stringify(s));
-        if (t === 0) LS.setItem('cph_save', JSON.stringify(s));
+        if (t === 0) {
+          LS.setItem('cph_save', JSON.stringify(s));
+          LS.setItem('cph_save_0', JSON.stringify(s));
+        }
       }
       if (fam) {
         LS.setItem(slotFamKey(t), JSON.stringify(fam));
-        if (t === 0) LS.setItem('cph_fam', JSON.stringify(fam));
+        if (t === 0) {
+          LS.setItem('cph_fam', JSON.stringify(fam));
+          LS.setItem('cph_fam_0', JSON.stringify(fam));
+        }
       }
     } catch (e) {}
   }
@@ -441,11 +452,17 @@ function importSlot(rawInput, targetSlot) {
     try {
       if (saveObj) {
         LS.setItem(slotSaveKey(idx), JSON.stringify(saveObj));
-        if (idx === 0) LS.setItem('cph_save', JSON.stringify(saveObj));
+        if (idx === 0) {
+          LS.setItem('cph_save', JSON.stringify(saveObj));
+          LS.setItem('cph_save_0', JSON.stringify(saveObj));
+        }
       }
       if (famObj) {
         LS.setItem(slotFamKey(idx), JSON.stringify(famObj));
-        if (idx === 0) LS.setItem('cph_fam', JSON.stringify(famObj));
+        if (idx === 0) {
+          LS.setItem('cph_fam', JSON.stringify(famObj));
+          LS.setItem('cph_fam_0', JSON.stringify(famObj));
+        }
       }
     } catch (e) {
       return { ok: false, error: '存储空间已满或写入异常' };
@@ -756,9 +773,9 @@ function repeatLastSlots() {
 
     // 在当前池中查找对应项目（校验是否依旧解锁或符合当前阶段）
     const match = curPool.find(p => p.kind === last.kind && p.id === last.id);
-    if (!match || match.locked) {
+    if (!match) {
       skippedCount++;
-      skippedItems.push((match && match.name) || last.id);
+      skippedItems.push(last.id);
       continue;
     }
 
@@ -1097,6 +1114,7 @@ function saveInfo() {
 
 /* ---------- 行动池 ---------- */
 function pool() {
+  if (!S) return [];
   const ph = cls(), out = [];
   S.learnedCourses = S.learnedCourses || ['fanshen', 'wanju'];
 
@@ -1278,7 +1296,7 @@ function endTurn() {
     const famBonus = Math.max(1, Math.floor(S.fam.talent / 2));
     ATTRS.forEach(k => { S.attrs[k] += famBonus; });
   }
-  if (cls() === 'work') S.money += (S.workSalary || 100);
+  if (cls() === 'work' || cls() === 'home') S.money += (S.workSalary || 100);
   const mp = moneyLet();
   if (mp > 0) { S.money += mp; log('零花钱 +' + mp); }
   const rests = S.slots.filter(x => x && x.kind === 'rest').length;
@@ -2136,10 +2154,11 @@ function collapse() { /* 由 UI 调用 restartLineage */ }
 
 /* ---------- 图鉴/同学/商店 ---------- */
 function atlas() {
-  const list = (S.talents || []).map(id => D.talentData.find(t => t.id === id)).filter(Boolean);
+  const talents = (S && S.talents) || [];
+  const list = talents.map(id => D.talentData.find(t => t.id === id)).filter(Boolean);
   const stats = {};
   list.forEach(t => { stats[t.r] = (stats[t.r] || 0) + 1; });
-  return { list, stats, total: list.length, fam: S.fam };
+  return { list, stats, total: list.length, fam: S ? S.fam : getFam() };
 }
 /* ---------- 👥 同学社交双向羁绊与偶发约会大事件 (Round 5 SOC-BONDS) ---------- */
 function getBondTier(aff) {
@@ -2371,7 +2390,9 @@ function pendGraduationToken() {
 }
 
 function socialList() {
+  if (!S) return [];
   const meG = S.gender === 'boy' ? '女' : '男';
+  if (!S.npcAff) S.npcAff = {};
   return D.npcs.filter(n => n.gender === meG).map(n => {
     const aff = S.npcAff[n.id] || 0;
     const bond = getBondTier(aff);
@@ -2451,7 +2472,11 @@ function gift(id, itemId) {
   save();
   return { g, isFav, quote, aff: S.npcAff[id] };
 }
-function shopList() { return D.store.map(s => ({ ...s, can: S.money >= s.price, count: (S.bag && S.bag[s.id]) || 0 })); }
+function shopList() {
+  const money = S ? S.money : 0;
+  const bag = (S && S.bag) || {};
+  return D.store.map(s => ({ ...s, can: money >= s.price, count: bag[s.id] || 0 }));
+}
 function buy(id) {
   const it = D.store.find(s => s.id === id);
   if (!it) return false;
@@ -2512,7 +2537,11 @@ function bGen() {
   G[RI(0, G.length - 1)].t = 'key';
   return G;
 }
-function bOpen() { if (!S.brain) S.brain = { layer: 1, g: bGen() }; return S.brain; }
+function bOpen() {
+  if (!S) return { layer: 1, g: [] };
+  if (!S.brain) S.brain = { layer: 1, g: bGen() };
+  return S.brain;
+}
 function bGrid() { return bOpen().g; }
 
 function applyBrainCell(c, b) {
@@ -2531,7 +2560,9 @@ function applyBrainCell(c, b) {
 }
 
 function bRev(i) {
+  if (!S) return null;
   const b = bOpen();
+  if (!b || !b.g) return null;
   const c = b.g[i];
   if (!c || c.open) return null;
   if (S.act < 2) {
@@ -2605,6 +2636,9 @@ function bRev(i) {
   return res;
 }
 function bInfo() {
+  if (!S) {
+    return { layer: 1, open: 0, total: 36, remaining: 36, percent: 0, maxLayer: 4, bulbs: 0, bombs: 0, keys: 0, act: 0, maxExplores: 0, canExplore: false };
+  }
   const b = bOpen();
   const openCount = b.g.filter(x => x.open).length;
   const total = b.g.length;
@@ -2666,9 +2700,9 @@ const API = {
   learnCourse, learnList,
   pool, addSlot, removeSlot, clearSlots, autoFillSlots,
   repeatLastSlots, canRepeatLastSlots,
-  slots: () => S.slots,
+  slots: () => (S && S.slots) ? S.slots : [],
   toast, flushToasts,
-  endTurn, pending: () => S.pending.slice(),
+  endTurn, pending: () => (S && S.pending) ? S.pending.slice() : [],
   resolve: resolvePend,
   examBuff: () => S.exambuff,
   brain: { grid: bGrid, rev: bRev, info: bInfo },
@@ -2712,7 +2746,7 @@ const API = {
 function getFam() { return S ? S.fam : (loadFam() || { g: 0, talent: 0, tier: 0, attr: {}, atlas: [] }); }
 
 function resolvePend(i) {
-  if (!S.pending.length) return '';
+  if (!S || !S.pending || !S.pending.length) return '';
   const m = S.pending[0];
   let res = '';
   switch (m.type) {
@@ -2853,20 +2887,23 @@ function resolvePend(i) {
     }
     case 'social_spontaneous_date': {
       const idx = typeof i === 'number' ? i : 0;
-      const opt = (m.opts && m.opts[idx]) ? m.opts[idx] : (m.opts && m.opts[0]);
+      let opt = (m.opts && m.opts[idx]) ? m.opts[idx] : (m.opts && m.opts[0]);
       if (opt) {
-        if (opt.costMoney && S.money < opt.costMoney) {
-          toast('零钱不足，改天再去');
-        } else {
-          if (opt.costMoney) S.money -= opt.costMoney;
-          if (opt.costAct) S.act = Math.max(0, S.act - opt.costAct);
-          if (opt.costInsight) S.insight = Math.max(0, S.insight - opt.costInsight);
-          if (opt.eff) applyEff(opt.eff);
-          if (opt.affGain && m.npcId) {
-            S.npcAff[m.npcId] = clamp((S.npcAff[m.npcId] || 0) + opt.affGain, 0, 150);
-          }
-          if (opt.logText) log(opt.logText);
+        const cantAfford = (opt.costMoney && S.money < opt.costMoney) ||
+                           (opt.costAct && S.act < opt.costAct) ||
+                           (opt.costInsight && S.insight < opt.costInsight);
+        if (cantAfford) {
+          toast('资源不足，本次改为礼貌推托');
+          opt = (m.opts && m.opts[1]) ? m.opts[1] : opt;
         }
+        if (opt.costMoney && S.money >= opt.costMoney) S.money -= opt.costMoney;
+        if (opt.costAct && S.act >= opt.costAct) S.act -= opt.costAct;
+        if (opt.costInsight && S.insight >= opt.costInsight) S.insight -= opt.costInsight;
+        if (opt.eff) applyEff(opt.eff);
+        if (opt.affGain && m.npcId) {
+          S.npcAff[m.npcId] = clamp((S.npcAff[m.npcId] || 0) + opt.affGain, 0, 150);
+        }
+        if (opt.logText) log(opt.logText);
       }
       S.pending.shift();
       res = (opt && opt.label) || '完成同窗约会';

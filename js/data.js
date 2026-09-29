@@ -141,6 +141,7 @@ talentData: [
   {id:'games',     n:'小霸王游戏王', icon:'👾', r:2, src:'小霸王'},
   {id:'yundong',   n:'运动健儿',   icon:'🏃', r:2, src:'体育课'},
   {id:'jiazui',    n:'压轴题杀手', icon:'🧮', r:3, src:'数学压轴'},
+  {id:'gongchengshi', n:'工程师之魂', icon:'⚙️', r:3, src:'理论力学与攻坚'},
   {id:'gods',       n:'五指琴魔',   icon:'🎹', r:4, src:'钢琴十级'},
   {id:'nianshen',    n:'捏泥成神',   icon:'🧸', r:4, src:'橡皮泥大师'},
   {id:'gaokao',      n:'状元苗子',   icon:'👑', r:4, src:'高考'},
