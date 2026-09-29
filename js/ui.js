@@ -286,10 +286,32 @@ function renderPlan() {
   const titleRow = h('div', 'flex-between');
   titleRow.appendChild(h('h3', '', '📅 今日安排 (挑选6件事)'));
   const quickActions = h('div', 'slot-actions');
-  const autoBtn = h('button', 'mini-btn', '⚡ 自动排满');
+  const canRepeat = CP.canRepeatLastSlots && CP.canRepeatLastSlots();
+  const repeatBtn = h('button', 'mini-btn' + (canRepeat ? ' repeat' : ' disabled'), '🔁 延续');
+  repeatBtn.title = canRepeat ? '一键复用上一回合安排的6项学习与娱乐日程' : '暂无可复用的上一回合记录';
+  repeatBtn.onclick = () => {
+    if (!CP.canRepeatLastSlots || !CP.canRepeatLastSlots()) {
+      toast('暂无可延续的上一回合日程记录');
+      return;
+    }
+    sound.pop();
+    const res = CP.repeatLastSlots();
+    if (res.ok) {
+      if (res.skipped > 0) {
+        toast(`🔁 已成功复用 ${res.filled} 项日程，其中 ${res.skipped} 项因体力/金钱不足跳过`);
+      } else {
+        toast(`🔁 已成功延续上一回合全套日程安排！`);
+      }
+      render();
+    } else {
+      toast(res.error || '延续日程失败');
+    }
+  };
+  const autoBtn = h('button', 'mini-btn', '⚡ 排满');
   autoBtn.onclick = () => { sound.pop(); CP.autoFillSlots(); render(); };
   const clearBtn = h('button', 'mini-btn ghost', '🧹 清空');
   clearBtn.onclick = () => { sound.click(); CP.clearSlots(); render(); };
+  quickActions.appendChild(repeatBtn);
   quickActions.appendChild(autoBtn);
   quickActions.appendChild(clearBtn);
   titleRow.appendChild(quickActions);
@@ -412,8 +434,41 @@ function renderBrain() {
   const st = $('#stage');
   st.innerHTML = '';
   const b = CP.brain.info();
-  const wrap = h('div');
-  wrap.appendChild(h('div', 'pool-cat', '🧠 脑洞挖掘 — 第 ' + b.layer + ' 层 · 已翻 ' + b.open + '/' + b.total + ' · 每格消耗 2⚡'));
+  const wrap = h('div', 'brain-container');
+
+  // 构建 HUD 看板
+  const hud = h('div', 'brain-hud');
+
+  // 1. 顶层状态栏：层级徽章 + 行动力雷达
+  const topRow = h('div', 'brain-hud-top flex-between');
+  const layerBadge = h('div', 'brain-layer-badge layer-' + b.layer, '🧠 脑域深潜 · 第 ' + b.layer + ' / ' + (b.maxLayer || 4) + ' 层');
+  const actRadar = h('div', 'brain-act-radar' + (b.act < 2 ? ' exhausted' : ''),
+    b.act < 2 ? '⚡ 行动力耗尽 (需2⚡)' : '⚡ 行动力 ' + b.act + ' (可探 ' + b.maxExplores + ' 次)'
+  );
+  topRow.appendChild(layerBadge);
+  topRow.appendChild(actRadar);
+  hud.appendChild(topRow);
+
+  // 2. 探索进度条 (流光竹管样式)
+  const progTrack = h('div', 'brain-prog-track');
+  const progFill = h('div', 'brain-prog-fill' + (b.percent >= 100 ? ' full' : ''));
+  progFill.style.width = Math.min(100, Math.max(0, b.percent)) + '%';
+  progTrack.appendChild(progFill);
+  hud.appendChild(progTrack);
+
+  // 3. 统计标签
+  const statsRow = h('div', 'brain-hud-stats flex-between');
+  const progText = h('span', 'brain-stat-item', '已探明 ' + b.open + ' / ' + b.total + ' 格 (' + b.percent + '%)');
+  const tagsWrap = h('div', 'brain-radar-tags');
+  tagsWrap.innerHTML = '<span class="brain-mini-tag bulb">💡 悟性 ' + b.bulbs + '</span>' +
+                       '<span class="brain-mini-tag bomb">💥 爆破 ' + b.bombs + '</span>' +
+                       '<span class="brain-mini-tag key">🗝️ 钥匙 ' + b.keys + '</span>';
+  statsRow.appendChild(progText);
+  statsRow.appendChild(tagsWrap);
+  hud.appendChild(statsRow);
+
+  wrap.appendChild(hud);
+
   const grid = h('div', brainShaking ? 'brain-shake' : '');
   grid.id = 'brain-grid';
   if (brainShaking) {
@@ -428,9 +483,19 @@ function renderBrain() {
     let extraCls = '';
     if (i === lastExplodedIdx) extraCls = ' bomb-burst';
     else if (lastChainIndices.indexOf(i) >= 0) extraCls = ' chain-burst';
+    else if (!c.open && b.act < 2) extraCls = ' cell-exhausted';
+
     const cell = h('div', 'cell' + (c.open ? ' open' : '') + extraCls);
     cell.textContent = c.open ? ({ bulb: '💡', attr: '🔮', bolt: '⚡', bomb: '💥', skull: '💀', gold: '💰', key: '🗝️', duck: '🦆' })[c.t] : '?';
     cell.onclick = () => {
+      if (!c.open && b.act < 2) {
+        sound.click();
+        cell.classList.remove('shake-exhausted');
+        void cell.offsetWidth;
+        cell.classList.add('shake-exhausted');
+        toast('⚡ 行动力不足 (需2⚡)！可在日程中安排娱乐/小憩，或在小卖部购买能量饮料补充体力~');
+        return;
+      }
       const wasBomb = !c.open && c.t === 'bomb';
       const r = CP.brain.rev(i);
       if (r != null) {

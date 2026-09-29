@@ -418,6 +418,20 @@ button:active { transform: scale(0.96); }
 }
 .mini-btn:hover { background: var(--card-subtle); color: var(--ink-primary); }
 .mini-btn.ghost { background: transparent; }
+.mini-btn.repeat {
+  background: #fdf6ec;
+  border-color: #f3d19e;
+  color: #b88230;
+}
+.mini-btn.repeat:hover {
+  background: #faecd8;
+  color: #a06e1e;
+}
+.mini-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 
 /* 日程槽位 */
 .plan-board {
@@ -567,6 +581,110 @@ button:active { transform: scale(0.96); }
 .pool-item .pi-desc { font-size: 11px; color: var(--ink-secondary); }
 .pool-item .pi-cost { font-size: 12px; font-weight: 700; color: var(--gold-deep); white-space: nowrap; }
 
+/* 脑洞 HUD 仪表盘与探索看板 */
+.brain-hud {
+  background: var(--card-bg);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
+}
+.brain-hud-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.brain-layer-badge {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.brain-layer-badge.layer-1 {
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+.brain-layer-badge.layer-2 {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+}
+.brain-layer-badge.layer-3 {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #d8b4fe;
+}
+.brain-layer-badge.layer-4 {
+  background: #ffe4e6;
+  color: #be123c;
+  border: 1px solid #fda4af;
+}
+
+.brain-act-radar {
+  font-size: 12px;
+  font-weight: 600;
+  color: #df9824;
+  background: rgba(223, 152, 36, 0.08);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(223, 152, 36, 0.2);
+}
+.brain-act-radar.exhausted {
+  color: #ef4444;
+  background: #fee2e2;
+  border-color: #fca5a5;
+  animation: pulseExhausted 1.5s infinite ease-in-out;
+}
+@keyframes pulseExhausted {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+.brain-prog-track {
+  width: 100%;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+.brain-prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: 99px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.brain-prog-fill.full {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+
+.brain-hud-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+.brain-radar-tags {
+  display: flex;
+  gap: 6px;
+}
+.brain-mini-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--card-subtle);
+  border: 1px solid var(--border-line);
+}
+
 /* 脑洞网格 */
 #brain-grid {
   display: grid;
@@ -642,6 +760,28 @@ button:active { transform: scale(0.96); }
   animation: chainCascade 0.35s ease-out;
   background: #fefce8 !important;
   border-color: #f59e0b !important;
+}
+
+/* 低行动力格子状态与震颤引导 */
+.cell.cell-exhausted {
+  opacity: 0.6;
+  filter: grayscale(0.6);
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+.cell.cell-exhausted:hover {
+  transform: none;
+  border-color: #cbd5e1;
+}
+
+@keyframes shakeExhausted {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+.shake-exhausted {
+  animation: shakeExhausted 0.35s ease-in-out;
+  border-color: #ef4444 !important;
 }
 
 

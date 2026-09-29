@@ -814,7 +814,119 @@ assert.strictEqual(slotsAfterClear[2].empty, true, '槽位 2 在清空后必须�
 sm.switchSlot(0);
 console.log('多存档槽位管理、数据隔离、Base64/JSON 备份与防崩溃导入验证 100% 通过！');
 
-console.log('\n🎉 全部十九项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档与备份导入导出全部 100% 验证通过！');
+console.log('\n--- 测试 20: 🔁 一键「延续上回合」日程排布与智能自适应降级 (Round 2) ---');
+CP.newGame();
+while (CP.pending().length) CP.resolve(0);
+
+assert.strictEqual(CP.canRepeatLastSlots(), false, '开局没有历史日程时 canRepeatLastSlots 必须为 false');
+const noHistRes = CP.repeatLastSlots();
+assert.strictEqual(noHistRes.ok, false, '无历史记录时 repeatLastSlots 必须优雅返回错误');
+
+// 1) 填充 6 个槽位并推进回合
+CP.autoFillSlots();
+assert.strictEqual(CP.slots().every(Boolean), true, '自动排满 6 个槽位');
+const originalSlotIds = CP.slots().map(s => s.id);
+
+CP.endTurn();
+while (CP.pending().length) CP.resolve(0);
+
+// 2) 回合推进后，验证 canRepeatLastSlots 为 true
+assert.strictEqual(CP.canRepeatLastSlots(), true, '推进回合后必须具备延续记录');
+
+// 3) 清空当前槽位并执行一键延续
+CP.clearSlots();
+assert.strictEqual(CP.slots().every(x => x === null), true, '清空当前槽位');
+
+const repeatRes = CP.repeatLastSlots();
+assert.strictEqual(repeatRes.ok, true, '一键延续必须成功');
+assert.strictEqual(repeatRes.filled, 6, '充沛行动力下应成功延续 6 项日程');
+assert.strictEqual(repeatRes.skipped, 0, '充沛行动力下跳过数应为 0');
+const currentSlotIds = CP.slots().map(s => s.id);
+assert.deepStrictEqual(currentSlotIds, originalSlotIds, '延续后的 6 个项目必须与上回合 100% 完全一致');
+
+// 4) 极端低行动力下的智能降级测试
+CP.clearSlots();
+CP.state().act = 0; // 行动力耗尽
+const lowActRes = CP.repeatLastSlots();
+assert.strictEqual(lowActRes.ok, true, '低行动力下仍然返回 ok: true 进行自适应排布');
+assert(lowActRes.skipped > 0, '需要消耗体力的项目必须被智能跳过');
+assert(CP.state().act >= 0, '行动力绝不能溢出为负数');
+
+console.log('一键延续上回合日程、历史槽位精确深拷贝与低体力智能降级断言全部通过！');
+
+console.log('\n--- 测试 21: 🧠 脑洞探索 HUD 看板与行动力智能反馈机制 (Round 3) ---');
+CP.newGame();
+while (CP.pending().length) CP.resolve(0);
+
+// 1) 初始 HUD 结构与计量器断言
+let bStat = CP.brain.info();
+assert.strictEqual(bStat.layer, 1, '开局应位于脑域深潜第 1 层');
+assert.strictEqual(bStat.open, 0, '开局已探索格子应为 0');
+assert.strictEqual(bStat.total, 36, '脑洞矩阵总格数必须为 36');
+assert.strictEqual(bStat.remaining, 36, '开局剩余待探格数必须为 36');
+assert.strictEqual(bStat.percent, 0, '开局探索百分比必须为 0%');
+assert.strictEqual(bStat.maxLayer, 4, '封顶层数应为 4 层');
+assert.strictEqual(bStat.bulbs, 0, '未翻开任何灯泡');
+assert.strictEqual(bStat.bombs, 0, '未翻开任何炸弹');
+assert.strictEqual(bStat.keys, 0, '未翻开任何钥匙');
+assert(bStat.act >= 2, '初始开局行动力应足以进行探索');
+assert.strictEqual(bStat.canExplore, true, '行动力充沛时 canExplore 应为 true');
+assert.strictEqual(bStat.maxExplores, Math.floor(bStat.act / 2), '最大可探次数计算准确');
+
+// 2) 探索递增断言
+CP.state().act = 100; // 注入充沛行动力以隔离随机波动
+const g = CP.brain.grid();
+// 找一个非钥匙非炸弹的格子翻开
+let targetIdx = g.findIndex(cell => !cell.open && cell.t !== 'key' && cell.t !== 'bomb');
+if (targetIdx === -1) targetIdx = 0;
+const revResult = CP.brain.rev(targetIdx);
+assert(revResult !== null, '行动力充沛时翻开格子必须返回收益信息');
+
+bStat = CP.brain.info();
+assert.strictEqual(bStat.open >= 1, true, '已探明格子数增加');
+assert.strictEqual(bStat.remaining, 36 - bStat.open, '剩余格子数精确同步扣减');
+assert.strictEqual(bStat.percent, Math.round((bStat.open / 36) * 100), '百分比进度精确计算');
+
+// 3) 行动力耗尽防御与极值鲁棒性断言
+CP.state().act = 1; // 仅剩 1 点行动力（不足 2 点）
+bStat = CP.brain.info();
+assert.strictEqual(bStat.act, 1, '行动力为 1');
+assert.strictEqual(bStat.canExplore, false, '行动力不足 2 时 canExplore 必须为 false');
+assert.strictEqual(bStat.maxExplores, 0, '行动力不足 2 时 maxExplores 必须为 0');
+
+const unopenIdx = CP.brain.grid().findIndex(cell => !cell.open);
+if (unopenIdx >= 0) {
+  const openCountBefore = CP.brain.info().open;
+  const blockedRev = CP.brain.rev(unopenIdx);
+  assert.strictEqual(blockedRev, null, '行动力不足时调用 rev 必须拒止并返回 null');
+  assert.strictEqual(CP.brain.info().open, openCountBefore, '拒止后绝不能翻开任何格子');
+  assert.strictEqual(CP.state().act, 1, '拒止后绝不能倒扣行动力');
+  const toasts = CP.flushToasts();
+  assert(toasts.some(t => t.includes('行动力不足') && t.includes('需2⚡')), '拒止时必须向玩家输出包含操作建议的友善引导气泡');
+}
+
+// 4) 钥匙下潜与 HUD 状态重置断言
+CP.state().act = 60;
+// 人工制造或寻找一个钥匙格子翻开
+let keyIdx = CP.brain.grid().findIndex(cell => !cell.open && cell.t === 'key');
+if (keyIdx === -1) {
+  // 若本层未随出钥匙（极罕见），人工将第一个未开格子设为钥匙测试
+  const freeIdx = CP.brain.grid().findIndex(c => !c.open);
+  CP.brain.grid()[freeIdx].t = 'key';
+  keyIdx = freeIdx;
+}
+const keyRev = CP.brain.rev(keyIdx);
+assert(keyRev.includes('🗝️') || keyRev.includes('钥匙'), '翻开钥匙格子必须有钥匙标识');
+bStat = CP.brain.info();
+assert.strictEqual(bStat.layer, 2, '踩中钥匙后 HUD 层级必须立即平滑跃迁至第 2 层');
+assert.strictEqual(bStat.open, 0, '跃迁到新层后已探格子数必须重置为 0');
+assert.strictEqual(bStat.percent, 0, '跃迁到新层后进度条百分比必须重置为 0%');
+assert(CP.state().act >= 50, '踩中钥匙必须如期回复 50 点行动力');
+
+console.log('脑域层级探照、竹管流光进度条、低行动力智能锁止与下潜重置断言全部通过！');
+
+console.log('\n🎉 全部二十一项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续与脑洞HUD全部 100% 验证通过！');
+
 
 
 

@@ -732,6 +732,62 @@ function clearSlots() {
   persist();
 }
 
+function canRepeatLastSlots() {
+  return !!(S && Array.isArray(S.lastSlots) && S.lastSlots.some(Boolean));
+}
+
+function repeatLastSlots() {
+  if (!S) return { ok: false, error: '状态机未初始化' };
+  if (!canRepeatLastSlots()) {
+    return { ok: false, error: '暂无可延续的上一回合日程安排' };
+  }
+
+  // 1) 先安全退还并清空当前已占用的槽位资源，以便干净排布
+  clearSlots();
+
+  const curPool = pool();
+  let filledCount = 0;
+  let skippedCount = 0;
+  const skippedItems = [];
+
+  for (let i = 0; i < 6; i++) {
+    const last = S.lastSlots[i];
+    if (!last) continue;
+
+    // 在当前池中查找对应项目（校验是否依旧解锁或符合当前阶段）
+    const match = curPool.find(p => p.kind === last.kind && p.id === last.id);
+    if (!match || match.locked) {
+      skippedCount++;
+      skippedItems.push((match && match.name) || last.id);
+      continue;
+    }
+
+    const actCost = match.act || 0;
+    const moneyCost = match.money || 0;
+
+    if (S.act < actCost || (moneyCost && S.money < moneyCost)) {
+      skippedCount++;
+      skippedItems.push(match.name);
+      continue;
+    }
+
+    // 成功填入
+    S.slots[i] = { kind: match.kind, id: match.id, act: actCost, money: moneyCost };
+    S.act -= actCost;
+    if (moneyCost) S.money -= moneyCost;
+    filledCount++;
+  }
+
+  persist();
+
+  return {
+    ok: true,
+    filled: filledCount,
+    skipped: skippedCount,
+    skippedItems: skippedItems
+  };
+}
+
 function removeSlot(idx) {
   if (!S || idx < 0 || idx >= 6 || !S.slots[idx]) return false;
   const sl = S.slots[idx];
@@ -1209,6 +1265,8 @@ function rollTalent(id, p) {
 /* ---------- 回合结算 ---------- */
 function endTurn() {
   if (S.slots.some(x => !x)) return false;
+  // 记录本回合执行的六项日程安排 (Round 2)
+  S.lastSlots = S.slots.map(s => (s ? { kind: s.kind, id: s.id, act: s.act, money: s.money } : null));
   // 执行日常安排的六件事
   S.slots.forEach(s => applyAct(s));
   S.turn++;
@@ -2228,7 +2286,10 @@ function bRev(i) {
   const b = bOpen();
   const c = b.g[i];
   if (!c || c.open) return null;
-  if (S.act < 2) { toast('行动力不足(需要2)'); return null; }
+  if (S.act < 2) {
+    toast('⚡ 行动力不足 (需2⚡)！可在日程中安排娱乐/小憩，或在小卖部购买能量饮料补充体力~');
+    return null;
+  }
   S.act -= 2;
   c.open = true;
   let res = '';
@@ -2295,7 +2356,33 @@ function bRev(i) {
   save();
   return res;
 }
-function bInfo() { const b = bOpen(); return { layer: b.layer, open: b.g.filter(x => x.open).length, total: b.g.length, maxLayer: 4 }; }
+function bInfo() {
+  const b = bOpen();
+  const openCount = b.g.filter(x => x.open).length;
+  const total = b.g.length;
+  const bulbs = b.g.filter(x => x.open && x.t === 'bulb').length;
+  const bombs = b.g.filter(x => x.open && x.t === 'bomb').length;
+  const keys = b.g.filter(x => x.open && x.t === 'key').length;
+  const percent = total > 0 ? Math.round((openCount / total) * 100) : 0;
+  const act = S ? S.act : 0;
+  const maxExplores = Math.floor(act / 2);
+  const canExplore = act >= 2;
+
+  return {
+    layer: b.layer,
+    open: openCount,
+    total: total,
+    remaining: total - openCount,
+    percent: percent,
+    maxLayer: 4,
+    bulbs: bulbs,
+    bombs: bombs,
+    keys: keys,
+    act: act,
+    maxExplores: maxExplores,
+    canExplore: canExplore
+  };
+}
 
 /* ---------- 新手礼包 ---------- */
 function claimNovicePack() {
@@ -2330,6 +2417,7 @@ const API = {
   } : null,
   learnCourse, learnList,
   pool, addSlot, removeSlot, clearSlots, autoFillSlots,
+  repeatLastSlots, canRepeatLastSlots,
   slots: () => S.slots,
   toast, flushToasts,
   endTurn, pending: () => S.pending.slice(),
