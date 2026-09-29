@@ -154,6 +154,13 @@ chinese-parent/
 | [12. 职业结局与人生总结画卷](./docs/12_career_and_endings.md) | 22 种社会职业判定 | 集团绩效答辩、门第 Tier、人生功绩总结大屏 |
 | [13. UI/UX 规范与音效设计](./docs/13_ui_ux_and_audio.md) | 国风宣纸视觉与 WebAudio | 双层顶栏防遮挡、屏幕自适应、免外部音频合成 |
 | [14. 研发里程碑规划与 QA](./docs/14_roadmap_and_milestones.md) | 敏捷研发路线与质量体系 | 无头自动化测试矩阵、断言规范、未来演进 |
+| [15. 存档与备份系统](./docs/15_save_and_backup_system.md) | 多槽位管理与跨端导入导出 | 数据隔离、Base64/JSON 备份、老存档无损升迁 |
+| [16. 日程排布复用设计](./docs/16_schedule_qol_and_reuse.md) | 延续上回合与排布提效 | 槽位记忆、体力不足智能自适应降级 |
+| [17. 脑洞看板与反馈设计](./docs/17_brain_hole_hud_and_feedback.md) | 脑洞探索 HUD 看板 | 实时层级与进度条、低行动力智能禁用遮罩 |
+| [18. 原生五声音频系统](./docs/18_audio_procedural_bgm.md) | WebAudio 中国风五声 BGM | 宫商角徵羽音律合成、高考选秀高潮音效群 |
+| [19. 同学双向羁绊设计](./docs/19_social_bonds_and_dating.md) | 5阶同窗羁绊与偶发邀约 | 好感度阶梯、放学约会突发事件、毕业纪念信物 |
+| [20. 百年家族树可视化设计](./docs/20_family_tree_visualizer.md) | 树状代际脉络图谱画卷 | 历代先祖功绩图章、伴侣天赋贡献、祠堂大屏 |
+| [21. 大学与职场成年期设计](./docs/21_higher_education_and_career.md) | 成人期决策与时代风口 | 考研/留学/名企校招、移动互联风口与中年危机 |
 | [📖 GAME-DESIGN-FULL.md](./docs/GAME-DESIGN-FULL.md) | **超万字策划大典总集篇** | 整合全系统全景参数、公式与数值平衡对照表 |
 
 ---

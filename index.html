@@ -20,6 +20,7 @@
   <div id="splash" class="screen active">
     <!-- 开始页顶部快捷栏 -->
     <div class="splash-tools">
+      <button id="splash-save-btn" class="icon-toggle" title="家族记忆录 · 存档管理与导入导出" aria-label="存档管理">💾</button>
       <button id="splash-changelog-btn" class="icon-toggle" title="版本更新公告与最新玩法" aria-label="更新公告">
         📢<span id="splash-update-badge" class="update-badge" hidden>NEW</span>
       </button>
@@ -29,7 +30,7 @@
 
     <div class="splash-content">
       <div class="logo-bounce">🎈👨‍👩‍👦</div>
-      <h1>中国式家长 <span id="splash-ver-badge" class="splash-ver-badge" title="点击查看更新公告与玩法介绍">v2.1.1</span></h1>
+      <h1>中国式家长 <span id="splash-ver-badge" class="splash-ver-badge" title="点击查看更新公告与玩法介绍">v2.2.0</span></h1>
       <p class="sub">H5 自娱版 · 从出生到高考，再到世代传承</p>
       
       <div id="fam-badge" class="fam-card" hidden>
@@ -43,6 +44,9 @@
         </button>
         <button id="btn-new" class="btn big primary">
           🎒 开启新的一代
+        </button>
+        <button id="splash-save-manage-btn" class="btn small ghost" style="margin-top: 6px;">
+          💾 存档管理与多槽位备份
         </button>
       </div>
       <p class="tip" id="splash-tip">🔒 纯本地存档 · 自动保存 · 数据安全保存在你的浏览器</p>
@@ -58,6 +62,7 @@
           <span id="top-turn" class="round-badge">📅 回合1 · 0岁 · 婴儿期</span>
         </div>
         <div class="meta-right top-actions">
+          <button id="save-btn" class="top-tool-btn" title="家族记忆录 · 存档管理与导入导出" aria-label="存档管理">💾</button>
           <button id="changelog-btn" class="top-tool-btn" title="版本更新公告与最新玩法" aria-label="更新公告">
             📢<span id="update-badge" class="update-badge" hidden>NEW</span>
           </button>
@@ -164,7 +169,7 @@
             <div>
               <div class="changelog-main-title">
                 <h3>版本更新公告</h3>
-                <span id="changelog-cur-ver" class="changelog-ver-tag">v2.1.1</span>
+                <span id="changelog-cur-ver" class="changelog-ver-tag">v2.2.0</span>
               </div>
               <p class="changelog-sub">了解最新上线玩法与系统演进历程</p>
             </div>
@@ -178,6 +183,62 @@
       <div class="changelog-footer">
         <div class="changelog-tip">💡 随时可点击右上角 📢 重新查看各版本更新记录</div>
         <button id="changelog-confirm" class="btn small primary">🚀 我知道了，立刻体验！</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 存档管理与导入/导出弹窗 (Round 1) -->
+  <div id="save-modal" class="screen-modal" hidden>
+    <div class="save-wrap">
+      <div class="save-header">
+        <div class="save-title-row">
+          <div class="save-title-wrap">
+            <span class="save-icon">💾</span>
+            <div>
+              <div class="save-main-title">
+                <h3>家族记忆录</h3>
+                <span id="save-active-badge" class="save-active-badge">当前槽位 1</span>
+              </div>
+              <p class="save-sub">多存档槽位管理 · 跨设备 Base64 文本码复制 · 本地文件安全备份</p>
+            </div>
+          </div>
+          <button id="save-close" class="modal-close-btn" aria-label="关闭">✕</button>
+        </div>
+      </div>
+      <div id="save-slots-container" class="save-slots-container">
+        <!-- 动态生成 3 个槽位卡片 -->
+      </div>
+      <div class="save-io-section">
+        <div class="save-io-title">📤 跨端迁移与备份工具</div>
+        <div class="save-io-btns">
+          <button id="btn-export-code" class="btn small ghost">📋 复制当前槽位备份码</button>
+          <button id="btn-export-file" class="btn small ghost">💾 下载存档文件 (.json)</button>
+          <button id="btn-open-import" class="btn small primary">📥 导入外部存档</button>
+        </div>
+        <div id="save-import-panel" class="save-import-panel" hidden>
+          <div class="save-import-tip">支持直接粘贴导出的 Base64 存档码或 JSON 文本，也可上传本地导出的 `.json` 文件：</div>
+          <textarea id="save-import-text" placeholder="在此粘贴导出的 Base64 存档码或 JSON 文本..." rows="3"></textarea>
+          <div class="save-import-actions">
+            <label class="btn small ghost file-upload-lbl">
+              📂 选择本地文件
+              <input type="file" id="save-file-input" accept=".json,.cph,.txt" hidden>
+            </label>
+            <div class="save-import-target-wrap">
+              <span>导入至：</span>
+              <select id="save-import-target-slot">
+                <option value="0">槽位 1</option>
+                <option value="1">槽位 2</option>
+                <option value="2">槽位 3</option>
+              </select>
+            </div>
+            <button id="btn-confirm-import" class="btn small primary">确认载入</button>
+            <button id="btn-cancel-import" class="btn small ghost">取消</button>
+          </div>
+        </div>
+      </div>
+      <div class="save-footer">
+        <div class="save-tip">💡 温馨提示：复制存档码通过微信/QQ等发送至其他手机或电脑，粘贴即可无缝延续家族百年基业！</div>
+        <button id="save-confirm-close" class="btn small primary">完成返回</button>
       </div>
     </div>
   </div>

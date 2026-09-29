@@ -2053,6 +2053,176 @@ function render() {
   }
 }
 
+/* ---------- 存档管理与多槽位备份模态窗 (Round 1) ---------- */
+function copyToClipboard(text) {
+  if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  if (typeof document === 'undefined') return;
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+function downloadSaveFile(slotIdx) {
+  const sm = CP.saveManager;
+  if (!sm) return;
+  const exp = sm.exportSlot(slotIdx);
+  if (!exp.ok) {
+    toast(exp.error || '当前槽位为空，无法下载');
+    return;
+  }
+  if (typeof Blob === 'undefined' || typeof URL === 'undefined' || typeof document === 'undefined') return;
+  const blob = new Blob([exp.json], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = exp.filename || `chinese_parents_slot_${slotIdx + 1}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`已下载槽位 ${slotIdx + 1} 存档文件！`);
+}
+
+function openSaveModal() {
+  sound.click();
+  const m = $('#save-modal');
+  if (!m) return;
+  m.hidden = false;
+  m.classList.remove('hidden');
+  const importPanel = $('#save-import-panel');
+  if (importPanel) importPanel.hidden = true;
+  renderSaveSlots();
+}
+
+function closeSaveModal() {
+  const m = $('#save-modal');
+  if (!m) return;
+  m.hidden = true;
+  m.classList.add('hidden');
+}
+
+function renderSaveSlots() {
+  const container = $('#save-slots-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const sm = CP.saveManager;
+  if (!sm) return;
+  const activeIdx = sm.getActiveSlot();
+  const badge = $('#save-active-badge');
+  if (badge) badge.textContent = '当前游玩：槽位 ' + (activeIdx + 1);
+
+  const slots = sm.listSlots();
+  slots.forEach((sl, idx) => {
+    const card = h('div', 'slot-card' + (sl.active ? ' active' : ''));
+    
+    // Header
+    const head = h('div', 'slot-head');
+    const titleRow = h('div', 'slot-title-row');
+    titleRow.innerHTML = `<b class="slot-num-title">槽位 ${idx + 1}</b>` + 
+      (sl.active ? `<span class="slot-active-tag">进行中</span>` : '');
+    const timeSpan = h('span', 'slot-time');
+    timeSpan.textContent = sl.savedAt ? new Date(sl.savedAt).toLocaleString() : (sl.empty ? '未开启' : '已归档');
+    head.appendChild(titleRow);
+    head.appendChild(timeSpan);
+    card.appendChild(head);
+
+    // Body
+    const body = h('div', 'slot-body');
+    if (sl.empty) {
+      body.innerHTML = `
+        <div class="slot-empty-wrap">
+          <span class="slot-empty-icon">📭</span>
+          <span class="slot-empty-text">虚位以待 · 尚未开启此人生历程</span>
+        </div>
+      `;
+    } else {
+      const genderIco = sl.gender === 'girl' ? '👧 女' : '👦 男';
+      const detailStr = `第 <b>${sl.gen}</b> 代 · 「<b>${sl.name}</b>」 (${genderIco}) · <b>${sl.phase}</b> (第${sl.turn}回合·${sl.age}岁)`;
+      const famStr = `📜 家族已历 <b>${sl.familyGen}</b> 代 · 家族特长 <b>${sl.familyTalents}</b> 项 · 门第 Tier <b>${sl.familyTier}</b>`;
+      body.innerHTML = `
+        <div class="slot-desc-main">${detailStr}</div>
+        <div class="slot-desc-sub">${famStr}</div>
+      `;
+    }
+    card.appendChild(body);
+
+    // Actions
+    const actions = h('div', 'slot-actions');
+    if (sl.active) {
+      const activeBtn = h('button', 'btn small ghost disabled', '⭐ 当前正在游玩');
+      activeBtn.disabled = true;
+      actions.appendChild(activeBtn);
+    } else if (!sl.empty) {
+      const loadBtn = h('button', 'btn small primary', '🎮 载入此槽位');
+      loadBtn.onclick = () => {
+        sound.win();
+        const res = sm.switchSlot(idx);
+        if (res.ok) {
+          toast(`已切换至槽位 ${idx + 1}！`);
+          closeSaveModal();
+          renderAll();
+        }
+      };
+      actions.appendChild(loadBtn);
+    } else {
+      const startBtn = h('button', 'btn small primary', '🎒 开启新人生');
+      startBtn.onclick = () => {
+        sound.pop();
+        sm.switchSlot(idx);
+        toast(`已在槽位 ${idx + 1} 开启全新世代！`);
+        closeSaveModal();
+        renderAll();
+      };
+      actions.appendChild(startBtn);
+    }
+
+    if (!sl.empty) {
+      const exportBtn = h('button', 'btn small ghost', '📋 导出备份');
+      exportBtn.onclick = () => {
+        const exp = sm.exportSlot(idx);
+        if (exp.ok) {
+          copyToClipboard(exp.base64);
+          toast(`已复制槽位 ${idx + 1} 的 Base64 存档码至剪贴板！`);
+        } else {
+          toast(exp.error || '导出失败');
+        }
+      };
+      actions.appendChild(exportBtn);
+
+      const clearBtn = h('button', 'btn small danger', '🗑️ 清空');
+      clearBtn.onclick = () => {
+        if (confirm(`确定要清空【槽位 ${idx + 1}】的存档与全部家族数据吗？此操作不可逆！`)) {
+          sound.fail();
+          sm.clearSlot(idx);
+          toast(`已清空槽位 ${idx + 1}`);
+          renderSaveSlots();
+          if (idx === activeIdx) {
+            renderAll();
+          }
+        }
+      };
+      actions.appendChild(clearBtn);
+    }
+
+    card.appendChild(actions);
+    container.appendChild(card);
+  });
+}
+
 /* ---------- 初始化绑定 ---------- */
 function init() {
   sound.updateBtn();
@@ -2133,6 +2303,110 @@ function init() {
   const splashVer = $('#splash-ver-badge');
   if (splashVer) splashVer.onclick = () => openChangelogModal(false);
 
+  // 存档管理弹窗绑定
+  const saveBtn = $('#save-btn');
+  if (saveBtn) saveBtn.onclick = () => openSaveModal();
+  const splashSaveBtn = $('#splash-save-btn');
+  if (splashSaveBtn) splashSaveBtn.onclick = () => openSaveModal();
+  const splashSaveManageBtn = $('#splash-save-manage-btn');
+  if (splashSaveManageBtn) splashSaveManageBtn.onclick = () => openSaveModal();
+
+  const saveClose = $('#save-close');
+  if (saveClose) saveClose.onclick = () => closeSaveModal();
+  const saveConfirmClose = $('#save-confirm-close');
+  if (saveConfirmClose) saveConfirmClose.onclick = () => closeSaveModal();
+
+  const saveModal = $('#save-modal');
+  if (saveModal) {
+    saveModal.onclick = (e) => {
+      if (e.target === saveModal) closeSaveModal();
+    };
+  }
+
+  // 快捷导出当前槽位码
+  const btnExportCode = $('#btn-export-code');
+  if (btnExportCode) {
+    btnExportCode.onclick = () => {
+      const activeIdx = CP.saveManager.getActiveSlot();
+      const exp = CP.saveManager.exportSlot(activeIdx);
+      if (exp.ok) {
+        copyToClipboard(exp.base64);
+        toast(`已复制当前【槽位 ${activeIdx + 1}】的存档码至剪贴板！`);
+      } else {
+        toast(exp.error || '当前槽位为空');
+      }
+    };
+  }
+
+  // 下载当前槽位文件
+  const btnExportFile = $('#btn-export-file');
+  if (btnExportFile) {
+    btnExportFile.onclick = () => {
+      downloadSaveFile(CP.saveManager.getActiveSlot());
+    };
+  }
+
+  // 展开导入面板
+  const btnOpenImport = $('#btn-open-import');
+  const importPanel = $('#save-import-panel');
+  if (btnOpenImport && importPanel) {
+    btnOpenImport.onclick = () => {
+      importPanel.hidden = !importPanel.hidden;
+    };
+  }
+  const btnCancelImport = $('#btn-cancel-import');
+  if (btnCancelImport && importPanel) {
+    btnCancelImport.onclick = () => {
+      importPanel.hidden = true;
+    };
+  }
+
+  // 确认导入
+  const btnConfirmImport = $('#btn-confirm-import');
+  if (btnConfirmImport) {
+    btnConfirmImport.onclick = () => {
+      const ta = $('#save-import-text');
+      const text = ta ? ta.value : '';
+      const targetSelect = $('#save-import-target-slot');
+      const targetSlot = targetSelect ? parseInt(targetSelect.value, 10) : 0;
+      if (!text || !text.trim()) {
+        toast('请先粘贴存档码或选择本地文件');
+        return;
+      }
+      const res = CP.saveManager.importSlot(text, targetSlot);
+      if (res.ok) {
+        sound.win();
+        toast(`🎉 成功导入至【槽位 ${targetSlot + 1}】(${res.summary.name || '已恢复'})！`);
+        if (ta) ta.value = '';
+        if (importPanel) importPanel.hidden = true;
+        renderSaveSlots();
+        if (targetSlot === CP.saveManager.getActiveSlot()) {
+          renderAll();
+        }
+      } else {
+        sound.fail();
+        alert(res.error || '导入失败，请检查数据完整性');
+      }
+    };
+  }
+
+  // 本地文件选择
+  const fileInput = $('#save-file-input');
+  if (fileInput) {
+    fileInput.onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const content = evt.target.result;
+        const ta = $('#save-import-text');
+        if (ta) ta.value = content;
+        toast(`已读取文件：${file.name}，请选择目标槽位并点击“确认载入”！`);
+      };
+      reader.readAsText(file);
+    };
+  }
+
   // 检查新版本公告并自愈呈现
   checkChangelogNotice();
 
@@ -2154,6 +2428,9 @@ global.UI = {
   openChangelogModal,
   closeChangelogModal,
   checkChangelogNotice,
+  openSaveModal,
+  closeSaveModal,
+  renderSaveSlots,
   init
 };
 document.addEventListener('DOMContentLoaded', init);

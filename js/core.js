@@ -85,15 +85,387 @@ function ageOf(t) {
 }
 function cls() { return phaseOf(); }
 
-/* ---------- 存档 ---------- */
+/* ---------- 存档管理与多槽位系统 (Round 1) ---------- */
+let activeSlot = 0;
+
+function slotSaveKey(slot) {
+  const idx = (typeof slot === 'number' && slot >= 0 && slot <= 2) ? slot : activeSlot;
+  return idx === 0 ? 'cph_save' : ('cph_save_' + idx);
+}
+function slotFamKey(slot) {
+  const idx = (typeof slot === 'number' && slot >= 0 && slot <= 2) ? slot : activeSlot;
+  return idx === 0 ? 'cph_fam' : ('cph_fam_' + idx);
+}
+
+function initStorage() {
+  if (!LS) return;
+  try {
+    const act = LS.getItem('cph_active_slot');
+    if (act !== null && act !== undefined && act !== '') {
+      const parsed = parseInt(act, 10);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 2) {
+        activeSlot = parsed;
+      }
+    }
+  } catch (e) {}
+}
+initStorage();
+
 function persist() {
   if (!LS || !S) return;
-  try { LS.setItem('cph_save', JSON.stringify(S)); } catch (e) {}
+  try {
+    S.savedAt = Date.now();
+    const str = JSON.stringify(S);
+    LS.setItem(slotSaveKey(activeSlot), str);
+    if (activeSlot === 0) {
+      LS.setItem('cph_save_0', str);
+    }
+  } catch (e) {}
 }
-function loadSave() { if (!LS) return null; try { return JSON.parse(LS.getItem('cph_save')); } catch (e) { return null; } }
-function loadFam() { if (!LS) return null; try { return JSON.parse(LS.getItem('cph_fam')); } catch (e) { return null; } }
-function saveFam(f) { if (LS) LS.setItem('cph_fam', JSON.stringify(f)); }
+
+function loadSave(slot) {
+  if (!LS) return null;
+  const idx = (typeof slot === 'number' && slot >= 0 && slot <= 2) ? slot : activeSlot;
+  try {
+    const raw = (idx === 0)
+      ? (LS.getItem('cph_save') || LS.getItem('cph_save_0'))
+      : LS.getItem('cph_save_' + idx);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+function loadFam(slot) {
+  if (!LS) return null;
+  const idx = (typeof slot === 'number' && slot >= 0 && slot <= 2) ? slot : activeSlot;
+  try {
+    const raw = (idx === 0)
+      ? (LS.getItem('cph_fam') || LS.getItem('cph_fam_0'))
+      : LS.getItem('cph_fam_' + idx);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+function saveFam(f, slot) {
+  if (!LS) return;
+  const idx = (typeof slot === 'number' && slot >= 0 && slot <= 2) ? slot : activeSlot;
+  try {
+    const str = JSON.stringify(f);
+    LS.setItem(slotFamKey(idx), str);
+    if (idx === 0) {
+      LS.setItem('cph_fam_0', str);
+    }
+  } catch (e) {}
+}
+
 function save() { persist(); }
+
+function toBase64(str) {
+  try {
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(str, 'utf8').toString('base64');
+    }
+  } catch (e) {}
+  try {
+    if (typeof btoa !== 'undefined') {
+      return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
+    }
+  } catch (e) {}
+  // 纯原生无依赖 Base64 算法 (兜底兼容沙箱与极简环境)
+  try {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+    const utf8 = encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (m, p1) => String.fromCharCode('0x' + p1));
+    let out = '';
+    for (let i = 0; i < utf8.length; i += 3) {
+      const c1 = utf8.charCodeAt(i);
+      const c2 = i + 1 < utf8.length ? utf8.charCodeAt(i + 1) : NaN;
+      const c3 = i + 2 < utf8.length ? utf8.charCodeAt(i + 2) : NaN;
+      const e1 = c1 >> 2;
+      const e2 = ((c1 & 3) << 4) | (isNaN(c2) ? 0 : (c2 >> 4));
+      const e3 = isNaN(c2) ? 64 : (((c2 & 15) << 2) | (isNaN(c3) ? 0 : (c3 >> 6)));
+      const e4 = isNaN(c3) ? 64 : (c3 & 63);
+      out += chars.charAt(e1) + chars.charAt(e2) + chars.charAt(e3) + chars.charAt(e4);
+    }
+    return out;
+  } catch (e) { return ''; }
+}
+
+function fromBase64(b64) {
+  try {
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(b64, 'base64').toString('utf8');
+    }
+  } catch (e) {}
+  try {
+    if (typeof atob !== 'undefined') {
+      return decodeURIComponent(Array.prototype.map.call(atob(b64.trim()), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    }
+  } catch (e) {}
+  try {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+    const clean = b64.replace(/[^A-Za-z0-9+/=]/g, '');
+    let bin = '';
+    for (let i = 0; i < clean.length; i += 4) {
+      const e1 = chars.indexOf(clean.charAt(i));
+      const e2 = chars.indexOf(clean.charAt(i + 1));
+      const e3 = chars.indexOf(clean.charAt(i + 2));
+      const e4 = chars.indexOf(clean.charAt(i + 3));
+      const c1 = (e1 << 2) | (e2 >> 4);
+      const c2 = ((e2 & 15) << 4) | (e3 >> 2);
+      const c3 = ((e3 & 3) << 6) | e4;
+      bin += String.fromCharCode(c1);
+      if (e3 !== 64) bin += String.fromCharCode(c2);
+      if (e4 !== 64) bin += String.fromCharCode(c3);
+    }
+    return decodeURIComponent(Array.prototype.map.call(bin, c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+  } catch (e) { return ''; }
+}
+
+function listSlots() {
+  const res = [];
+  for (let i = 0; i < 3; i++) {
+    const s = loadSave(i);
+    const fam = loadFam(i);
+    const isActive = (i === activeSlot);
+    if (s && s.ver && s.turn) {
+      res.push({
+        slot: i,
+        slotName: '槽位 ' + (i + 1),
+        active: isActive,
+        empty: false,
+        name: s.name || '孩子',
+        gender: s.gender || 'boy',
+        gen: s.gen || 1,
+        turn: s.turn || 1,
+        phase: PHASE_CN[phaseOf(s.turn)] || '成长中',
+        age: ageOf(s.turn),
+        savedAt: s.savedAt || null,
+        score: s.gaokaoScore || 0,
+        job: s.job || null,
+        talentsCount: (s.talents && s.talents.length) || 0,
+        familyGen: (fam && fam.g) || 0,
+        familyTalents: (fam && fam.atlas && fam.atlas.length) || 0,
+        familyTier: (fam && fam.tier) || 0
+      });
+    } else if (fam && (fam.g > 0 || (fam.atlas && fam.atlas.length > 0))) {
+      res.push({
+        slot: i,
+        slotName: '槽位 ' + (i + 1),
+        active: isActive,
+        empty: false,
+        name: '家族传承',
+        gender: 'boy',
+        gen: (fam.g || 0) + 1,
+        turn: 1,
+        phase: '待开启',
+        age: 0,
+        savedAt: null,
+        score: 0,
+        job: null,
+        talentsCount: 0,
+        familyGen: fam.g || 0,
+        familyTalents: (fam.atlas && fam.atlas.length) || 0,
+        familyTier: fam.tier || 0
+      });
+    } else {
+      res.push({
+        slot: i,
+        slotName: '槽位 ' + (i + 1),
+        active: isActive,
+        empty: true,
+        name: '虚位以待',
+        gender: 'boy',
+        gen: 1,
+        turn: 1,
+        phase: '未开启',
+        age: 0,
+        savedAt: null,
+        score: 0,
+        job: null,
+        talentsCount: 0,
+        familyGen: 0,
+        familyTalents: 0,
+        familyTier: 0
+      });
+    }
+  }
+  return res;
+}
+
+function switchSlot(targetSlot) {
+  const idx = parseInt(targetSlot, 10);
+  if (isNaN(idx) || idx < 0 || idx > 2) return { ok: false, error: '无效槽位' };
+  if (S) persist();
+  activeSlot = idx;
+  if (LS) {
+    try { LS.setItem('cph_active_slot', String(idx)); } catch (e) {}
+  }
+  const hasSave = resume();
+  if (!hasSave) {
+    newGame();
+    return { ok: true, slot: idx, isNew: true };
+  }
+  return { ok: true, slot: idx, isNew: false };
+}
+
+function clearSlot(targetSlot) {
+  const idx = parseInt(targetSlot, 10);
+  if (isNaN(idx) || idx < 0 || idx > 2) return { ok: false, error: '无效槽位' };
+  if (LS) {
+    try {
+      LS.removeItem(slotSaveKey(idx));
+      LS.removeItem(slotFamKey(idx));
+      if (idx === 0) {
+        LS.removeItem('cph_save');
+        LS.removeItem('cph_fam');
+      }
+    } catch (e) {}
+  }
+  if (idx === activeSlot) {
+    S = null;
+  }
+  return { ok: true, slot: idx };
+}
+
+function copySlot(fromSlot, toSlot) {
+  const f = parseInt(fromSlot, 10);
+  const t = parseInt(toSlot, 10);
+  if (isNaN(f) || f < 0 || f > 2 || isNaN(t) || t < 0 || t > 2) {
+    return { ok: false, error: '无效槽位' };
+  }
+  if (f === t) return { ok: false, error: '无法复制至同一槽位' };
+  const s = loadSave(f);
+  const fam = loadFam(f);
+  if (!s && !fam) return { ok: false, error: '来源槽位为空' };
+  if (LS) {
+    try {
+      if (s) {
+        LS.setItem(slotSaveKey(t), JSON.stringify(s));
+        if (t === 0) LS.setItem('cph_save', JSON.stringify(s));
+      }
+      if (fam) {
+        LS.setItem(slotFamKey(t), JSON.stringify(fam));
+        if (t === 0) LS.setItem('cph_fam', JSON.stringify(fam));
+      }
+    } catch (e) {}
+  }
+  if (t === activeSlot) {
+    resume();
+  }
+  return { ok: true, from: f, to: t };
+}
+
+function exportSlot(slot) {
+  const idx = (typeof slot === 'number' && slot >= 0 && slot <= 2) ? slot : activeSlot;
+  if (idx === activeSlot && S) persist();
+  const s = loadSave(idx);
+  const fam = loadFam(idx);
+  if (!s && !fam) {
+    return { ok: false, error: '槽位为空，无法导出' };
+  }
+  const summary = {
+    name: s ? s.name : '家族档案',
+    gender: s ? s.gender : 'boy',
+    gen: s ? s.gen : (fam ? (fam.g || 1) : 1),
+    turn: s ? s.turn : 1,
+    phase: s ? (PHASE_CN[phaseOf(s.turn)] || '成长中') : '未开始',
+    age: s ? ageOf(s.turn) : 0,
+    familyGen: (fam && fam.g) || (s && s.gen ? s.gen - 1 : 0),
+    familyTalents: (fam && fam.atlas && fam.atlas.length) || (s && s.talents ? s.talents.length : 0),
+    familyTier: (fam && fam.tier) || 0
+  };
+  const pkg = {
+    magic: 'CPH_SAVE_PACKAGE',
+    ver: 2,
+    exportAt: new Date().toISOString(),
+    slot: idx,
+    summary,
+    save: s,
+    fam: fam
+  };
+  const jsonStr = JSON.stringify(pkg, null, 2);
+  const base64Str = toBase64(jsonStr);
+  return {
+    ok: true,
+    slot: idx,
+    summary,
+    json: jsonStr,
+    base64: base64Str,
+    filename: 'chinese_parents_slot_' + (idx + 1) + '_gen' + summary.gen + '.json'
+  };
+}
+
+function importSlot(rawInput, targetSlot) {
+  if (!rawInput || typeof rawInput !== 'string' || !rawInput.trim()) {
+    return { ok: false, error: '导入数据为空' };
+  }
+  const idx = (typeof targetSlot === 'number' && targetSlot >= 0 && targetSlot <= 2) ? targetSlot : activeSlot;
+  let parsed = null;
+  const trimmed = rawInput.trim();
+
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try { parsed = JSON.parse(trimmed); } catch (e) {}
+  }
+  if (!parsed) {
+    const decoded = fromBase64(trimmed);
+    if (decoded && decoded.startsWith('{') && decoded.endsWith('}')) {
+      try { parsed = JSON.parse(decoded); } catch (e) {}
+    }
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return { ok: false, error: '无法解析的存档数据格式，请确认文本完整性' };
+  }
+
+  let saveObj = null;
+  let famObj = null;
+  let summary = parsed.summary || null;
+
+  if (parsed.magic === 'CPH_SAVE_PACKAGE') {
+    saveObj = parsed.save;
+    famObj = parsed.fam;
+  } else if (parsed.ver && parsed.attrs && parsed.turn) {
+    saveObj = parsed;
+    famObj = parsed.fam || null;
+  } else if (parsed.save || parsed.fam) {
+    saveObj = parsed.save || null;
+    famObj = parsed.fam || null;
+  } else {
+    return { ok: false, error: '数据包缺少有效的游戏存档核心字段' };
+  }
+
+  if (!saveObj && !famObj) {
+    return { ok: false, error: '存档包内容为空' };
+  }
+
+  if (LS) {
+    try {
+      if (saveObj) {
+        LS.setItem(slotSaveKey(idx), JSON.stringify(saveObj));
+        if (idx === 0) LS.setItem('cph_save', JSON.stringify(saveObj));
+      }
+      if (famObj) {
+        LS.setItem(slotFamKey(idx), JSON.stringify(famObj));
+        if (idx === 0) LS.setItem('cph_fam', JSON.stringify(famObj));
+      }
+    } catch (e) {
+      return { ok: false, error: '存储空间已满或写入异常' };
+    }
+  }
+
+  if (idx === activeSlot) {
+    resume();
+  }
+
+  return {
+    ok: true,
+    slot: idx,
+    summary: summary || {
+      name: (saveObj && saveObj.name) || '导入存档',
+      gen: (saveObj && saveObj.gen) || 1,
+      turn: (saveObj && saveObj.turn) || 1
+    }
+  };
+}
 function pendHongbao() {
   const relatives = [
     { n: '大姑妈', line: '“哎呀小宝又长高了！拿着，大姑给买新书包的！”', mom: '“使不得使不得，大姐你留着买菜！”' },
@@ -238,8 +610,26 @@ function resume() {
   }
   return false;
 }
-function resetAll() { if (LS) LS.removeItem('cph_save'); S = null; }
-function restartLineage() { if (LS) LS.removeItem('cph_fam'); resetAll(); newGame(); }
+function resetAll() {
+  if (LS) {
+    try {
+      LS.removeItem(slotSaveKey(activeSlot));
+      if (activeSlot === 0) LS.removeItem('cph_save');
+    } catch(e) {}
+  }
+  S = null;
+}
+function restartLineage() {
+  if (LS) {
+    try {
+      LS.removeItem(slotFamKey(activeSlot));
+      if (activeSlot === 0) LS.removeItem('cph_fam');
+    } catch(e) {}
+  }
+  resetAll();
+  newGame();
+}
+
 
 function captureTurnStart() {
   if (!S) return;
@@ -1926,6 +2316,8 @@ function claimNovicePack() {
 const API = {
   state: () => S,
   newGame, resume, resetAll, restartLineage,
+  save: () => persist(),
+  persist,
   nextGen: () => { resetAll(); newGame(); },
   saveInfo,
   info: () => S ? {
@@ -1958,6 +2350,24 @@ const API = {
   talentShowPerform,
   talentsList: () => (S ? (S.talents || []).map(id => D.talentData.find(x => x.id === id)).filter(Boolean) : []),
   election: () => (S && S.election),
+  saveManager: {
+    getActiveSlot: () => activeSlot,
+    setActiveSlot: (idx) => {
+      const p = clamp(idx, 0, 2);
+      activeSlot = p;
+      if (LS) {
+        try { LS.setItem('cph_active_slot', String(p)); } catch(e) {}
+      }
+    },
+    listSlots,
+    switchSlot,
+    clearSlot,
+    copySlot,
+    exportSlot,
+    importSlot
+  },
+  activeSlot: () => activeSlot,
+  saveSlots: listSlots,
 };
 function getFam() { return S ? S.fam : (loadFam() || { g: 0, talent: 0, tier: 0, attr: {}, atlas: [] }); }
 

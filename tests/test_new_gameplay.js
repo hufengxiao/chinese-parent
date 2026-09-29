@@ -687,8 +687,8 @@ store['cph_last_seen_ver'] = DATA.version;
 shouldNotice = store['cph_last_seen_ver'] !== DATA.version;
 assert.strictEqual(shouldNotice, false, '版本一致时不应重复弹出');
 
-// 场景 D: 开发者提交新代码修复或新玩法 (模拟升版至 v2.2.0)
-const nextVersion = 'v2.2.0';
+// 场景 D: 开发者提交新代码修复或新玩法 (模拟升版至未来版本如 v2.3.0)
+const nextVersion = 'v2.3.0';
 shouldNotice = store['cph_last_seen_ver'] !== nextVersion;
 assert.strictEqual(shouldNotice, true, '开发者发布新版本后，用户刷新将再次自动弹出了解最新玩法');
 
@@ -745,9 +745,77 @@ uiCtx.UI.renderTop();
 
 assert.strictEqual(Number(mockDom['#top-act'].textContent), uiCtx.CP.info().act, '行动点数值必须精准渲染至独立 top-act');
 assert.strictEqual(Number(mockDom['#top-face'].textContent), uiCtx.CP.info().face, '面子数值必须精准渲染至 top-face');
+assert.strictEqual(typeof uiCtx.UI.openSaveModal, 'function', 'UI.openSaveModal 必须正确定义');
+assert.strictEqual(typeof uiCtx.UI.closeSaveModal, 'function', 'UI.closeSaveModal 必须正确定义');
+assert.strictEqual(typeof uiCtx.UI.renderSaveSlots, 'function', 'UI.renderSaveSlots 必须正确定义');
 console.log(`顶栏双层布局验证通过: 行动点 [${mockDom['#top-act'].textContent}] 位于独立资源卡片，功能按钮归入元信息层，彻底告别遮挡！`);
 
-console.log('\n🎉 全部十八项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、20代压力测试、更新公告与顶栏UI防遮挡优化全部 100% 验证通过！');
+console.log('\n--- 测试 19: 💾 多存档槽位管理与跨设备导入/导出机制 (Round 1) ---');
+const sm = CP.saveManager;
+assert(sm, 'CP.saveManager 必须存在');
+
+// 1) 初始槽位列表检测
+const initialSlots = sm.listSlots();
+assert.strictEqual(initialSlots.length, 3, '必须提供 3 个槽位');
+assert.strictEqual(sm.getActiveSlot(), 0, '默认激活槽位必须是 0');
+assert.strictEqual(initialSlots[0].active, true, '槽位 0 必须标记为 active');
+
+// 2) 槽位 0 当前状态记录
+CP.state().name = '一代状元郎';
+CP.state().attrs.iq = 999;
+CP.state().fam = { g: 3, talent: 15, tier: 4, atlas: ['t-1', 't-2'] };
+CP.save();
+
+// 3) 切换至槽位 1
+const switchRes = sm.switchSlot(1);
+assert(switchRes.ok, '切换槽位 1 必须成功');
+assert.strictEqual(sm.getActiveSlot(), 1, '当前激活槽位必须变为 1');
+assert.notStrictEqual(CP.state().name, '一代状元郎', '槽位 1 必须独立，不应继承槽位 0 的主角姓名');
+CP.state().name = '二号艺术大师';
+CP.state().attrs.img = 888;
+CP.save();
+
+// 4) 切换回槽位 0，断言数据完全隔离
+sm.switchSlot(0);
+assert.strictEqual(sm.getActiveSlot(), 0, '切回槽位 0');
+assert.strictEqual(CP.state().name, '一代状元郎', '槽位 0 的姓名必须保持原样');
+assert.strictEqual(CP.state().attrs.iq, 999, '槽位 0 的智商必须保持 999');
+
+// 5) 导出槽位 0 的备份数据包 (Base64 与 JSON)
+const exportRes = sm.exportSlot(0);
+assert(exportRes.ok, '导出槽位 0 必须成功');
+assert(exportRes.base64 && exportRes.base64.length > 20, 'Base64 字符串必须生成');
+assert(exportRes.json && exportRes.json.includes('一代状元郎'), 'JSON 必须包含槽位数据');
+assert.strictEqual(exportRes.summary.name, '一代状元郎', '导出的摘要信息必须准确');
+
+// 6) 将导出的 Base64 导入至槽位 2
+const importRes = sm.importSlot(exportRes.base64, 2);
+assert(importRes.ok, '导入至槽位 2 必须成功');
+sm.switchSlot(2);
+assert.strictEqual(CP.state().name, '一代状元郎', '槽位 2 恢复后名字必须为一代状元郎');
+assert.strictEqual(CP.state().attrs.iq, 999, '槽位 2 恢复后智商必须为 999');
+assert.strictEqual(CP.state().fam.talent, 15, '家族天赋必须 100% 还原');
+
+// 7) 损坏与恶意数据防御测试
+const badImport1 = sm.importSlot('invalid_random_base64_or_text!@#$', 2);
+assert.strictEqual(badImport1.ok, false, '非法文本导入必须被拒绝');
+assert(badImport1.error, '必须返回明确错误提示');
+
+const badImport2 = sm.importSlot('', 2);
+assert.strictEqual(badImport2.ok, false, '空字符串导入必须被拒绝');
+
+// 8) 清空槽位测试
+const clearRes = sm.clearSlot(2);
+assert(clearRes.ok, '清空槽位 2 必须成功');
+const slotsAfterClear = sm.listSlots();
+assert.strictEqual(slotsAfterClear[2].empty, true, '槽位 2 在清空后必须显示为空闲');
+
+// 切回槽位 0
+sm.switchSlot(0);
+console.log('多存档槽位管理、数据隔离、Base64/JSON 备份与防崩溃导入验证 100% 通过！');
+
+console.log('\n🎉 全部十九项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档与备份导入导出全部 100% 验证通过！');
+
 
 
 
