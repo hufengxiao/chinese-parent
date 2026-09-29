@@ -925,7 +925,125 @@ assert(CP.state().act >= 50, '踩中钥匙必须如期回复 50 点行动力');
 
 console.log('脑域层级探照、竹管流光进度条、低行动力智能锁止与下潜重置断言全部通过！');
 
-console.log('\n🎉 全部二十一项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续与脑洞HUD全部 100% 验证通过！');
+console.log('\n--- 测试 22: 🎵 原生 WebAudio 中国风五声 BGM 与三态音频系统 (Round 4) ---');
+// 创建具备 WebAudio Mock 的 UI 测试沙箱
+const sndStore = {};
+const sndSandboxCtx = {
+  console: console,
+  Math, Date, JSON, setTimeout, clearTimeout, setInterval, clearInterval,
+  localStorage: {
+    getItem: k => (k in sndStore ? sndStore[k] : null),
+    setItem: (k, v) => { sndStore[k] = String(v); },
+    removeItem: k => { delete sndStore[k]; },
+  },
+  document: {
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    getElementById: () => null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    createElement: () => ({ style: {}, classList: { add() {}, remove() {} }, appendChild() {} })
+  },
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  CP: ctx.CP,
+  DATA: ctx.DATA,
+  window: {},
+  AudioContext: class MockAudioContext {
+    constructor() {
+      this.state = 'running';
+      this.sampleRate = 44100;
+      this.currentTime = 0;
+      this.destination = {};
+      this.oscillators = [];
+    }
+    resume() {}
+    createOscillator() {
+      const osc = {
+        type: 'sine',
+        frequency: {
+          val: 0,
+          setValueAtTime(v) { osc.frequency.val = v; },
+          exponentialRampToValueAtTime() {}
+        },
+        connect() {},
+        start() {},
+        stop() {}
+      };
+      this.oscillators.push(osc);
+      return osc;
+    }
+    createGain() {
+      return {
+        gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+        connect() {}
+      };
+    }
+    createBuffer(channels, size, rate) {
+      return { getChannelData: () => new Float32Array(size) };
+    }
+    createBufferSource() {
+      return { buffer: null, connect() {}, start() {}, stop() {} };
+    }
+  }
+};
+sndSandboxCtx.window = sndSandboxCtx;
+sndSandboxCtx.globalThis = sndSandboxCtx;
+vm.createContext(sndSandboxCtx);
+// 加载 ui.js
+vm.runInContext(fs.readFileSync(path.join(dir, 'ui.js'), 'utf8'), sndSandboxCtx);
+
+const testSound = sndSandboxCtx.sound;
+assert(testSound, 'SoundManager 实例必须在 ui.js 中自动单例初始化');
+
+// 1) 初始状态与老存档兼容性
+assert.strictEqual(testSound.mode, 'all', '默认开局模式必须为 all (音乐+音效)');
+assert.strictEqual(testSound.muted, false, 'all 模式下 muted 属性应为 false');
+
+// 2) 三态循环切换测试: all -> sfx -> mute -> all
+testSound.toggle();
+assert.strictEqual(testSound.mode, 'sfx', '第一次切换应变为 sfx (仅音效)');
+assert.strictEqual(testSound.muted, false, 'sfx 模式下 muted 属性仍为 false (音效有效)');
+assert.strictEqual(sndStore['cph_audio_mode'], 'sfx', '持久化 cph_audio_mode 应记录为 sfx');
+assert.strictEqual(testSound.bgmPlaying, false, 'sfx 模式下背景音乐必须停止');
+
+testSound.toggle();
+assert.strictEqual(testSound.mode, 'mute', '第二次切换应变为 mute (全局静音)');
+assert.strictEqual(testSound.muted, true, 'mute 模式下 muted 属性必须为 true');
+assert.strictEqual(sndStore['cph_audio_mode'], 'mute', '持久化 cph_audio_mode 应记录为 mute');
+assert.strictEqual(sndStore['cph_mute'], '1', '同时向后兼容写入 cph_mute = 1');
+
+testSound.toggle();
+assert.strictEqual(testSound.mode, 'all', '第三次切换应回到 all (音乐+音效)');
+assert.strictEqual(testSound.muted, false, 'all 模式下 muted 必须为 false');
+assert.strictEqual(sndStore['cph_audio_mode'], 'all', '持久化 cph_audio_mode 应记录为 all');
+assert.strictEqual(sndStore['cph_mute'], '0', '向后兼容写入 cph_mute = 0');
+
+// 3) 五声 BGM 调度器运行与静默生命周期
+testSound.startBGM();
+assert.strictEqual(testSound.bgmPlaying, true, 'startBGM 调用后 bgmPlaying 必须为 true');
+assert(testSound.bgmTimer !== null, '必须启动 BGM 定时调度器');
+
+testSound.stopBGM();
+assert.strictEqual(testSound.bgmPlaying, false, 'stopBGM 调用后 bgmPlaying 必须为 false');
+assert.strictEqual(testSound.bgmTimer, null, '定时器引用必须安全清空');
+
+// 4) 高潮节点情绪音效函数调用测试 (严禁在任何环境下抛错)
+testSound.gaokaoBang();
+testSound.talentWin();
+testSound.faceCrit();
+testSound.stressPanic();
+testSound.win();
+testSound.fail();
+testSound.click();
+testSound.brain();
+testSound.coin();
+testSound.pop();
+testSound.stopBGM(); // 测试完成后清理调度器，确保测试进程干净退出
+
+console.log('WebAudio 五声 BGM 合成、三态切换、历史键位兼容与高潮音效全生命周期断言通过！');
+
+console.log('\n🎉 全部二十二项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD与原生古典BGM全部 100% 验证通过！');
 
 
 

@@ -12,33 +12,89 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 let ACTIVE = 'plan';
 const RARE_CN = { 1: '普通', 2: '稀有', 3: '史诗', 4: '传说' };
 
-/* ---------- 音效系统 (WebAudio 原生免外部文件合成) ---------- */
+/* ---------- 音效与背景音律系统 (WebAudio 原生免外部文件合成) ---------- */
 class SoundManager {
   constructor() {
     this.ctx = null;
-    this.muted = localStorage.getItem('cph_mute') === '1';
+    const stored = (typeof localStorage !== 'undefined' && localStorage.getItem) ? localStorage.getItem('cph_audio_mode') : null;
+    if (stored === 'all' || stored === 'sfx' || stored === 'mute') {
+      this.mode = stored;
+    } else {
+      const oldMute = (typeof localStorage !== 'undefined' && localStorage.getItem) ? localStorage.getItem('cph_mute') : null;
+      this.mode = oldMute === '1' ? 'mute' : 'all';
+    }
+    this.bgmTimer = null;
+    this.bgmStep = 0;
+    this.bgmPlaying = false;
     this.updateBtn();
   }
+
+  get muted() {
+    return this.mode === 'mute';
+  }
+
   init() {
     if (!this.ctx && typeof AudioContext !== 'undefined') {
-      try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+      try {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch(e) {}
     }
   }
-  toggle() {
-    this.muted = !this.muted;
-    localStorage.setItem('cph_mute', this.muted ? '1' : '0');
+
+  setMode(mode) {
+    if (mode !== 'all' && mode !== 'sfx' && mode !== 'mute') return;
+    this.mode = mode;
+    if (this.mode === 'all') {
+      this.startBGM();
+    } else {
+      this.stopBGM();
+    }
+    if (typeof localStorage !== 'undefined' && localStorage.setItem) {
+      localStorage.setItem('cph_audio_mode', this.mode);
+      localStorage.setItem('cph_mute', this.mode === 'mute' ? '1' : '0');
+    }
     this.updateBtn();
-    if (!this.muted) this.playTone(523, 0.08, 'sine');
   }
+
+  toggle() {
+    if (this.mode === 'all') {
+      this.setMode('sfx');
+      this.playTone(440, 0.08, 'sine');
+    } else if (this.mode === 'sfx') {
+      this.setMode('mute');
+    } else {
+      this.setMode('all');
+      this.playTone(523.25, 0.1, 'triangle');
+    }
+  }
+
   updateBtn() {
-    const text = this.muted ? '🔇' : '🔊';
-    const btn = $('#sound-btn');
-    if (btn) btn.textContent = text;
-    const sBtn = $('#splash-sound-btn');
-    if (sBtn) sBtn.textContent = text;
+    let icon = '🔊';
+    let title = '声音：音乐+音效 (点击切换为仅音效)';
+    if (this.mode === 'sfx') {
+      icon = '🎵';
+      title = '声音：仅音效 (点击切换为静音)';
+    } else if (this.mode === 'mute') {
+      icon = '🔇';
+      title = '声音：全局静音 (点击开启音乐+音效)';
+    }
+
+    if (typeof $ === 'function') {
+      const btn = $('#sound-btn');
+      if (btn) {
+        btn.textContent = icon;
+        btn.title = title;
+      }
+      const sBtn = $('#splash-sound-btn');
+      if (sBtn) {
+        sBtn.textContent = icon;
+        sBtn.title = title;
+      }
+    }
   }
-  playTone(freq, duration = 0.1, type = 'sine', decay = 0.05) {
-    if (this.muted) return;
+
+  playTone(freq, duration = 0.1, type = 'sine', volume = 0.12) {
+    if (this.mode === 'mute') return;
     this.init();
     if (!this.ctx) return;
     try {
@@ -48,36 +104,219 @@ class SoundManager {
       const gain = ctx.createGain();
       osc.type = type;
       osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      gain.gain.setValueAtTime(volume, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + duration);
     } catch(e) {}
   }
-  click() { this.playTone(600, 0.04, 'sine'); }
-  pop() { this.playTone(850, 0.06, 'triangle'); }
+
+  /* ---------- 中国古典五声音阶轻量 BGM 调度器 ---------- */
+  startBGM() {
+    if (this.mode !== 'all' || this.bgmTimer) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+    } catch(e) {}
+
+    // 古典五声旋律（平沙落雁意境，含休止符 0）
+    const melodySequence = [
+      523.25, 587.33, 659.25, 523.25, 392.00, 440.00, 523.25, 0,
+      659.25, 783.99, 880.00, 659.25, 587.33, 523.25, 440.00, 0,
+      392.00, 523.25, 587.33, 659.25, 523.25, 440.00, 392.00, 0,
+      440.00, 523.25, 659.25, 783.99, 880.00, 783.99, 659.25, 523.25
+    ];
+    const bassScale = [130.81, 196.00, 220.00, 196.00];
+
+    this.bgmPlaying = true;
+    this.bgmStep = 0;
+
+    const playStep = () => {
+      if (this.mode !== 'all' || !this.bgmPlaying || !this.ctx) return;
+      try {
+        const ctx = this.ctx;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const curPitch = melodySequence[this.bgmStep % melodySequence.length];
+        if (curPitch > 0) {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          const jitter = (Math.random() - 0.5) * 3;
+          osc.frequency.setValueAtTime(curPitch + jitter, ctx.currentTime);
+          gain.gain.setValueAtTime(0.025, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.46);
+        }
+
+        if (this.bgmStep % 4 === 0) {
+          const bassPitch = bassScale[Math.floor(this.bgmStep / 4) % bassScale.length];
+          const bOsc = ctx.createOscillator();
+          const bGain = ctx.createGain();
+          bOsc.type = 'sine';
+          bOsc.frequency.setValueAtTime(bassPitch, ctx.currentTime);
+          bGain.gain.setValueAtTime(0.02, ctx.currentTime);
+          bGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.8);
+          bOsc.connect(bGain);
+          bGain.connect(ctx.destination);
+          bOsc.start();
+          bOsc.stop(ctx.currentTime + 1.85);
+        }
+
+        this.bgmStep++;
+      } catch(e) {}
+    };
+
+    this.bgmTimer = setInterval(playStep, 480);
+  }
+
+  stopBGM() {
+    this.bgmPlaying = false;
+    if (this.bgmTimer) {
+      clearInterval(this.bgmTimer);
+      this.bgmTimer = null;
+    }
+  }
+
+  tryStartBGM() {
+    if (this.mode === 'all' && !this.bgmTimer) {
+      this.startBGM();
+    }
+  }
+
+  click() {
+    this.tryStartBGM();
+    this.playTone(600, 0.04, 'sine', 0.1);
+  }
+  pop() {
+    this.tryStartBGM();
+    this.playTone(850, 0.06, 'triangle', 0.1);
+  }
   coin() {
-    this.playTone(987, 0.08, 'sine');
-    setTimeout(() => this.playTone(1318, 0.12, 'sine'), 60);
+    this.tryStartBGM();
+    this.playTone(987, 0.08, 'sine', 0.1);
+    setTimeout(() => this.playTone(1318, 0.12, 'sine', 0.1), 60);
   }
   brain() {
-    this.playTone(520, 0.06, 'sine');
-    setTimeout(() => this.playTone(1040, 0.09, 'sine'), 50);
+    this.tryStartBGM();
+    this.playTone(520, 0.06, 'sine', 0.1);
+    setTimeout(() => this.playTone(1040, 0.09, 'sine', 0.1), 50);
   }
   win() {
-    [523, 659, 783, 1046].forEach((f, idx) => {
-      setTimeout(() => this.playTone(f, 0.15, 'triangle'), idx * 80);
+    this.tryStartBGM();
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
+      setTimeout(() => this.playTone(f, 0.16, 'triangle', 0.12), idx * 75);
     });
   }
   fail() {
+    this.tryStartBGM();
     [400, 340, 280].forEach((f, idx) => {
-      setTimeout(() => this.playTone(f, 0.12, 'sawtooth'), idx * 90);
+      setTimeout(() => this.playTone(f, 0.12, 'sawtooth', 0.1), idx * 90);
     });
+  }
+
+  /* ---------- 高潮节点情绪音效群 (Round 4 Climax SFX) ---------- */
+  // 1. 金榜题名 · 高考放榜吹打喜报 (快速五度和弦 C5-G5-C6-E6 辉煌共鸣)
+  gaokaoBang() {
+    this.tryStartBGM();
+    const chords = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+    chords.forEach((freq, idx) => {
+      setTimeout(() => this.playTone(freq, 0.35, 'triangle', 0.15), idx * 80);
+    });
+  }
+
+  // 2. 才艺选秀 · 冠军三灯全亮欢呼 (三阶亮灯 chime + 伪白噪声掌声脉冲)
+  talentWin() {
+    this.tryStartBGM();
+    [659.25, 783.99, 1046.5].forEach((freq, idx) => {
+      setTimeout(() => this.playTone(freq, 0.18, 'sine', 0.14), idx * 70);
+    });
+    setTimeout(() => {
+      if (this.mode === 'mute' || !this.ctx) return;
+      try {
+        const ctx = this.ctx;
+        if (ctx.state === 'suspended') ctx.resume();
+        const bufferSize = ctx.sampleRate * 0.4;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.15));
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        noise.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start();
+      } catch(e) {}
+    }, 220);
+  }
+
+  // 3. 面子对决 · 弱点暴击重击 (低频锯齿波向下急剧扫频)
+  faceCrit() {
+    this.tryStartBGM();
+    if (this.mode === 'mute') return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const ctx = this.ctx;
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(45, ctx.currentTime + 0.18);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } catch(e) {}
+  }
+
+  // 4. 压力过高濒临崩溃心跳警戒 (双击心跳 "咚-咚")
+  stressPanic() {
+    this.tryStartBGM();
+    if (this.mode === 'mute') return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const ctx = this.ctx;
+      if (ctx.state === 'suspended') ctx.resume();
+      [0, 0.16].forEach(delay => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(80, ctx.currentTime + delay);
+        osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + delay + 0.1);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.12);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.13);
+      });
+    } catch(e) {}
   }
 }
 const sound = new SoundManager();
+if (typeof window !== 'undefined') {
+  window.SoundManager = SoundManager;
+  window.sound = sound;
+}
+if (typeof global !== 'undefined') {
+  global.SoundManager = SoundManager;
+  global.sound = sound;
+}
 
 /* ---------- 查找表 ---------- */
 function course(id) { return D.courses.find(c => c.id === id); }
@@ -1150,7 +1389,7 @@ function renderFaceDuelModal(p, m) {
       const sub = (opt && typeof opt === 'object' && opt.sub) ? opt.sub : '';
       card.innerHTML = '<span class="fd-c-title">' + label + '</span>' + (sub ? '<span class="fd-c-sub">' + sub + '</span>' : '');
       card.onclick = () => {
-        sound.click();
+        sound.faceCrit();
         const r = CP.resolve(idx);
         if (r) toast(r);
         renderAll();
@@ -1167,6 +1406,7 @@ function renderFaceDuelModal(p, m) {
 function renderGaokaoApplyModal(p, m) {
   m.classList.add('show');
   m.innerHTML = '';
+  sound.gaokaoBang();
   const body = h('div', 'm-body');
   body.appendChild(h('div', 'm-title', p.title || '🎓 高考放榜 & 志愿填报'));
   if (p.body) body.appendChild(h('div', 'm-desc', p.body.replace(/\n/g, '<br>')));
@@ -1300,6 +1540,11 @@ function renderTalentShowModal(p, m) {
 function renderTalentShowResultModal(p, m) {
   m.classList.add('show');
   m.innerHTML = '';
+  if (p.win) {
+    sound.talentWin();
+  } else {
+    sound.fail();
+  }
   const body = h('div', 'm-body ts-modal ts-result-modal');
 
   // 1) 顶部结果徽章
