@@ -16,20 +16,20 @@
 </head>
 <body>
 <div id="app">
-  <!-- 浮动操作按钮栏 (更新公告 + 指南 + 音效) -->
-  <div class="top-floats">
-    <button id="changelog-btn" class="icon-toggle" title="版本更新公告与最新玩法" aria-label="更新公告">
-      📢<span id="update-badge" class="update-badge" hidden>NEW</span>
-    </button>
-    <button id="guide-btn" class="icon-toggle" title="新手指引与通关秘籍" aria-label="新手指引">📖</button>
-    <button id="sound-btn" class="icon-toggle" title="音效切换" aria-label="音效切换">🔊</button>
-  </div>
-
   <!-- 开始页 -->
   <div id="splash" class="screen active">
+    <!-- 开始页顶部快捷栏 -->
+    <div class="splash-tools">
+      <button id="splash-changelog-btn" class="icon-toggle" title="版本更新公告与最新玩法" aria-label="更新公告">
+        📢<span id="splash-update-badge" class="update-badge" hidden>NEW</span>
+      </button>
+      <button id="splash-guide-btn" class="icon-toggle" title="新手指引与通关秘籍" aria-label="新手指引">📖</button>
+      <button id="splash-sound-btn" class="icon-toggle" title="音效切换" aria-label="音效切换">🔊</button>
+    </div>
+
     <div class="splash-content">
       <div class="logo-bounce">🎈👨‍👩‍👦</div>
-      <h1>中国式家长 <span id="splash-ver-badge" class="splash-ver-badge" title="点击查看更新公告与玩法介绍">v2.1.0</span></h1>
+      <h1>中国式家长 <span id="splash-ver-badge" class="splash-ver-badge" title="点击查看更新公告与玩法介绍">v2.1.1</span></h1>
       <p class="sub">H5 自娱版 · 从出生到高考，再到世代传承</p>
       
       <div id="fam-badge" class="fam-card" hidden>
@@ -51,7 +51,39 @@
 
   <!-- 游戏主界面 -->
   <div id="game" class="screen" hidden>
-    <header id="topbar"></header>
+    <header id="topbar">
+      <div class="topbar-row meta-row">
+        <div class="meta-left">
+          <span id="top-gen" class="gen-tag">第1代 👦</span>
+          <span id="top-turn" class="round-badge">📅 回合1 · 0岁 · 婴儿期</span>
+        </div>
+        <div class="meta-right top-actions">
+          <button id="changelog-btn" class="top-tool-btn" title="版本更新公告与最新玩法" aria-label="更新公告">
+            📢<span id="update-badge" class="update-badge" hidden>NEW</span>
+          </button>
+          <button id="guide-btn" class="top-tool-btn" title="新手指引与通关秘籍" aria-label="新手指引">📖</button>
+          <button id="sound-btn" class="top-tool-btn" title="音效切换" aria-label="音效切换">🔊</button>
+        </div>
+      </div>
+      <div class="topbar-row res-row">
+        <div class="res-item face-item" title="家庭面子">
+          <span class="res-lbl">⭐ 面子</span>
+          <b id="top-face" class="res-val">0</b>
+        </div>
+        <div class="res-item act-item" title="剩余行动点">
+          <span class="res-lbl">⚡ 行动</span>
+          <b id="top-act" class="res-val highlight">0</b>
+        </div>
+        <div class="res-item money-item" title="零花钱">
+          <span class="res-lbl">💰 零钱</span>
+          <b id="top-money" class="res-val">0</b>
+        </div>
+        <div class="res-item insight-item" title="悟性点数">
+          <span class="res-lbl">💡 悟性</span>
+          <b id="top-insight" class="res-val">0</b>
+        </div>
+      </div>
+    </header>
     <div id="status"></div>
     <main id="stage"></main>
     <nav id="tabs">
@@ -132,7 +164,7 @@
             <div>
               <div class="changelog-main-title">
                 <h3>版本更新公告</h3>
-                <span id="changelog-cur-ver" class="changelog-ver-tag">v2.1.0</span>
+                <span id="changelog-cur-ver" class="changelog-ver-tag">v2.1.1</span>
               </div>
               <p class="changelog-sub">了解最新上线玩法与系统演进历程</p>
             </div>

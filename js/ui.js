@@ -31,8 +31,11 @@ class SoundManager {
     if (!this.muted) this.playTone(523, 0.08, 'sine');
   }
   updateBtn() {
+    const text = this.muted ? '🔇' : '🔊';
     const btn = $('#sound-btn');
-    if (btn) btn.textContent = this.muted ? '🔇' : '🔊';
+    if (btn) btn.textContent = text;
+    const sBtn = $('#splash-sound-btn');
+    if (sBtn) sBtn.textContent = text;
   }
   playTone(freq, duration = 0.1, type = 'sine', decay = 0.05) {
     if (this.muted) return;
@@ -125,13 +128,30 @@ function renderTop() {
   const i = CP.info();
   if (!i) return;
   const genderIcon = i.gender === 'girl' ? '👧' : '👦';
-  $('#topbar').innerHTML =
-    '<span class="gen-tag">第' + i.gen + '代 ' + genderIcon + i.name + '</span>' +
-    '<span class="chip">📅 回合' + i.turn + ' · ' + i.age + '岁 · ' + i.phase + '</span>' +
-    '<span class="chip" title="面子">⭐面子<b>' + i.face + '</b></span>' +
-    '<span class="chip" title="行动力">⚡行动<b>' + i.act + '</b></span>' +
-    '<span class="chip" title="零花钱">💰零钱<b>' + i.money + '</b></span>' +
-    '<span class="chip" title="悟性">💡悟性<b>' + i.insight + '</b></span>';
+  
+  const elGen = $('#top-gen');
+  if (elGen) {
+    elGen.textContent = '第' + i.gen + '代 ' + genderIcon + i.name;
+    const elTurn = $('#top-turn');
+    if (elTurn) elTurn.textContent = '📅 回合' + i.turn + ' · ' + i.age + '岁 · ' + i.phase;
+    const elFace = $('#top-face');
+    if (elFace) elFace.textContent = i.face;
+    const elAct = $('#top-act');
+    if (elAct) elAct.textContent = i.act;
+    const elMoney = $('#top-money');
+    if (elMoney) elMoney.textContent = i.money;
+    const elInsight = $('#top-insight');
+    if (elInsight) elInsight.textContent = i.insight;
+  } else {
+    // 降级兜底兼容
+    $('#topbar').innerHTML =
+      '<span class="gen-tag">第' + i.gen + '代 ' + genderIcon + i.name + '</span>' +
+      '<span class="chip">📅 回合' + i.turn + ' · ' + i.age + '岁 · ' + i.phase + '</span>' +
+      '<span class="chip" title="面子">⭐面子<b>' + i.face + '</b></span>' +
+      '<span class="chip" title="行动力">⚡行动<b>' + i.act + '</b></span>' +
+      '<span class="chip" title="零花钱">💰零钱<b>' + i.money + '</b></span>' +
+      '<span class="chip" title="悟性">💡悟性<b>' + i.insight + '</b></span>';
+  }
   
   const a = i.attrs;
   const kv = [
@@ -1906,8 +1926,8 @@ function setStoredVer(v) {
 function checkChangelogNotice() {
   const curVer = (D && D.version) ? D.version : 'v2.1.0';
   const lastSeen = getStoredVer();
-  const badge = $('#update-badge');
-  if (badge) {
+  const badges = document.querySelectorAll('#update-badge, #splash-update-badge');
+  badges.forEach(badge => {
     if (lastSeen !== curVer) {
       badge.hidden = false;
       badge.classList.remove('hidden');
@@ -1915,7 +1935,7 @@ function checkChangelogNotice() {
       badge.hidden = true;
       badge.classList.add('hidden');
     }
-  }
+  });
   const splashVer = $('#splash-ver-badge');
   if (splashVer) splashVer.textContent = curVer;
   const headerVer = $('#changelog-cur-ver');
@@ -2001,11 +2021,11 @@ function closeChangelogModal() {
   const curVer = (D && D.version) ? D.version : 'v2.1.0';
   setStoredVer(curVer);
 
-  const badge = $('#update-badge');
-  if (badge) {
+  const badges = document.querySelectorAll('#update-badge, #splash-update-badge');
+  badges.forEach(badge => {
     badge.hidden = true;
     badge.classList.add('hidden');
-  }
+  });
 }
 
 function renderAll() {
@@ -2036,11 +2056,16 @@ function render() {
 /* ---------- 初始化绑定 ---------- */
 function init() {
   sound.updateBtn();
-  $('#sound-btn').onclick = () => sound.toggle();
+  const soundBtn = $('#sound-btn');
+  if (soundBtn) soundBtn.onclick = () => sound.toggle();
+  const splashSoundBtn = $('#splash-sound-btn');
+  if (splashSoundBtn) splashSoundBtn.onclick = () => sound.toggle();
 
   guide.init();
   const guideBtn = $('#guide-btn');
   if (guideBtn) guideBtn.onclick = () => openManual();
+  const splashGuideBtn = $('#splash-guide-btn');
+  if (splashGuideBtn) splashGuideBtn.onclick = () => openManual();
 
   const manualClose = $('#manual-close');
   if (manualClose) manualClose.onclick = () => closeManual();
@@ -2089,6 +2114,8 @@ function init() {
 
   const changelogBtn = $('#changelog-btn');
   if (changelogBtn) changelogBtn.onclick = () => openChangelogModal(false);
+  const splashChangelogBtn = $('#splash-changelog-btn');
+  if (splashChangelogBtn) splashChangelogBtn.onclick = () => openChangelogModal(false);
 
   const changelogClose = $('#changelog-close');
   if (changelogClose) changelogClose.onclick = () => closeChangelogModal();
@@ -2118,6 +2145,7 @@ function init() {
 }
 
 global.UI = {
+  renderTop,
   renderPhaseTransition,
   showReport,
   renderModal,

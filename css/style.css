@@ -53,12 +53,13 @@ button:active { transform: scale(0.96); }
 .hidden { display: none !important; }
 [hidden] { display: none !important; }
 
-/* 顶部快捷操作栏 (音效 + 攻略手册) */
+/* 开始页右上角快捷操作栏 (音效 + 攻略 + 公告) */
+.splash-tools,
 .top-floats {
   position: absolute;
-  top: 12px;
+  top: 14px;
   right: 14px;
-  z-index: 50;
+  z-index: 20;
   display: flex;
   gap: 8px;
 }
@@ -209,13 +210,26 @@ button:active { transform: scale(0.96); }
 #game { padding-bottom: 84px; }
 #topbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px 12px 6px;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(10px);
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-line);
+}
+.topbar-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.meta-row {
+  justify-content: space-between;
+}
+.meta-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .gen-tag {
   background: var(--red-main);
@@ -226,7 +240,119 @@ button:active { transform: scale(0.96); }
   font-weight: 800;
   letter-spacing: 0.5px;
   box-shadow: 0 2px 4px rgba(211, 56, 36, 0.25);
+  white-space: nowrap;
 }
+.round-badge {
+  background: rgba(245, 235, 218, 0.85);
+  border: 1px solid var(--border-line);
+  border-radius: 10px;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  color: var(--ink-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 顶栏右侧快捷工具按钮 */
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.top-tool-btn {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border-line);
+  box-shadow: 0 1px 3px rgba(60, 40, 15, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.top-tool-btn:hover {
+  background: #ffffff;
+  border-color: var(--gold-main);
+  transform: scale(1.08);
+}
+.top-tool-btn:active {
+  transform: scale(0.94);
+}
+.top-tool-btn .update-badge {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  background: #e02e24;
+  color: #ffffff;
+  font-size: 7.5px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 1.5px 3.5px;
+  border-radius: 6px;
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(224, 46, 36, 0.5);
+  animation: badgePulse 2s infinite ease-in-out;
+  pointer-events: none;
+}
+
+/* 核心资源行 (面子、行动点、零花钱、悟性) */
+.res-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.res-item {
+  background: var(--card-bg);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+.res-lbl {
+  font-size: 10.5px;
+  color: var(--ink-secondary);
+  font-weight: 700;
+  margin-bottom: 1px;
+  white-space: nowrap;
+}
+.res-val {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--ink-primary);
+  line-height: 1.2;
+}
+
+/* 突出显示行动点 (Action Points) — 彻底解决遮挡问题 */
+.res-item.act-item {
+  border-color: rgba(224, 46, 36, 0.45);
+  background: linear-gradient(180deg, #ffffff 0%, #fff6f3 100%);
+  box-shadow: 0 2px 6px rgba(211, 56, 36, 0.1);
+}
+.res-item.act-item .res-lbl {
+  color: var(--red-deep);
+  font-weight: 800;
+}
+.res-item.act-item .res-val.highlight {
+  color: var(--red-main);
+  font-size: 15px;
+  text-shadow: 0 1px 2px rgba(211, 56, 36, 0.15);
+}
+
+.res-item.face-item .res-val { color: var(--gold-deep); }
+.res-item.money-item .res-val { color: var(--green-main); }
+.res-item.insight-item .res-val { color: var(--blue-main); }
+
+/* 兼容保留 chip 样式 */
 .chip {
   background: var(--card-bg);
   border: 1px solid var(--border-line);

@@ -694,7 +694,61 @@ assert.strictEqual(shouldNotice, true, '开发者发布新版本后，用户刷�
 
 console.log('版本更新公告数据结构、多版本滚动历史、刷新自动识别与开发者升版响应测试 100% 验证通过！');
 
-console.log('\n🎉 全部十七项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、20代压力测试与更新公告全部 100% 验证通过！');
+console.log('\n--- 测试 18: 📱 顶栏UI布局优化：双层结构隔离，行动点等核心资源永不被功能按钮遮挡 ---');
+const htmlContent = fs.readFileSync(path.join(dir, '..', 'index.html'), 'utf8');
+// 断言顶栏双层结构存在
+assert(htmlContent.includes('class="topbar-row meta-row"'), '顶栏必须包含 meta-row 元信息层');
+assert(htmlContent.includes('class="topbar-row res-row"'), '顶栏必须包含 res-row 核心资源层');
+assert(htmlContent.includes('id="top-act"'), '行动点必须具备专属独立展示元素 top-act');
+assert(htmlContent.includes('class="res-item act-item"'), '行动点必须具备独立高亮卡片 act-item');
+
+// 断言功能按钮已内嵌进顶栏第一层，严禁作为全局绝对定位漂浮层遮挡第二层的行动点
+assert(htmlContent.includes('class="meta-right top-actions"'), '功能按钮必须收纳在 meta-row 右侧');
+assert(!htmlContent.includes('<div class="top-floats">'), '严禁在 app 根节点放置全局遮挡悬浮层 top-floats');
+assert(htmlContent.includes('class="splash-tools"'), '开始页专属操作栏收拢至 splash 内部');
+
+// 仿真 mock DOM 验证 renderTop 赋值与行动点独立更新
+const mockDom = {
+  '#top-gen': { textContent: '' },
+  '#top-turn': { textContent: '' },
+  '#top-face': { textContent: '' },
+  '#top-act': { textContent: '' },
+  '#top-money': { textContent: '' },
+  '#top-insight': { textContent: '' },
+  '#status': { innerHTML: '' },
+  '#topbar': { innerHTML: '' }
+};
+const uiCtx = {
+  console, Math, Date, JSON,
+  document: {
+    querySelector: sel => mockDom[sel] || null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    createElement: () => ({ className: '', innerHTML: '', style: {}, appendChild: () => {}, dataset: {} })
+  },
+  localStorage: ctx.localStorage,
+  CP: ctx.CP,
+  DATA: ctx.DATA,
+  addEventListener: () => {},
+  removeEventListener: () => {}
+};
+uiCtx.window = uiCtx;
+uiCtx.global = uiCtx;
+uiCtx.globalThis = uiCtx;
+vm.createContext(uiCtx);
+vm.runInContext(fs.readFileSync(path.join(dir, 'ui.js'), 'utf8'), uiCtx);
+
+// 触发一次顶栏渲染
+uiCtx.CP.newGame();
+uiCtx.UI.renderTop();
+
+assert.strictEqual(Number(mockDom['#top-act'].textContent), uiCtx.CP.info().act, '行动点数值必须精准渲染至独立 top-act');
+assert.strictEqual(Number(mockDom['#top-face'].textContent), uiCtx.CP.info().face, '面子数值必须精准渲染至 top-face');
+console.log(`顶栏双层布局验证通过: 行动点 [${mockDom['#top-act'].textContent}] 位于独立资源卡片，功能按钮归入元信息层，彻底告别遮挡！`);
+
+console.log('\n🎉 全部十八项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、20代压力测试、更新公告与顶栏UI防遮挡优化全部 100% 验证通过！');
+
 
 
 
