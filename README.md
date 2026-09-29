@@ -10,10 +10,10 @@
 
 <p align="center">
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/Live_Demo-chinese--parent.pages.dev-d33824?style=flat-square&logo=cloudflare" alt="Live Demo" /></a>
-  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v2.1.1-orange?style=flat-square" alt="Version" /></a>
+  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v2.3.0-orange?style=flat-square" alt="Version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /></a>
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/PWA-Supported-green?style=flat-square&logo=pwa" alt="PWA Ready" /></a>
-  <a href="./tests/"><img src="https://img.shields.io/badge/Tests-18%2F18%20Passed-brightgreen?style=flat-square" alt="Automated Tests" /></a>
+  <a href="./tests/"><img src="https://img.shields.io/badge/Tests-25%2F25%20Passed-brightgreen?style=flat-square" alt="Automated Tests" /></a>
 </p>
 
 ---
@@ -93,12 +93,39 @@
 - **集团年中考评答辩**：技术硬实力、团队领导力、敬业执行力三大攻坚答辩策略；
 - **职级进阶与薪水倍增**：斩获 S+ 评级直接擢升资深/主管/总监/合伙人，月薪暴涨，父母欣慰之至。
 
-### 11. 📜 百年家族谱系树与成就系统 (Lineage & Achievements)
-- **代际基因全额传承**：后代出生自动继承上一代约 18% 五维属性与配偶先天天赋；
-- **家族底蕴成长**：家族收录的特长总数越多，后代每回合属性自动成长速度越快；
-- **永久成就荣誉墙**：高考状元、白手起家、商界首富、情比金坚等 12 项家族永久里程碑成就。
+### 11. 📜 百年氏族树状族谱画卷 (Lineage Tree Visualizer)
+- **青墨纵深世系画卷**：开基始祖与历代先祖采用纵深代际墨线相连，生平功绩卡片一目了然；
+- **先祖荣耀金牌与徽章**：根据高考、职级与生平赋予 `👑 开基始祖`、`📜 宗亲` 勋印与名校殿堂高光；
+- **当代在世苗裔联动**：当代主角作为枝头青翠幼苗联动生平书写状态，传承四项先祖总谱核心底蕴。
 
-### 12. 📢 版本更新公告与刷新自愈弹窗 (Changelog & What's New)
+### 12. 👥 同学五阶双向羁绊与毕业信物 (Social Bonds & Graduation Token)
+- **五阶羁绊进阶体系**：点头之交、同窗好友、志趣相投、莫逆之交，好感突破 100 封顶达 150 青梅竹马；
+- **突发放学邀约大事件**：初高中阶段随机触发密友周末约会与课外漫步大事件，多重互动抉择；
+- **高三终局毕业纪念信物**：高考前夕与至交密友互赠绝版纪念信物，永久载入生平并大幅提升属性。
+
+### 13. 🎵 原生 WebAudio 中国风五声 BGM (Procedural Pentatonic BGM)
+- **宫商角徵羽音律算法**：纯原生 WebAudio 实时程序化合成，无需下载任何外部音频文件，极速秒开；
+- **三态音频状态机**：支持 `静音 (Muted)` / `仅音效 (FX Only)` / `音效与BGM (All Sound)` 平滑切换与无感兼容；
+- **高潮音效群**：高考揭榜、才艺选秀评委亮灯、终身大事求婚誓言专属程序化高潮激昂旋律。
+
+### 14. 💾 独立多存档槽位管理与跨端迁移 (Multi-Save Slot System)
+- **3 独立存档槽位**：支持随时在槽位 1、槽位 2、槽位 3 自由切换，属性与家族树完全隔离独立推演；
+- **跨设备一键复制**：一键生成与粘贴 Base64 存档码，支持跨电脑、手机与平台瞬间迁移无缝接关；
+- **离线 JSON 文件备份**：一键导出与载入 `.json` 结构化文件，旧存档自动安全热迁移。
+
+### 15. 🔁 一键「延续上回合」日程与自适应降级 (Schedule Reuse & Fallback)
+- **日程记忆复用**：一键秒级排满上一回合 6 项日程安排，杜绝繁琐重复手动选课；
+- **智能自适应降级**：当行动力或零花钱不足以支撑上回合高耗活动时，智能平滑回退至低耗替代方案。
+
+### 16. 🧠 脑洞探索 HUD 深度探照看板 (Brain Cave HUD)
+- **深层神经突触探照**：实时直观呈现当前脑洞层级深度与层级收益乘数；
+- **竹管流光进度条与智能禁用**：动态感知行动力阈值，不足 15 点时智能蒙版防护并高亮预警。
+
+### 17. 🎓 大学深造、大厂实习与时代风口中年抉择 (Higher Education & Late Life)
+- **大学学术攻坚与实习**：新增考研论文文献精读、导师实验室攻坚、秋招群面模拟、创客路演与头部大厂技术实习；
+- **时代浪潮重大抉择**：移动互联网风口、自媒体短视频爆款、重点学区房置业攻坚、行业周期洗牌与父母体检深谈。
+
+### 18. 📢 版本更新公告与刷新自愈弹窗 (Changelog & What's New)
 - **代码提交刷新即知**：开发者提交新版本后，玩家刷新页面系统自动优雅弹出新版本玩法介绍；
 - **可滚动查阅历史**：内置国风卷轴滚动条，可平滑向下查阅最近多个版本的演进历程；
 - **常驻入口**：顶栏右侧内嵌广播按钮 `📢`，未读状态附带发光 `NEW` 红色徽章。
@@ -121,14 +148,14 @@ chinese-parent/
 ├── css/
 │   └── style.css           # 纯原生 CSS3 视觉设计系统 (国风暖宣纸质感 / 动画体系)
 ├── js/
-│   ├── data.js             # 静态全量数据字典 (课程树/73组事件库/特长/心愿/同学/更新日志)
+│   ├── data.js             # 静态全量数据字典 (课程树/78组事件库/特长/心愿/同学/更新日志)
 │   ├── core.js             # 游戏核心逻辑状态机 (CP 对象 / 脑洞引擎 / 考试与职场判定)
 │   └── ui.js               # 原生 DOM 渲染层 (UI 驱动 / 模态系统 / WebAudio 合成音效)
-├── docs/                   # 15 篇全景系统设计与玩法实现文档
+├── docs/                   # 21 篇全景系统设计与玩法实现文档 + 策划大典总集篇
 └── tests/                  # 4 大自动化回归与无头仿真测试套件
-    ├── test_new_gameplay.js # 18 项全系统核心机制、模态边界隔离与混沌压力测试
+    ├── test_new_gameplay.js # 25 项全系统核心机制、模态边界隔离与混沌压力测试
     ├── sim.js              # 5 代人生全生命周期连续无头仿真器
-    ├── test_events.js      # 73 组全量事件结构与数值字段合法性测试
+    ├── test_events.js      # 78 组全量事件结构与数值字段合法性测试
     └── test_optimizations.js # 排满算法多样性与 Toast 队列测试
 ```
 
@@ -197,14 +224,14 @@ python -m http.server 8080
 项目构建了严密的无头（Headless）自动化测试体系，覆盖核心数值闭环、参数越界防御、多代连续遗传仿真与 UI 边界断言：
 
 ```bash
-# 运行全量 4 大测试套件 (18 项全景测试 + 5代仿真 + 73组事件 + 算法优化)
+# 运行全量 4 大测试套件 (25 项全景测试 + 5代仿真 + 78组事件 + 算法优化)
 npm test
 ```
 
 ### 独立测试命令：
-- **`npm run test:gameplay`**：运行 [`tests/test_new_gameplay.js`](./tests/test_new_gameplay.js)，验证包含红包推拉、面子对决、特长选秀、班干部竞选、浪漫求婚、职场答辩、脑洞连环爆炸、老存档自愈、参数容错、**20 代全随机混沌策略生命周期压力测试**、新版本公告自愈弹窗、双层顶栏防遮挡等全部 **18 项核心机制**；
+- **`npm run test:gameplay`**：运行 [`tests/test_new_gameplay.js`](./tests/test_new_gameplay.js)，验证包含红包推拉、面子对决、特长选秀、班干部竞选、浪漫求婚、职场答辩、脑洞连环爆炸、老存档自愈、参数容错、**20 代全随机混沌策略生命周期压力测试**、新版本公告自愈弹窗、双层顶栏防遮挡、多存档槽位管理、一键延续日程、脑洞HUD看板、原生WebAudio五声BGM、同学双向羁绊与约会、百年家族树状族谱画卷、大学深造进阶与时代浪潮大抉择等全部 **25 项核心机制**；
 - **`npm run test:sim`**：运行 [`tests/sim.js`](./tests/sim.js)，AI 玩家策略连续仿真打通 **5 代人生**（历经 35 次成长蜕变），验证代际遗传与考分标化区间；
-- **`npm run test:events`**：运行 [`tests/test_events.js`](./tests/test_events.js)，全量模拟触发 **73 组专属事件**每一个分支选项与数值容错；
+- **`npm run test:events`**：运行 [`tests/test_events.js`](./tests/test_events.js)，全量模拟触发 **78 组专属事件**每一个分支选项与数值容错；
 - **`npm run test:opts`**：运行 [`tests/test_optimizations.js`](./tests/test_optimizations.js)，验证日程自动排满多样性与 Toast 队列消费机制。
 
 ---

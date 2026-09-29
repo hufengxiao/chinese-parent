@@ -687,8 +687,8 @@ store['cph_last_seen_ver'] = DATA.version;
 shouldNotice = store['cph_last_seen_ver'] !== DATA.version;
 assert.strictEqual(shouldNotice, false, '版本一致时不应重复弹出');
 
-// 场景 D: 开发者提交新代码修复或新玩法 (模拟升版至未来版本如 v2.3.0)
-const nextVersion = 'v2.3.0';
+// 场景 D: 开发者提交新代码修复或新玩法 (模拟升版至未来版本如 v2.4.0)
+const nextVersion = 'v2.4.0';
 shouldNotice = store['cph_last_seen_ver'] !== nextVersion;
 assert.strictEqual(shouldNotice, true, '开发者发布新版本后，用户刷新将再次自动弹出了解最新玩法');
 
@@ -1222,7 +1222,119 @@ assert(htmlDump.includes('正在书写生平…'), '当代节点必须包含动�
 
 console.log('宗祠画卷总览牌匾、开基始祖图章、代际青墨主干与在世苗裔联动断言全部通过！');
 
-console.log('\n🎉 全部二十四项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM、双向社交与树状家族画卷全部 100% 验证通过！');
+console.log('\n--- 测试 25: 🎓 大学深造日程、大厂实习与时代浪潮中年抉择 (Round 7 LIFE-LATE) ---');
+CP.newGame();
+while (CP.pending().length) CP.resolve(0);
+
+// 1) 推进至大学阶段 (Turn 46, phase: college)
+CP.state().turn = 46;
+CP.state().act = 120;
+CP.state().insight = 600;
+CP.state().money = 500;
+CP.state().learnedCourses = CP.state().learnedCourses || ['fanshen', 'wanju'];
+
+// 断言当前阶段
+assert.strictEqual(CP.info().phase, '大学', 'Turn 46 应为大学阶段');
+
+// 2) 断言考研/学术深造进阶课程
+const collegeCourses = CP.learnList();
+const paperCourse = collegeCourses.find(c => c.id === 'u-paper');
+assert(paperCourse, '大学研习技能列表中必须包含「学术论文与文献精读」');
+assert.strictEqual(paperCourse.icon, '📑');
+assert(paperCourse.cost > 0, '研习需消耗合理悟性');
+assert(paperCourse.can, '悟性充足时应可研习');
+
+const learnOk = CP.learnCourse('u-paper');
+assert.strictEqual(learnOk, true, '成功研习「学术论文与文献精读」');
+assert(CP.state().learnedCourses.includes('u-paper'), '已学课程集必须收录 u-paper');
+
+// 3) 断言大学行动池（实践、日程、大厂打工）
+let collegePool = CP.pool();
+const paperItem = collegePool.find(p => p.id === 'u-paper' && p.kind === 'learn');
+assert(paperItem, '研习后「学术论文与文献精读」必须进入日常安排候选池');
+
+const labPlay = collegePool.find(p => p.id === 'pl-lab');
+const interviewPlay = collegePool.find(p => p.id === 'pl-interview');
+const startupPlay = collegePool.find(p => p.id === 'pl-startup');
+assert(labPlay && labPlay.kind === 'play', '日常池中必须包含「导师实验室攻坚」');
+assert(interviewPlay && interviewPlay.kind === 'play', '日常池中必须包含「秋招群面模拟」');
+assert(startupPlay && startupPlay.kind === 'play', '日常池中必须包含「创客空间路演」');
+
+const techJob = collegePool.find(p => p.id === 'pj-tech-int');
+const campusLeadJob = collegePool.find(p => p.id === 'pj-campus-lead');
+assert(techJob && techJob.kind === 'pay', '打工池中必须包含「头部大厂技术实习」');
+assert.strictEqual(techJob.extra, '+140元', '大厂实习津贴为 140 元');
+assert(campusLeadJob && campusLeadJob.kind === 'pay', '打工池中必须包含「校园合伙人地推」');
+assert.strictEqual(campusLeadJob.extra, '+120元', '校园合伙人津贴为 120 元');
+
+// 4) 自由排布六项大学深造与实习日程并执行结算
+CP.clearSlots();
+assert(CP.addSlot(paperItem), '排入学术论文研习');
+assert(CP.addSlot(labPlay), '排入实验室攻坚');
+assert(CP.addSlot(interviewPlay), '排入秋招群面模拟');
+assert(CP.addSlot(startupPlay), '排入创客空间路演');
+assert(CP.addSlot(techJob), '排入头部大厂技术实习');
+assert(CP.addSlot(campusLeadJob), '排入校园合伙人地推');
+
+const moneyBeforeTurn = CP.state().money;
+const iqBefore = CP.state().attrs.iq;
+const eqBefore = CP.state().attrs.eq;
+
+const endOk = CP.endTurn();
+assert.strictEqual(endOk, undefined, '大学日程全部填满时 endTurn 顺利执行');
+assert.strictEqual(CP.state().turn, 47, '回合成功推进至 47 回合');
+
+// 打工收益断言: 140 + 120 = 260
+assert(CP.state().money >= moneyBeforeTurn + 260, '双重高薪实习报酬必须全额到账');
+assert(CP.state().attrs.iq > iqBefore, '论文精读与实验室攻坚应带来智力显著提升');
+assert(CP.state().attrs.eq > eqBefore, '群面模拟与地推应带来情商显著提升');
+
+// 5) 断言中年时代风口与职场抉择五大事件
+const lateEventIds = [
+  'ev-wrk-internet-boom',
+  'ev-wrk-media-wave',
+  'ev-wrk-school-house',
+  'ev-wrk-industry-pivot',
+  'ev-wrk-parents-health'
+];
+
+lateEventIds.forEach(evId => {
+  const ev = DATA.events.find(e => e.id === evId);
+  assert(ev, `事件库中必须注册时代事件 [${evId}]`);
+  assert.strictEqual(ev.type, 'choice', `事件 [${evId}] 必须为双向抉择型事件`);
+  assert(Array.isArray(ev.p) && (ev.p.includes('work') || ev.p.includes('home')), `事件 [${evId}] 必须覆盖成年/职场期`);
+  assert(ev.opts && ev.opts.length >= 2, `事件 [${evId}] 必须提供至少两种人生抉择`);
+
+  // 模拟各个分支结算，断言效果生效
+  ev.opts.forEach((opt, optIdx) => {
+    assert(opt.t, `事件 [${evId}] 选项 ${optIdx} 必须有文本描述`);
+    assert(opt.e && typeof opt.e === 'object', `事件 [${evId}] 选项 ${optIdx} 必须有效果定义`);
+
+    // 确保队列干净并重置基准金钱
+    while (CP.pending().length) CP.resolve(0);
+    CP.state().money = 500;
+    const mBefore = CP.state().money;
+
+    // 压入 pending 队列并测试 resolve
+    CP.state().pending.push({
+      type: 'choice',
+      title: ev.n,
+      body: ev.d,
+      opts: ev.opts.map(o => ({ label: o.t, eff: o.e }))
+    });
+
+    CP.resolve(optIdx);
+
+    if (opt.e.money) {
+      assert.strictEqual(CP.state().money, Math.max(0, mBefore + opt.e.money), `事件 [${evId}] 选项 ${optIdx} 金钱效果结算`);
+    }
+  });
+});
+
+console.log('大学进阶论文课程、实验室攻坚、大厂顶尖实习与五大时代浪潮中年抉择断言全部通过！');
+
+console.log('\n🎉 全部二十五项全系统核心机制、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM、双向社交、树状家族画卷与成年期深度设计 100% 验证通过！');
+
 
 
 

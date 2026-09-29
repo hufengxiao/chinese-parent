@@ -77,7 +77,8 @@ courses: [
   {id:'u-med',   name:'医学·临床解剖实操',icon:'🩺', phase:'college', attr:{mem:6,phy:3}, stress:4, sat:2},
   {id:'u-fin',   name:'商科·量化金融与投行',icon:'💹', phase:'college', attr:{eq:6,cha:3}, stress:4, sat:2},
   {id:'u-film',  name:'传媒·视听语言与导演',icon:'🎬', phase:'college', attr:{img:6,cha:3}, stress:4, sat:2, tal:{id:'yishujia', p:.2}},
-  {id:'u-eng',   name:'工科·理论力学与攻坚',icon:'⚙️', phase:'college', attr:{iq:6,phy:3}, stress:4, sat:2},
+  {id:'u-eng',   name:'工科·理论力学与攻坚',icon:'⚙️', phase:'college', attr:{iq:6,phy:3}, stress:4, sat:2, tal:{id:'gongchengshi', p:.2}},
+  {id:'u-paper', name:'学术论文与文献精读', icon:'📑', phase:'college', attr:{iq:8,mem:5}, stress:4, sat:3},
 ],
 
 /* ---------- 娱乐 ---------- */
@@ -101,6 +102,9 @@ plays: [
   {id:'pl-bing',   name:'网吧通宵',      icon:'🌃', phase:'senior', attr:{}, stress:-2, sat:-2, money:20},
   {id:'pl-college',name:'社团出摊',      icon:'🎪', phase:'college', attr:{cha:1,eq:1}, stress:-2, sat:-1},
   {id:'pl-pao',    name:'夜跑撸铁',      icon:'🏃', phase:'college', attr:{phy:2}, stress:-2, sat:0},
+  {id:'pl-lab',    name:'导师实验室攻坚',icon:'🔬', phase:'college', attr:{iq:4,mem:2}, stress:3, sat:2},
+  {id:'pl-interview',name:'秋招群面模拟',icon:'👔', phase:'college', attr:{eq:3,cha:3}, stress:2, sat:1},
+  {id:'pl-startup',name:'创客空间路演',  icon:'🚀', phase:'college', attr:{cha:4,eq:2}, stress:4, sat:1},
   {id:'pl-work-ot',   name:'赶项目KPI',      icon:'💻', phase:'work', attr:{iq:2,eq:1}, stress:3, sat:2},
   {id:'pl-work-fish', name:'带薪摸鱼',      icon:'☕', phase:'work', attr:{eq:1}, stress:-6, sat:-1},
   {id:'pl-work-cert', name:'考专业证书',    icon:'📜', phase:'work', attr:{iq:2,mem:2}, stress:2, sat:1},
@@ -113,6 +117,8 @@ payjobs: [
   {id:'pj-tutor',name:'给低年级补课',  icon:'🧑‍🏫', phase:'junior',  money:45, stress:2, attr:{iq:1,eq:1}},
   {id:'pj-net',  name:'网吧夜班网管',  icon:'🖥️', phase:'junior',  money:35, stress:-1, attr:{}},
   {id:'pj-int',  name:'公司实习打杂',  icon:'💼', phase:'college', money:90, stress:3, attr:{eq:2}},
+  {id:'pj-tech-int', name:'头部大厂技术实习', icon:'💻', phase:'college', money:140, stress:4, attr:{iq:3,eq:2}},
+  {id:'pj-campus-lead', name:'校园合伙人地推', icon:'📣', phase:'college', money:120, stress:3, attr:{eq:2,cha:2}},
 ],
 
 /* ---------- 特长(图鉴/价格=稀有度系数) ---------- r: 1普 2稀 3史 4传说 */
@@ -415,6 +421,27 @@ events: [
     {t:'大方递上名片幽默叙旧促成两家深度合作', e:{eq:6,face:8,insight:25}},
     {t:'互加私人微信约定周末去打高尔夫网球', e:{eq:4,cha:4,phy:3}},
     {t:'默契颔首微笑致意保持克制与分寸感', e:{mem:3,stress:2}},
+  ]},
+
+  {id:'ev-wrk-internet-boom', n:'移动互联网时代风口', d:'移动互联网浪潮澎湃而至，智能终端爆发式增长。一家崭露头角的科技初创公司向你抛出早期核心员工橄榄枝并承诺丰厚期权池！', type:'choice', p:['work'], opts:[
+    {t:'毅然投身创业潮加盟科技先锋', e:{money:300,face:20,stress:10,iq:15}},
+    {t:'留守成熟头部大厂稳扎稳打', e:{money:120,stress:-10,sat:15,eq:10}}
+  ]},
+  {id:'ev-wrk-media-wave', n:'自媒体短视频新蓝海', d:'业余时间，你尝试将自己的行业干货与生活洞察剪辑为系列视频，其中一条深度解析突然引爆全网算法，单夜点赞破百万！', type:'choice', p:['work'], opts:[
+    {t:'精心打造个人品牌孵化爆款IP', e:{money:200,cha:25,img:20,face:15}},
+    {t:'当做修身养性的业余生活小插曲', e:{stress:-15,eq:15,sat:10}}
+  ]},
+  {id:'ev-wrk-school-house', n:'重点学区房置业攻坚', d:'为给下一代抢占前沿起跑线，房产顾问与双方长辈反复催促你锁定对口省重点小学与初中的黄金学区房。', type:'choice', p:['work','home'], opts:[
+    {t:'倾尽全家积蓄锁定核心学区房', e:{money:-150,face:25,sat:20,stress:15}},
+    {t:'坚持因材施教拒绝房奴内卷', e:{stress:-20,money:100,eq:18}}
+  ]},
+  {id:'ev-wrk-industry-pivot', n:'行业周期重组大洗牌', d:'宏观经济与产业周期交替，集团宣布开展大刀阔斧的业务重组与编制优化，所在部门面临生死存亡的关键抉择……', type:'choice', p:['work'], opts:[
+    {t:'亮出硬核技术绝活逆势带队破局', e:{iq:20,phy:15,face:25,money:150}},
+    {t:'拿满优化补偿金体面转身开启自由职业', e:{money:280,stress:-20,img:15}}
+  ]},
+  {id:'ev-wrk-parents-health', n:'父母体检报告的深谈', d:'繁重的工作间隙，老家寄来了父母的年度体检单。岁月不饶人，指标上悄然多了几处标红异常，父母却电话里连称“一切都好不用挂念”……', type:'choice', p:['work','home'], opts:[
+    {t:'立即预约三甲专家号请假陪同复查', e:{money:-60,sat:35,shadow:-15,eq:20}},
+    {t:'寄送名贵滋补药品与智能监测设备', e:{money:-80,sat:20,face:15}}
   ]},
 
   /* ================= 成家立业期 (30+岁) ================= */
@@ -798,13 +825,52 @@ manual: [
 ],
 
 /* ---------- 游戏版本与更新日志 ---------- */
-version: 'v2.2.0',
+version: 'v2.3.0',
 changelog: [
+  {
+    ver: 'v2.3.0',
+    date: '2026-09-29',
+    title: '百年传承 · 华夏人生全景宏图大更新 (7 大演进里程碑全面收官)',
+    tag: '最新',
+    desc: '全方位重构七大核心演进系统：树状家族图谱、双向同学羁绊、原生中国风BGM、大学深造大厂实习与时代浪潮大抉择！',
+    highlights: [
+      {
+        icon: '📜',
+        title: '百年家族树状画卷与当代苗裔',
+        desc: '宗祠图谱全面革新为纵深青墨代际树状枝脉，高亮标定开基始祖与历代先祖荣誉图章，在世苗裔实时联动生平。'
+      },
+      {
+        icon: '👥',
+        title: '同学五阶羁绊、偶发约会与信物',
+        desc: '好感度突破 100 封顶进阶至 150 青梅竹马，触发突发放学邀约大事件；高三终局互赠专属绝版毕业信物注入永久属性！'
+      },
+      {
+        icon: '🎵',
+        title: '原生 WebAudio 中国风五声 BGM',
+        desc: '宫商角徵羽音律算法实时合成，支持三态切换与历史按键无缝兼容；新增高考终局、选秀夺冠与终身大事高潮专属音效！'
+      },
+      {
+        icon: '🎓',
+        title: '大学深造、大厂实习与时代风口',
+        desc: '新增考研论文精读、导师实验室攻坚、秋招群面与头部大厂实习；新增移动互联风口、自媒体爆款、学区房置业等中年重大抉择！'
+      },
+      {
+        icon: '🔁',
+        title: '一键延续日程与智能自适应降级',
+        desc: '一键秒复用上回合六项日程安排；当体力不足时自动智能降级至低体力消耗替代项，大幅提升后期游玩舒适度。'
+      },
+      {
+        icon: '🧠',
+        title: '脑洞探索 HUD 看板与行动力反馈',
+        desc: '新增实时神经突触深度探照、竹管流光层级指示器、低行动力智能禁用遮罩与真实下潜震颤反馈。'
+      }
+    ]
+  },
   {
     ver: 'v2.2.0',
     date: '2026-09-29',
     title: '家族记忆录 · 多存档槽位管理与跨端导入导出 (Round 1)',
-    tag: '最新',
+    tag: '重要',
     desc: '正式上线独立 3 存档槽位系统、Base64 文本码跨端复制迁移与本地 JSON 离线安全备份！',
     highlights: [
       {

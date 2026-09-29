@@ -1149,7 +1149,7 @@ function pool() {
       icon: pj.icon,
       desc: '赚 ' + pj.money + ' 元',
       act: 3,
-      extra: '',
+      extra: '+' + pj.money + '元',
       locked: S.act < 3,
       money: 0,
       tone: 'job'
