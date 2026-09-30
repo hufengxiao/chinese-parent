@@ -9,3 +9,6 @@ Thumbs.db
 # node (无构建依赖,留作将来)
 node_modules/
 dist/
+
+# 本地调试测试沙盒页面 (仅本地留存,无需发布)
+test_hongbao.html
