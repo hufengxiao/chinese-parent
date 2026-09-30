@@ -1473,6 +1473,7 @@ function renderHongbaoModal(p, m) {
   const gMin = (typeof p.goldenMin === 'number') ? p.goldenMin : 38;
   const gMax = (typeof p.goldenMax === 'number') ? p.goldenMax : 68;
   const gWidth = Math.max(12, gMax - gMin);
+  const centerTarget = (typeof p.goldenCenter === 'number') ? p.goldenCenter : Math.round((gMin + gMax) / 2);
   let curPos = (typeof p.startPos === 'number') ? p.startPos : 24;
 
   const gaugeBox = h('div', 'hb-gauge-container');
@@ -1486,35 +1487,46 @@ function renderHongbaoModal(p, m) {
     '<div class="hb-timer-wrap"><div class="hb-timer-bar" id="hbTimerBar" style="width:100%"></div></div>';
   body.appendChild(gaugeBox);
 
-  // 物理动力学变量
+  // 拔河动力学变量：双向振荡拉扯力、弹簧回弹与阻尼
   let velocity = 0;
-  const damping = 0.88;
-  const baseDrift = (typeof p.driftForce === 'number') ? p.driftForce : 1.4;
-  const waveAmp = (typeof p.waveAmp === 'number') ? p.waveAmp : 0;
+  const damping = 0.90;
+  const freq1 = (typeof p.waveFreq1 === 'number') ? p.waveFreq1 : 0.075;
+  const freq2 = 0.125;
+  const amp1 = (typeof p.waveAmp1 === 'number') ? p.waveAmp1 : 3.5;
+  const amp2 = (typeof p.waveAmp2 === 'number') ? p.waveAmp2 : 1.8;
+  const driftBias = (typeof p.driftBias === 'number') ? p.driftBias : 0.2;
   const gustChance = (typeof p.gustChance === 'number') ? p.gustChance : 0.35;
   const gustText = p.gustText || ((p.rel || '长辈') + '突然猛地往前一塞！');
   let gustRemaining = 0;
   let gustForce = 0;
-  let timeLeft = 4.5;
-  const totalTime = 4.5;
+  const totalTime = (typeof p.totalTime === 'number') ? p.totalTime : 8.0;
+  let timeLeft = totalTime;
   let tickCount = 0;
   let isFinished = false;
 
   const updatePointer = () => {
     const pt = $('#hbPointer');
     const statusEl = $('#hbPointerStatus');
+    const relBubble = $('#hbRelBubble');
+    const momBubble = $('#hbMomBubble');
     if (!pt) return;
     pt.style.left = clamp(curPos, 4, 96) + '%';
 
     if (curPos >= gMin && curPos <= gMax) {
       pt.className = 'hb-pointer in-zone';
-      if (statusEl) statusEl.innerHTML = '<span class="status-perfect">✨ 进退得体！处于黄金平衡区</span>';
+      if (statusEl) statusEl.innerHTML = '<span class="status-perfect">✨ 双方势均力敌！客套拉扯处于黄金平衡</span>';
+      if (relBubble) relBubble.innerHTML = '<b>' + (p.rel || '长辈') + '</b>: ' + (p.quote || '“拿着拿着，给孩子的压岁钱！”');
+      if (momBubble) momBubble.innerHTML = '<b>妈妈</b>: ' + (p.momQuote || '“哎呀使不得使不得，他小孩子要什么钱！”');
     } else if (curPos < gMin) {
       pt.className = 'hb-pointer warn-left';
-      if (statusEl) statusEl.innerHTML = '<span class="status-warning">✋ 推辞过猛！长辈可能会收回红包</span>';
+      if (statusEl) statusEl.innerHTML = '<span class="status-warning">✋ 偏向推脱！长辈要缩手了 (快按→/空格扒拉)</span>';
+      if (relBubble) relBubble.innerHTML = '<b>' + (p.rel || '长辈') + '</b>: “小宝怎么推三阻四的？二叔给的必须拿着！”';
+      if (momBubble) momBubble.innerHTML = '<b>妈妈</b>: “这就对了，小孩子家家身上揣什么大钱！”';
     } else {
       pt.className = 'hb-pointer warn-right';
-      if (statusEl) statusEl.innerHTML = '<span class="status-danger">🤲 过于急切！老妈在旁边掐你</span>';
+      if (statusEl) statusEl.innerHTML = '<span class="status-danger">🤲 过于急切！老妈在瞪你 (快按←客套推辞)</span>';
+      if (relBubble) relBubble.innerHTML = '<b>' + (p.rel || '长辈') + '</b>: “哈哈这孩子真爽快！大姑就喜欢利索的！”';
+      if (momBubble) momBubble.innerHTML = '<b>妈妈</b>: “手快给我缩回来！平时怎么教你的，成何体统！”';
     }
   };
 
@@ -1529,20 +1541,20 @@ function renderHongbaoModal(p, m) {
     renderAll();
   };
 
-  // 交互微冲量
+  // 交互微冲量 (连续微调抗衡)
   const doNudgeLeft = () => {
     if (isFinished) return;
     sound.pop();
-    velocity = Math.min(velocity, 0) - 7.5;
-    curPos = clamp(curPos - 3.8, 3, 97);
+    velocity = Math.min(velocity, 0) - 8.5;
+    curPos = clamp(curPos - 4.0, 5, 95);
     updatePointer();
   };
 
   const doNudgeRight = () => {
     if (isFinished) return;
     sound.pop();
-    velocity = Math.max(velocity, 0) + 7.5;
-    curPos = clamp(curPos + 3.8, 3, 97);
+    velocity = Math.max(velocity, 0) + 8.5;
+    curPos = clamp(curPos + 4.0, 5, 95);
     updatePointer();
   };
 
@@ -1555,7 +1567,7 @@ function renderHongbaoModal(p, m) {
     } else if (e.key === 'ArrowRight' || e.code === 'KeyD' || e.code === 'Space') {
       e.preventDefault();
       doNudgeRight();
-    } else if ((e.key === 'Enter') && timeLeft <= 1.5) {
+    } else if ((e.key === 'Enter') && timeLeft <= 2.2) {
       e.preventDefault();
       finishHb(Math.round(curPos), false);
     }
@@ -1568,34 +1580,48 @@ function renderHongbaoModal(p, m) {
     tickCount++;
     timeLeft = Math.max(0, timeLeft - 0.033);
 
-    // 演算合力
-    let f = baseDrift;
-    if (waveAmp > 0) {
-      f += Math.sin(tickCount * 0.16) * waveAmp * 1.5;
+    // 1. 双方双频拉扯振荡力 (形成在各个区域来回跳动的拔河韵律)
+    const wave = Math.sin(tickCount * freq1) * amp1 + Math.cos(tickCount * freq2) * amp2;
+    let f = wave + driftBias;
+
+    // 2. 弹簧向心回拉力 (偏离中线越远，反向回复力越强，防止卡在角落)
+    f -= (curPos - centerTarget) * 0.055;
+
+    // 3. 边缘极端弹力拦截 (老妈拼命拽回 / 长辈拼命硬塞，形成两端碰撞回弹)
+    if (curPos > 82) {
+      f -= (curPos - 78) * 0.32;
+      if (curPos >= 92 && velocity > 0) {
+        velocity = -Math.abs(velocity) * 0.65 - 3.0; // 边缘剧烈回弹
+      }
+    } else if (curPos < 18) {
+      f += (22 - curPos) * 0.32;
+      if (curPos <= 8 && velocity < 0) {
+        velocity = Math.abs(velocity) * 0.65 + 3.0; // 边缘剧烈回弹
+      }
     }
 
-    // 随机客套阵风
-    if (gustRemaining <= 0) {
-      if (Math.random() < gustChance * 0.035) {
-        gustRemaining = 0.55;
-        gustForce = (baseDrift >= 0 ? 1 : -1) * (2.2 + Math.random() * 1.8);
-        const hint = $('#hbHintBadge');
-        if (hint) hint.innerHTML = '⚡ <b>' + (p.rel || '长辈') + '</b>: ' + gustText;
-      }
-    } else {
+    // 4. 随机客套突击阵风
+    if (gustRemaining > 0) {
       gustRemaining -= 0.033;
       f += gustForce;
+    } else if (Math.random() < gustChance * 0.033) {
+      gustRemaining = 0.55;
+      const gustDir = (curPos < centerTarget ? 1 : -1);
+      gustForce = gustDir * (2.8 + Math.random() * 2.2);
+      const hint = $('#hbHintBadge');
+      if (hint) hint.innerHTML = '⚡ <b>' + (p.rel || '长辈') + '</b>: ' + gustText;
     }
 
-    velocity = (velocity + f * 0.36) * damping;
-    curPos = clamp(curPos + velocity * 0.52, 3, 97);
+    // 速度阻尼积分与位移更新
+    velocity = (velocity + f * 0.28) * damping;
+    curPos = clamp(curPos + velocity * 0.48, 5, 95);
     updatePointer();
 
-    // 倒计时与冲刺决胜按钮
+    // 倒计时与冲刺决胜按钮 (最后 2.2 秒冲刺)
     const bar = $('#hbTimerBar');
     if (bar) {
       bar.style.width = Math.max(0, (timeLeft / totalTime) * 100) + '%';
-      if (timeLeft <= 1.5) {
+      if (timeLeft <= 2.2) {
         bar.classList.add('sprint');
         const btnC = $('#hbBtnClimax');
         if (btnC && btnC.disabled) {
@@ -1603,6 +1629,8 @@ function renderHongbaoModal(p, m) {
           btnC.className = 'btn hb-btn-take sprint-ready';
           btnC.innerHTML = '🧧 见好就收！(立刻敲定结算)';
           btnC.onclick = () => finishHb(Math.round(curPos), false);
+          const hint = $('#hbHintBadge');
+          if (hint) hint.innerHTML = '🔥 <b>决胜时刻！</b> 抓住红包在黄金区的瞬间敲定，或抗衡至倒计时结束！';
         }
       }
     }
@@ -1620,7 +1648,7 @@ function renderHongbaoModal(p, m) {
   const btnPull = h('button', 'btn secondary hb-btn-nudge', '🤲 假推实收 (→/空格)');
   btnPull.onclick = doNudgeRight;
 
-  const btnClimax = h('button', 'btn hb-btn-climax', '⏳ 见机行事 (倒计时结束定局)');
+  const btnClimax = h('button', 'btn hb-btn-climax', '⏳ 见机行事 (倒计时最后2秒决胜)');
   btnClimax.id = 'hbBtnClimax';
   btnClimax.disabled = true;
 

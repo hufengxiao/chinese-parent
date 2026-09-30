@@ -501,7 +501,10 @@ function pendHongbao() {
       n: '大姑妈',
       line: '“哎呀小宝又长高了！拿着，大姑给买新书包的！”',
       mom: '“使不得使不得，大姐你留着买菜！”',
-      driftForce: 1.6, // 猛塞，持续向右推
+      driftBias: 0.6, // 偏向猛塞
+      waveAmp1: 3.6,
+      waveAmp2: 1.8,
+      waveFreq1: 0.075,
       goldenCenter: 56,
       goldenWidth: Math.round(26 / diff),
       startPos: 24, // 初始落在左侧拒收边缘
@@ -513,7 +516,10 @@ function pendHongbao() {
       n: '二叔叔',
       line: '“小男子汉/漂亮姑娘！二叔给的压岁钱，必须收着！”',
       mom: '“二弟你太客气了，小孩子不能惯着！”',
-      driftForce: -1.4, // 假意客套，暗中往回缩
+      driftBias: -0.5, // 偏向往回收缩
+      waveAmp1: 3.3,
+      waveAmp2: 2.0,
+      waveFreq1: 0.07,
       goldenCenter: 62,
       goldenWidth: Math.round(28 / diff),
       startPos: 78, // 初始落在右侧
@@ -525,8 +531,10 @@ function pendHongbao() {
       n: '表舅爷',
       line: '“舅爷的一点心意！好好读书考大学！”',
       mom: '“舅爷快收回去，我们怎么能要您的钱！”',
-      driftForce: 0.8, // 强振荡波
-      waveAmp: 1.8,
+      driftBias: 0.1, // 强振荡波
+      waveAmp1: 4.6,
+      waveAmp2: 2.4,
+      waveFreq1: 0.085,
       goldenCenter: 50,
       goldenWidth: Math.round(22 / diff),
       startPos: 20,
@@ -538,7 +546,10 @@ function pendHongbao() {
       n: '隔壁王阿姨',
       line: '“压岁钱给孩子讨个好彩头，大吉大利！”',
       mom: '“王姐真不用，平时承蒙您多关照了！”',
-      driftForce: 1.1,
+      driftBias: 0.2,
+      waveAmp1: 2.6,
+      waveAmp2: 1.4,
+      waveFreq1: 0.095,
       goldenCenter: 52,
       goldenWidth: Math.round(18 / diff), // 超窄黄金区间
       startPos: 26,
@@ -559,8 +570,11 @@ function pendHongbao() {
     quote: rel.line,
     momQuote: rel.mom,
     body: rel.n + '递过一个沉甸甸的红信封！\n' + rel.line + '\n\n妈妈在旁边拼命拉扯推脱：\n' + rel.mom,
-    driftForce: rel.driftForce,
-    waveAmp: rel.waveAmp || 0,
+    driftBias: rel.driftBias,
+    waveAmp1: rel.waveAmp1,
+    waveAmp2: rel.waveAmp2,
+    waveFreq1: rel.waveFreq1,
+    totalTime: 8.0,
     goldenMin: goldenMin,
     goldenMax: goldenMax,
     goldenCenter: rel.goldenCenter,

@@ -25,7 +25,7 @@
  │    │    v = (v + F_drift + F_gust + Impulse) * D       │
  │    │    pos = clamp(pos + v * dt, 4, 96)               │
  │    ├─ 键盘/触控输入监听 (Space, ←, →, Touch)            │
- │    ├─ 倒计时器 (4.5s 递减, 冲刺警报)                    │
+ │    ├─ 倒计时器 (8.0s 递减, 最后 2.2s 冲刺警报)          │
  │    └─ 状态机与音效 (win, fail, pop, click)              │
  └─────────────────────────┬──────────────────────────────┘
                            │ 倒计时归零或决胜点击
@@ -44,17 +44,19 @@
 ## 二、 物理引擎算法设计
 
 ### 2.1 运动学离散微积分方程
-物理循环每隔 $\Delta t = 33\,\text{ms}$（约 30 FPS）执行一次状态演算：
+物理循环每隔 $\Delta t = 33\,\text{ms}$（约 30 FPS）执行一次状态演算，通过**双频正弦振荡波 + 向心弹簧回复力 + 极端边缘拦截反弹**构建真实的来回拔河跳动效果：
 
-$$v_{t+1} = \left(v_t + F_{\text{drift}} + F_{\text{gust}} + I_{\text{player}}\right) \times D$$
+$$F_{\text{total}} = A_1 \sin(\omega_1 t) + A_2 \cos(\omega_2 t) + F_{\text{bias}} - k_{\text{spring}} (\text{pos} - \text{center}) + F_{\text{bounce}} + F_{\text{gust}}$$
 
-$$\text{pos}_{t+1} = \text{clamp}\left(\text{pos}_t + v_{t+1} \times \Delta t \times 0.05, \, 4, \, 96\right)$$
+$$v_{t+1} = \left(v_t + F_{\text{total}} \times 0.28 + I_{\text{player}}\right) \times D$$
 
-- $F_{\text{drift}}$：亲戚施加的持续偏置力（例如 $+1.6$ 表示向右塞，$-1.4$ 表示向左缩）；
-- $F_{\text{gust}}$：偶发客套阵风，当触发亲戚专属台词时瞬间施加持续 $0.4\,\text{s}$ 的加速波；
-- $I_{\text{player}}$：玩家单次点击产生的瞬时微冲量（$\pm 7.5\%$）；
-- $D$：空气/手感阻尼系数，恒定设为 $0.88$，保证操作具备柔顺的惯性衰减，杜绝离散跳帧感；
-- $\text{clamp}(x, 4, 96)$：防止游标穿模飞出轨道。
+$$\text{pos}_{t+1} = \text{clamp}\left(\text{pos}_t + v_{t+1} \times 0.48, \, 5, \, 95\right)$$
+
+- $A_1 \sin(\omega_1 t) + A_2 \cos(\omega_2 t)$：长辈硬塞与老妈阻拦的复合周期波（周期 $2.0 \sim 2.6\,\text{s}$），使红包在不同区域之间自然来回荡漾；
+- $-k_{\text{spring}}(\text{pos} - \text{center})$：向心弹簧回复力，偏离黄金中心越远反向力越强，防止滑入死角；
+- $F_{\text{bounce}}$：极端边界防线反弹，当游标触及 $>82\%$ 或 $<18\%$ 时触发强烈回弹，确保绝不卡死；
+- $I_{\text{player}}$：玩家点击施加的微冲量（$\pm 8.5\%$）；
+- $D$：惯性阻尼系数（$0.90$）。
 
 ---
 
