@@ -80,8 +80,14 @@ const PHASE_TIPS = {
 };
 function ageOf(t) {
   t = t || (S ? S.turn : 1);
-  const base = { baby: 0, kinder: 3, pri: 6, junior: 12, senior: 15, college: 18, work: 23, home: 30 }[phaseOf(t)];
-  return base + Math.min(9, Math.floor((t - 1) / 12));
+  if (t <= 8) return Math.floor((t - 1) / 2); // 婴儿期 (Turn 1~8): 0~3岁, 每2回合+1岁
+  if (t <= 14) return 3 + Math.floor((t - 9) / 2); // 幼儿园 (Turn 9~14): 3~5岁, 每2回合+1岁
+  if (t <= 24) return 6 + Math.floor((t - 15) * 6 / 10); // 小学期 (Turn 15~24): 6~11岁, 约每2回合+1岁
+  if (t <= 32) return 12 + Math.floor((t - 25) / 2); // 初中期 (Turn 25~32): 12~15岁, 每2回合+1岁 (中考15岁)
+  if (t <= 44) return 15 + Math.min(3, Math.floor((t - 33) * 3 / 11)); // 高中期 (Turn 33~44): 15~18岁 (第44回合高考冲刺18岁)
+  if (t <= 50) return 18 + Math.floor((t - 45) / 2); // 大学期 (Turn 45~50): 18~21岁, 毕业22岁
+  if (t <= 57) return 22 + (t - 51); // 职场期 (Turn 51~57): 22~28岁
+  return 30 + Math.floor((t - 58) / 2); // 成家后 (Turn 58+): 30岁+
 }
 function cls() { return phaseOf(); }
 

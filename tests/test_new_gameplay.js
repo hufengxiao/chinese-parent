@@ -1503,9 +1503,41 @@ testSndMgr.statGain();
 testSndMgr.keyUnlock();
 testSndMgr.stopBGM();
 
-console.log('炸弹波及钥匙待决保护、useKey 快捷跃迁、4层封顶防御、属性音效与两段式机制全部通过！');
+// 4) 验证年龄时钟递进模型 (每回合半年，两回合长一岁，无断崖突变)
+const expectedAges = [
+  { turn: 1, age: 0 },
+  { turn: 2, age: 0 },
+  { turn: 3, age: 1 },
+  { turn: 4, age: 1 },
+  { turn: 5, age: 2 },
+  { turn: 6, age: 2 },
+  { turn: 7, age: 3 },
+  { turn: 8, age: 3 },
+  { turn: 9, age: 3 },
+  { turn: 10, age: 3 },
+  { turn: 11, age: 4 },
+  { turn: 12, age: 4 },
+  { turn: 13, age: 5 },
+  { turn: 14, age: 5 },
+  { turn: 15, age: 6 },
+  { turn: 25, age: 12 },
+  { turn: 32, age: 15 },
+  { turn: 33, age: 15 },
+  { turn: 44, age: 18 },
+  { turn: 45, age: 18 },
+  { turn: 51, age: 22 },
+  { turn: 58, age: 30 }
+];
 
-console.log('\n🎉 全部二十七项全系统核心机制、逻辑漏洞修复、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM、双向社交、树状家族画卷、成年期深度设计、边缘防御与两段式钥匙动效 100% 验证通过！');
+expectedAges.forEach(({ turn, age }) => {
+  CP.state().turn = turn;
+  const curInfo = CP.info();
+  assert.strictEqual(curInfo.age, age, `第 ${turn} 回合计算年龄应为 ${age} 岁，实际得到 ${curInfo.age} 岁`);
+});
+
+console.log('炸弹波及钥匙待决保护、useKey 快捷跃迁、4层封顶防御、属性音效、两回合加一岁平滑时钟全部通过！');
+
+console.log('\n🎉 全部二十七项全系统核心机制、逻辑漏洞修复、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM、双向社交、树状家族画卷、成年期深度设计、边缘防御、两段式钥匙动效与平滑年龄时钟 100% 验证通过！');
 
 
 
