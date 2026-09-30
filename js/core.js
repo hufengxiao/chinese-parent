@@ -961,7 +961,10 @@ function autoFillSlots() {
       const c = D.courses.find(x => x.id === item.id);
       if (!c) return -999;
       const cRank = PHASE_RANK[c.phase] || 1;
-      const phaseDiff = curRank - cRank;
+      let phaseDiff = curRank - cRank;
+      if (curRank >= 7 && c.phase === 'college') {
+        phaseDiff = 0; // 职场期与成家期大学专业技能视同当期核心素养
+      }
 
       let score = 60;
 
@@ -1208,10 +1211,29 @@ function pool() {
   if (!S) return [];
   const ph = cls(), out = [];
   S.learnedCourses = S.learnedCourses || ['fanshen', 'wanju'];
+  const curRank = PHASE_RANK[ph] || 1;
 
-  // 1) 所有已学会的课程，可以任意多次排入日常安排！
-  D.courses.forEach(c => {
-    if (S.learnedCourses.indexOf(c.id) < 0) return;
+  // 1) 课程生命周期与学段过滤法则:
+  // - 婴儿期动作 (phase: baby): 仅在婴儿期有效，离开婴儿期彻底隐退！
+  // - 职场与成家期 (work / home): 大学专业课代表终身高阶职业素养，继续保留；
+  // - 当前学段专属课程: 全部保留；
+  // - 平滑过渡兜底: 若当前阶段尚未研习任何当期新课，允许上一阶段（phaseDiff === 1）课程作为过渡兜底；
+  const allLearned = D.courses.filter(c => S.learnedCourses.indexOf(c.id) >= 0);
+  const curPhaseLearned = allLearned.filter(c => c.phase === ph);
+
+  const okCourse = c => {
+    if (c.phase === 'baby') return ph === 'baby';
+    if ((ph === 'work' || ph === 'home') && c.phase === 'college') return true;
+    if (c.phase === ph) return true;
+    const cRank = PHASE_RANK[c.phase] || 1;
+    if (curPhaseLearned.length === 0 && (curRank - cRank === 1) && c.phase !== 'baby') {
+      return true;
+    }
+    return false;
+  };
+
+  allLearned.forEach(c => {
+    if (!okCourse(c)) return;
     const lvl = S.skills[c.id] || 1;
     out.push({
       kind: 'learn',

@@ -1698,7 +1698,60 @@ expectedAges.forEach(({ turn, age }) => {
 
 console.log('炸弹波及钥匙待决保护、useKey 快捷跃迁、4层封顶防御、属性音效、两回合加一岁平滑时钟全部通过！');
 
-console.log('\n🎉 全部二十七项全系统核心机制、逻辑漏洞修复、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM、双向社交、树状家族画卷、成年期深度设计、边缘防御、两段式钥匙动效与平滑年龄时钟 100% 验证通过！');
+// ==========================================
+// 测试 28: 🎒 全生命周期日程行动池阶段生命周期过滤与幼年动作退役断言
+// ==========================================
+console.log('\n--- 测试 28: 🎒 全生命周期日程行动池阶段生命周期过滤与幼年动作退役断言 ---');
+
+CP.newGame();
+// 1) 婴儿期 (Turn 1): 确认翻身与摆弄玩具在池中
+const babyPool = CP.pool().filter(x => x.tone === 'course');
+assert(babyPool.some(x => x.id === 'fanshen'), '婴儿期必须允许翻身');
+assert(babyPool.some(x => x.id === 'wanju'), '婴儿期必须允许摆弄玩具');
+
+// 2) 跨入幼儿园 (Turn 9): 确认婴儿期动作彻底退役隐退
+CP.state().turn = 9;
+CP.state().learnedCourses.push('pinyin', 'shuzi');
+const kinderPool = CP.pool().filter(x => x.tone === 'course');
+assert.strictEqual(kinderPool.some(x => x.id === 'fanshen'), false, '幼儿园期绝对禁止出现翻身动作！');
+assert.strictEqual(kinderPool.some(x => x.id === 'wanju'), false, '幼儿园期绝对禁止出现摆弄玩具！');
+assert(kinderPool.some(x => x.id === 'pinyin'), '幼儿园期必须展示拼音识字');
+
+// 3) 跨入小学与初高中: 确认历史低阶学科随学段更替，绝不倒退
+CP.state().turn = 16; // 小学
+CP.state().learnedCourses.push('ma-sze', 'cn-gushi');
+const priPool = CP.pool().filter(x => x.tone === 'course');
+assert.strictEqual(priPool.some(x => x.id === 'fanshen'), false, '小学期绝对禁止出现翻身！');
+assert.strictEqual(priPool.some(x => x.id === 'pinyin'), false, '小学掌握小学课程后幼儿园拼音识字自然更替！');
+assert(priPool.some(x => x.id === 'ma-sze'), '小学期必须展示数学四则运算');
+
+CP.state().turn = 35; // 高中
+CP.state().learnedCourses.push('g-gao-cn', 'g-gao-ma', 'g-wusan');
+const seniorPool = CP.pool().filter(x => x.tone === 'course');
+assert.strictEqual(seniorPool.some(x => x.id === 'fanshen'), false, '高中期绝对禁止翻身！');
+assert.strictEqual(seniorPool.some(x => x.id === 'ma-sze'), false, '高中期绝对禁止排小学四则运算！');
+assert(seniorPool.some(x => x.id === 'g-wusan'), '高中期必须全力备考五年高考三年模拟！');
+
+// 4) 跨阶段平滑过渡机制断言 (刚升初中未研习初中新课时，允许小学课程平滑过渡兜底)
+CP.state().turn = 25; // 刚升初中
+// 清除初中课程，仅留小学课程
+CP.state().learnedCourses = CP.state().learnedCourses.filter(id => !id.startsWith('sc-') && !id.startsWith('so-') && id !== 'ma-hanshu' && id !== 'cn-mingzhu');
+const transitionPool = CP.pool().filter(x => x.tone === 'course');
+assert(transitionPool.length > 0, '刚升初中未学新课时，过渡机制必须提供平滑兜底课程，绝不空置！');
+assert.strictEqual(transitionPool.some(x => x.id === 'fanshen'), false, '过渡兜底课程绝不可回退到婴儿期动作！');
+
+// 5) 职场期与成家期断言: 大学专业课终身保留，中小学应试试卷彻底退役
+CP.state().turn = 52; // 职场期
+CP.state().learnedCourses.push('u-cs', 'u-paper');
+const workPool = CP.pool().filter(x => x.tone === 'course');
+assert(workPool.some(x => x.id === 'u-cs'), '职场期必须保留大学计算机算法全栈作为职业技能！');
+assert(workPool.some(x => x.id === 'u-paper'), '职场期必须保留学术论文精读深造！');
+assert.strictEqual(workPool.some(x => x.id === 'g-wusan'), false, '职场期必须彻底退役高中五三模拟卷！');
+assert.strictEqual(workPool.some(x => x.id === 'fanshen'), false, '职场期绝对禁止翻身！');
+
+console.log('全生命周期日程行动池阶段生命周期过滤、幼年动作退役、过渡兜底与职场技能保留 100% 验证通过！');
+
+console.log('\n🎉 全部二十八项全系统核心机制、逻辑漏洞修复、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM、双向社交、树状家族画卷、成年期深度设计、边缘防御、两段式钥匙动效、平滑年龄时钟与日程学段生命周期过滤 100% 验证通过！');
 
 
 

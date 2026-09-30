@@ -720,9 +720,17 @@ function renderPlan() {
 
   // 2) 行动池 (日程安排: 所有已掌握课程与娱乐均可自由、重复安排至 6 个格子中)
   const pl = CP.pool();
-  const cats = { '学习 📘 (已掌握可重复排)': [], '娱乐 🎮': [], '打工 💼': [], '索取 🧺': [], '休息 💤': [] };
+  const curPhaseName = (CP.info() && CP.info().phase) || '当前阶段';
+  const learnCat = curPhaseName + '学业 📘 (已掌握可重复排)';
+  const cats = {};
+  cats[learnCat] = [];
+  cats['娱乐 🎮'] = [];
+  cats['打工 💼'] = [];
+  cats['索取 🧺'] = [];
+  cats['休息 💤'] = [];
+
   pl.forEach(pi => {
-    if (pi.tone === 'course') cats['学习 📘 (已掌握可重复排)'].push(pi);
+    if (pi.tone === 'course') cats[learnCat].push(pi);
     else if (pi.tone === 'job') cats['打工 💼'].push(pi);
     else if (pi.tone === 'beg') cats['索取 🧺'].push(pi);
     else if (pi.tone === 'rest') cats['休息 💤'].push(pi);
