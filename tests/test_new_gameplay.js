@@ -151,17 +151,63 @@ CP.state().pending.push({
 // 第1轮：出招谦虚防守 (index 2)
 CP.resolve(2);
 assert(CP.state().faceDuel.myHp > 350, '防守回合应受到大幅减伤且回复气势');
+assert(CP.state().faceDuel.momRage >= 25, '防守成功应为老妈怒气充能至少25%');
 console.log('第1轮交锋战斗日志:', CP.state().faceDuel.logs.slice(-2));
 
 // 第2轮：出招凡尔赛心理反击 (index 1)
 CP.resolve(1);
+assert(CP.state().faceDuel.opp.tilt > 0, '进攻应增加对手心理破防槽');
 console.log('第2轮交锋战斗日志:', CP.state().faceDuel.logs.slice(-2));
 
 // 第3轮：亮出特长攻击 (index 0)
 CP.resolve(0);
 console.log('第3轮交锋战斗日志:', CP.state().faceDuel.logs.slice(-2));
 
-console.log('面子对决多轮交锋验证顺利通过！');
+// 深度测试 2.1: pendFace 自动构筑手牌与四大分类特长羁绊判定
+while (CP.pending().length) CP.resolve(0);
+CP.state().talents = ['aoshu', 'chengxuyuan']; // 双理科特长 (奥数苗子 + 初学编程)
+CP.pendFace(0);
+const pendDuelItem = CP.pending().find(p => p.type === 'face_duel');
+assert(pendDuelItem, 'pendFace(0) 应成功推入 face_duel 事件');
+const activeDuel = CP.faceDuel();
+assert(activeDuel && activeDuel.hand.length >= 3, '对决应自动生成手牌 (含主力特长与战术卡)');
+assert(activeDuel.activeSynergies.some(s => s.id === 'synergy_stem'), '双理科特长应激活「理科降维打击」特长羁绊');
+assert.strictEqual(activeDuel.opp.tilt, 0, '初始破防槽必须归零');
+assert.strictEqual(activeDuel.momRage, 0, '初始老妈怒气必须归零');
+
+// 深度测试 2.2: 破防槽 100% 当场石化瘫痪机制断言
+activeDuel.opp.tilt = 95;
+CP.resolve(0); // 本轮输出足以将 tilt 推至 100%
+const hasParalyzeLog = activeDuel.logs.some(l => l.includes('破防石化') || l.includes('张口结舌'));
+assert(hasParalyzeLog, '破防槽满时对手必须当场石化并跳过反击');
+
+// 深度测试 2.3: 老妈必杀绝招大招释放与伤害判定
+activeDuel.momRage = 100;
+const oppHpBeforeMom = activeDuel.opp.hp;
+CP.resolve('mom');
+assert(activeDuel.momRage < 100, '老妈大招释放后100%怒气已被清空重置');
+assert(activeDuel.opp.hp < oppHpBeforeMom - 120, '老妈大招造成巨额爆发伤害 (>120)');
+const hasMomLog = activeDuel.logs.some(l => l.includes('老妈必杀') || l.includes('拍案而起'));
+assert(hasMomLog, '老妈大招应触发全家杀手锏专属战斗公报');
+
+// 深度测试 2.4: 终局结算战报状态与数据完整性
+if (!activeDuel.finished) {
+  activeDuel.opp.hp = 0;
+  CP.resolve(0); // 结算终局
+}
+assert.strictEqual(activeDuel.finished, true, '对手HP归零时对决必须结束');
+assert.strictEqual(activeDuel.won, true, '对手HP归零时我方判定获胜');
+assert(activeDuel.mvpTalent, '终局必须结算出本场 MVP 特长');
+assert(activeDuel.totalDamageDealt > 0, '终局必须统计造成面子总打击数值');
+
+// 深度测试 2.5: 战报确认退出生命周期
+const winFaceBefore = CP.state().face;
+const finMsg = CP.resolve(0);
+assert(finMsg.includes('面子对决大获全胜'), '战报确认后应返回大获全胜提示语');
+assert.strictEqual(CP.faceDuel(), null, '战报确认后对决状态必须被清理');
+assert.strictEqual(CP.state().face, winFaceBefore, '最终奖励在终局时已结算入库');
+
+console.log('面子对决 2.0 手牌构筑、羁绊加成、破防瘫痪、老妈大招与战报结算全部断言通过！');
 
 console.log('\n--- 测试 3: 👥 同学社交背包定向送礼与喜好暴击 ---');
 while (CP.pending().length) CP.resolve(0);

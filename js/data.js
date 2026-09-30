@@ -121,30 +121,30 @@ payjobs: [
   {id:'pj-campus-lead', name:'校园合伙人地推', icon:'📣', phase:'college', money:120, stress:3, attr:{eq:2,cha:2}},
 ],
 
-/* ---------- 特长(图鉴/价格=稀有度系数) ---------- r: 1普 2稀 3史 4传说 */
+/* ---------- 特长(图鉴/价格=稀有度系数) ---------- r: 1普 2稀 3史 4传说, cat: art艺术/stem学科/witty趣味/phy体育 */
 talentData: [
-  {id:'tuyasha',     n:'小涂鸦师',   icon:'🖍️', r:1, src:'涂鸦'},
-  {id:'gushiren',    n:'古诗背篓',   icon:'🏮', r:1, src:'背古诗'},
-  {id:'danci',       n:'单词背篓',   icon:'🔤', r:1, src:'英语单词'},
-  {id:'xiaozuojia',  n:'日记小作家',  icon:'✍️', r:1, src:'写日记'},
-  {id:'wulidashi',   n:'物理小咖',   icon:'⚡', r:1, src:'物理入门'},
-  {id:'shuo',        n:'说书先生',   icon:'🏛️', r:1, src:'历史故事'},
-  {id:'jianghu',      n:'武侠迷',     icon:'🗡️', r:1, src:'武侠小说'},
-  {id:'qintong',     n:'琴童',       icon:'🎹', r:2, src:'电子琴'},
-  {id:'niuba',       n:'捏泥巴小当家',icon:'🧈', r:2, src:'橡皮泥'},
-  {id:'aoshu',       n:'奥数苗子',   icon:'💡', r:2, src:'代与函数·奥数'},
-  {id:'wenqing',     n:'文青',       icon:'📚', r:2, src:'名著阅读'},
-  {id:'zuowen',      n:'写作小将',   icon:'🪶', r:2, src:'作文进阶'},
-  {id:'xiaohuajia',  n:'少儿画家',   icon:'🎨', r:2, src:'美术课'},
-  {id:'yishujia',    n:'艺术细胞',   icon:'🎭', r:2, src:'艺考集训'},
-  {id:'chengxuyuan', n:'代码初学者', icon:'💻', r:2, src:'电脑入门'},
-  {id:'games',     n:'小霸王游戏王', icon:'👾', r:2, src:'小霸王'},
-  {id:'yundong',   n:'运动健儿',   icon:'🏃', r:2, src:'体育课'},
-  {id:'jiazui',    n:'压轴题杀手', icon:'🧮', r:3, src:'数学压轴'},
-  {id:'gongchengshi', n:'工程师之魂', icon:'⚙️', r:3, src:'理论力学与攻坚'},
-  {id:'gods',       n:'五指琴魔',   icon:'🎹', r:4, src:'钢琴十级'},
-  {id:'nianshen',    n:'捏泥成神',   icon:'🧸', r:4, src:'橡皮泥大师'},
-  {id:'gaokao',      n:'状元苗子',   icon:'👑', r:4, src:'高考'},
+  {id:'tuyasha',     n:'小涂鸦师',   icon:'🖍️', r:1, cat:'art',   src:'涂鸦'},
+  {id:'gushiren',    n:'古诗背篓',   icon:'🏮', r:1, cat:'art',   src:'背古诗'},
+  {id:'danci',       n:'单词背篓',   icon:'🔤', r:1, cat:'stem',  src:'英语单词'},
+  {id:'xiaozuojia',  n:'日记小作家',  icon:'✍️', r:1, cat:'art',   src:'写日记'},
+  {id:'wulidashi',   n:'物理小咖',   icon:'⚡', r:1, cat:'stem',  src:'物理入门'},
+  {id:'shuo',        n:'说书先生',   icon:'🏛️', r:1, cat:'art',   src:'历史故事'},
+  {id:'jianghu',      n:'武侠迷',     icon:'🗡️', r:1, cat:'witty', src:'武侠小说'},
+  {id:'qintong',     n:'琴童',       icon:'🎹', r:2, cat:'art',   src:'电子琴'},
+  {id:'niuba',       n:'捏泥巴小当家',icon:'🧈', r:2, cat:'art',   src:'橡皮泥'},
+  {id:'aoshu',       n:'奥数苗子',   icon:'💡', r:2, cat:'stem',  src:'代与函数·奥数'},
+  {id:'wenqing',     n:'文青',       icon:'📚', r:2, cat:'art',   src:'名著阅读'},
+  {id:'zuowen',      n:'写作小将',   icon:'🪶', r:2, cat:'art',   src:'作文进阶'},
+  {id:'xiaohuajia',  n:'少儿画家',   icon:'🎨', r:2, cat:'art',   src:'美术课'},
+  {id:'yishujia',    n:'艺术细胞',   icon:'🎭', r:2, cat:'art',   src:'艺考集训'},
+  {id:'chengxuyuan', n:'代码初学者', icon:'💻', r:2, cat:'stem',  src:'电脑入门'},
+  {id:'games',     n:'小霸王游戏王', icon:'👾', r:2, cat:'witty', src:'小霸王'},
+  {id:'yundong',   n:'运动健儿',   icon:'🏃', r:2, cat:'phy',   src:'体育课'},
+  {id:'jiazui',    n:'压轴题杀手', icon:'🧮', r:3, cat:'stem',  src:'数学压轴'},
+  {id:'gongchengshi', n:'工程师之魂', icon:'⚙️', r:3, cat:'stem',  src:'理论力学与攻坚'},
+  {id:'gods',       n:'五指琴魔',   icon:'🎹', r:4, cat:'art',   src:'钢琴十级'},
+  {id:'nianshen',    n:'捏泥成神',   icon:'🧸', r:4, cat:'art',   src:'橡皮泥大师'},
+  {id:'gaokao',      n:'状元苗子',   icon:'👑', r:4, cat:'stem',  src:'高考'},
 ],
 
 /* ---------- 随机事件 ---------- props: phases 适用阶段数组 */
@@ -634,10 +634,105 @@ jobs: [
 
 /* 面子对决的对手 */
 rivals: [
-  {id:'wangyi', n:'王姨的学霸儿子', icon:'🧑‍🎓', face:300, atk:55, l:['我家孩子奥数满分','全校大榜第一名','每天刷题到深夜'], style:'学神'},
-  {id:'fang', n:'有钱叔叔的孩子', icon:'👦', face:200, atk:45, l:['钢琴早过十级了','双语幼儿园直升外校','暑假刚去欧洲游学'], style:'凡尔赛'},
-  {id:'liu', n:'隔壁刘婶的孙女', icon:'👧', face:180, atk:40, l:['市少儿舞蹈金奖','长得标致还懂事','每次来都主动洗碗'], style:'美育战士'},
-  {id:'chen', n:'表哥家小孙子', icon:'👶', face:120, atk:30, l:['三岁就能背唐诗三百首','心算比大人还快','邻居都夸是神童'], style:'天才婴儿'},
+  {
+    id:'wangyi',
+    n:'王姨的学霸儿子',
+    icon:'🧑‍🎓',
+    face:300,
+    atk:55,
+    l:['我家孩子奥数满分','全校大榜第一名','每天刷题到深夜'],
+    tiltLines:[
+      '王姨抹了抹额头冷汗：“这题……这题小明昨晚也做过……”',
+      '王姨语无伦次：“不可能！绝对不可能！肯定是题看错了！”',
+      '王姨脸色铁青，借口家里炉子炖着老鸭汤悻悻离席！'
+    ],
+    style:'学神'
+  },
+  {
+    id:'fang',
+    n:'有钱叔叔的孩子',
+    icon:'👦',
+    face:200,
+    atk:45,
+    l:['钢琴早过十级了','双语幼儿园直升外校','暑假刚去欧洲游学'],
+    tiltLines:[
+      '叔叔干笑两声：“咳咳，学得再多，有我家斯坦威贵吗……”',
+      '叔叔擦了擦汗：“小孩子别太要强，我们家主打素质教育……”',
+      '叔叔借口接跨国投资电话，灰溜溜钻进奔驰车走了！'
+    ],
+    style:'凡尔赛'
+  },
+  {
+    id:'liu',
+    n:'隔壁刘婶的孙女',
+    icon:'👧',
+    face:180,
+    atk:40,
+    l:['市少儿舞蹈金奖','长得标致还懂事','每次来都主动洗碗'],
+    tiltLines:[
+      '刘婶嘴角抽搐：“现在的小孩……都这么卷了吗……”',
+      '刘婶强行挽尊：“光死念书有什么用，女孩子得会体贴人……”',
+      '刘婶尴尬地拉着孙女：“回去了回去了，跳舞课快迟到了！”'
+    ],
+    style:'美育战士'
+  },
+  {
+    id:'chen',
+    n:'表哥家小孙子',
+    icon:'👶',
+    face:120,
+    atk:30,
+    l:['三岁就能背唐诗三百首','心算比大人还快','邻居都夸是神童'],
+    tiltLines:[
+      '表哥愣在原地，怀里的神童突然哇哇大哭起来！',
+      '表哥尴尬拍抚：“孩子认生……这叫大器晚成懂不懂……”',
+      '表哥抱着哭闹的孩子红着脸匆匆告辞！'
+    ],
+    style:'天才婴儿'
+  },
+],
+
+/* 特长羁绊表 (Face Duel 2.0 Synergy) */
+talentSynergies: [
+  {
+    id: 'synergy_stem',
+    n: '理科降维打击',
+    icon: '⚡',
+    reqCats: ['stem', 'stem'],
+    bonusDmg: 0.35,
+    tiltBonus: 25,
+    desc: '数理逻辑严丝合缝，直接贯穿对手防线！',
+    quote: '“这道压轴题全省只有三个人做出来，正是不才在下！”'
+  },
+  {
+    id: 'synergy_art',
+    n: '文质彬彬',
+    icon: '📜',
+    reqCats: ['art', 'art'],
+    bonusDmg: 0.30,
+    healBonus: 25,
+    desc: '才情横溢诗书气华，给对手以精神层面的降维陶冶！',
+    quote: '“腹有诗书气自华，闲云潭影日悠悠。长辈见笑了。”'
+  },
+  {
+    id: 'synergy_witty',
+    n: '人间清醒破功',
+    icon: '💡',
+    reqCats: ['witty'],
+    weakenOpp: 0.45,
+    desc: '机智拆台，让对手的吹嘘当场卡壳破功！',
+    quote: '“您家孩子这么优秀，怎么没去保送少年班呢？”'
+  },
+  {
+    id: 'synergy_phy',
+    n: '阳光健将',
+    icon: '🏃',
+    reqCats: ['phy'],
+    bonusDmg: 0.25,
+    tiltBonus: 20,
+    desc: '体魄强健神采飞扬，以蓬勃朝气压制全场攀比！',
+    quote: '“身体是革命的本钱！一口气跑五公里不带喘的！”'
+  }
 ],
 
 /* 同学(可攻略) */

@@ -2773,21 +2773,174 @@ button:active { transform: scale(0.96); }
   gap: 3px;
   cursor: pointer;
   transition: all 0.15s ease;
+  position: relative;
+  overflow: hidden;
 }
 .fd-card-btn:hover {
   border-color: var(--gold-main);
-  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
-  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+.fd-card-btn.synergy-active {
+  border-color: #f57f17;
+  background: #fffde7;
+  box-shadow: 0 0 10px rgba(245, 127, 23, 0.25);
+}
+.fd-card-btn.synergy-active::after {
+  content: '⚡羁绊';
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  color: #e65100;
+  background: #ffe0b2;
+  padding: 1px 4px;
+  border-radius: 4px;
 }
 .fd-c-title {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--ink-primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .fd-c-sub {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink-secondary);
-  line-height: 1.4;
+  line-height: 1.35;
+}
+
+/* 心理破防槽与老妈怒气槽 */
+.fd-sub-meter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.fd-sub-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: #eee;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.fd-sub-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+.fd-sub-bar-fill.tilt {
+  background: linear-gradient(90deg, #ff9800, #f44336);
+}
+.fd-sub-bar-fill.rage {
+  background: linear-gradient(90deg, #ff7043, #d84315);
+}
+
+/* 特长羁绊状态条 */
+.fd-synergies-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.fd-synergy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  color: #b78103;
+}
+
+/* 老妈必杀大招 */
+.fd-mom-ult-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  border-radius: 12px;
+  border: 1px solid #d84315;
+  background: linear-gradient(135deg, #ff5722, #bf360c);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(216, 67, 21, 0.4);
+  animation: momRagePulse 0.5s infinite alternate ease-in-out;
+}
+@keyframes momRagePulse {
+  from { transform: scale(1); filter: brightness(1); }
+  to { transform: scale(1.02); filter: brightness(1.2); }
+}
+
+/* 结算战报卡片 */
+.fd-result-wrap {
+  text-align: center;
+  padding: 20px 16px 16px;
+}
+.fd-result-icon {
+  font-size: 42px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.fd-result-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+.fd-result-badge.win {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+  box-shadow: 0 0 10px rgba(46, 125, 50, 0.18);
+}
+.fd-result-badge.lose {
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+}
+.fd-result-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0 14px;
+}
+.fd-stat-card {
+  background: var(--card-subtle);
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.fd-stat-val {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--ink-primary);
+}
+.fd-stat-lbl {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  margin-top: 2px;
+}
+.fd-result-dialogue {
+  background: #fff3e0;
+  border: 1px solid #ffe0b2;
+  color: #e65100;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  margin-bottom: 16px;
 }
 
 /* ============================================================

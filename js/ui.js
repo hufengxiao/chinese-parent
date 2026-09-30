@@ -1813,11 +1813,20 @@ function renderHongbaoResult(p, m, posVal, isSkip, resText) {
   m.appendChild(body);
 }
 
-/* ---------- ⚔️ 面子对决卡牌对战场 ---------- */
+/* ---------- ⚔️ 面子对决卡牌对战场 2.0 ---------- */
 function renderFaceDuelModal(p, m) {
+  m = m || $('#modal');
+  if (!m) return;
   m.classList.add('show');
   m.innerHTML = '';
   const duel = CP.faceDuel() || p.duel;
+
+  // 若对决已进入结算完成态，路由至终局战报卡片
+  if (duel && (duel.finished || p.finished)) {
+    renderFaceDuelResult(duel, p, m);
+    return;
+  }
+
   const body = h('div', 'm-body fd-arena');
   body.appendChild(h('div', 'm-title', p.title || '⚔️ 家族面子大对决'));
 
@@ -1830,57 +1839,195 @@ function renderFaceDuelModal(p, m) {
     return;
   }
 
+  // 1) 双方战斗信息与副计量槽 (破防槽 & 老妈怒气槽)
   const fighters = h('div', 'fd-fighters');
   const myHpPct = Math.max(0, Math.min(100, Math.round((duel.myHp / duel.maxMyHp) * 100)));
   const oppHpPct = Math.max(0, Math.min(100, Math.round((duel.opp.hp / duel.opp.maxHp) * 100)));
+  const momRageVal = Math.min(100, Math.max(0, duel.momRage || 0));
+  const oppTiltVal = Math.min(100, Math.max(0, duel.opp.tilt || 0));
 
   fighters.innerHTML =
     '<div class="fd-fighter left">' +
       '<div class="fd-f-header"><span class="av">👶</span><span class="fd-f-name">我家宝儿</span><span class="fd-f-badge">我方</span></div>' +
       '<div class="fd-hp-wrap"><div class="fd-hp-fill mine" style="width:' + myHpPct + '%"></div></div>' +
       '<div class="fd-hp-val">面子: ' + duel.myHp + ' / ' + duel.maxMyHp + '</div>' +
+      '<div class="fd-sub-meter">' +
+        '<span style="color:#d84315">🔥老妈怒气</span>' +
+        '<div class="fd-sub-bar-wrap"><div class="fd-sub-bar-fill rage" style="width:' + momRageVal + '%"></div></div>' +
+        '<span>' + momRageVal + '%</span>' +
+      '</div>' +
     '</div>' +
     '<div class="fd-vs-col">' +
       '<span>VS</span>' +
-      '<span class="fd-vs-round">' + (duel.finished ? '战局结束' : '第 ' + duel.round + ' / ' + duel.maxRound + ' 轮') + '</span>' +
+      '<span class="fd-vs-round">第 ' + duel.round + ' / ' + duel.maxRound + ' 轮</span>' +
     '</div>' +
     '<div class="fd-fighter right">' +
       '<div class="fd-f-header"><span class="av">' + (duel.opp.icon || '🧑‍🎓') + '</span><span class="fd-f-name">' + duel.opp.name + '</span><span class="fd-f-badge">' + (duel.opp.style || '学神') + '</span></div>' +
       '<div class="fd-hp-wrap"><div class="fd-hp-fill opp" style="width:' + oppHpPct + '%"></div></div>' +
       '<div class="fd-hp-val">面子: ' + duel.opp.hp + ' / ' + duel.opp.maxHp + '</div>' +
+      '<div class="fd-sub-meter">' +
+        '<span style="color:#f44336">💢破防值</span>' +
+        '<div class="fd-sub-bar-wrap"><div class="fd-sub-bar-fill tilt" style="width:' + oppTiltVal + '%"></div></div>' +
+        '<span>' + oppTiltVal + '%</span>' +
+      '</div>' +
     '</div>';
   body.appendChild(fighters);
 
+  // 2) 羁绊状态行 (若已激活特长羁绊)
+  if (duel.activeSynergies && duel.activeSynergies.length > 0) {
+    const synRow = h('div', 'fd-synergies-row');
+    duel.activeSynergies.forEach(syn => {
+      const b = h('span', 'fd-synergy-badge', (syn.icon || '✨') + ' ' + syn.n + ': ' + syn.desc);
+      synRow.appendChild(b);
+    });
+    body.appendChild(synRow);
+  }
+
+  // 3) 战报文本流
   const logBox = h('div', 'fd-combat-box');
   const recentLogs = duel.logs.slice(-4);
   logBox.innerHTML = recentLogs.map(l => '<div>' + l + '</div>').join('');
   body.appendChild(logBox);
 
-  if (duel.finished) {
-    const finBtn = h('button', 'btn big ' + (duel.won ? 'pulse' : 'secondary'), duel.won ? '🏆 扬眉吐气！(面子+120)' : '默默低头 (面子-40)');
-    finBtn.onclick = () => {
-      sound.win();
-      CP.resolve(0);
+  // 4) 手牌卡牌出招区
+  const cardsGrid = h('div', 'fd-cards-grid');
+  const handList = (duel.hand && duel.hand.length) ? duel.hand : (p.opts || []);
+  handList.forEach((cardItem, idx) => {
+    const card = h('button', 'fd-card-btn');
+    const isObj = cardItem && typeof cardItem === 'object';
+    const label = isObj ? (cardItem.name || cardItem.label || '出招') : String(cardItem);
+    const icon = isObj ? (cardItem.icon || '') : '';
+    let sub = isObj ? (cardItem.sub || '') : '';
+
+    // 检测卡牌是否享受激活羁绊
+    const cat = isObj ? cardItem.cat : null;
+    const hasSynergy = cat && (duel.activeSynergies || []).some(s => s.reqCats && s.reqCats.includes(cat));
+    if (hasSynergy) {
+      card.classList.add('synergy-active');
+      sub = '✨ 羁绊激活 · ' + sub;
+    }
+
+    const titleHtml = icon ? ('<span style="margin-right:4px">' + icon + '</span>' + label) : label;
+    card.innerHTML = '<span class="fd-c-title">' + titleHtml + '</span>' + (sub ? '<span class="fd-c-sub">' + sub + '</span>' : '');
+    card.onclick = () => {
+      sound.faceCrit();
+      const r = CP.resolve(idx);
+      if (r) toast(r);
       renderAll();
     };
-    body.appendChild(finBtn);
-  } else {
-    const cardsGrid = h('div', 'fd-cards-grid');
-    (p.opts || []).forEach((opt, idx) => {
-      const card = h('button', 'fd-card-btn');
-      const label = (typeof opt === 'string') ? opt : opt.label;
-      const sub = (opt && typeof opt === 'object' && opt.sub) ? opt.sub : '';
-      card.innerHTML = '<span class="fd-c-title">' + label + '</span>' + (sub ? '<span class="fd-c-sub">' + sub + '</span>' : '');
-      card.onclick = () => {
-        sound.faceCrit();
-        const r = CP.resolve(idx);
-        if (r) toast(r);
-        renderAll();
-      };
-      cardsGrid.appendChild(card);
-    });
-    body.appendChild(cardsGrid);
+    cardsGrid.appendChild(card);
+  });
+  body.appendChild(cardsGrid);
+
+  // 5) 老妈必杀绝招按钮 (当老妈怒气达到 100% 时爆发)
+  if (duel.momRage >= 100) {
+    const momUltBtn = h('button', 'fd-mom-ult-btn pulse', '💥 老妈必杀爆发！【典型事迹降维打击】(立即释放)');
+    momUltBtn.onclick = () => {
+      sound.faceCrit();
+      const r = CP.resolve('mom');
+      if (r) toast(r);
+      renderAll();
+    };
+    body.appendChild(momUltBtn);
   }
+
+  m.appendChild(body);
+}
+
+/* ---------- 🏆 面子对决终局战报公报卡片 ---------- */
+function renderFaceDuelResult(duel, p, m) {
+  m = m || $('#modal');
+  if (!m) return;
+  m.classList.add('show');
+  m.innerHTML = '';
+
+  const isWon = !!duel.won;
+  const body = h('div', 'm-body fd-arena fd-result-wrap');
+
+  // 1) 图标与胜负大徽章
+  const icon = isWon ? '🏆' : '🌧️';
+  const badgeClass = isWon ? 'fd-result-badge win' : 'fd-result-badge lose';
+  const badgeText = isWon ? '🌟 扬眉吐气 · 亲友圈封神' : '💬 略逊一筹 · 回家加练';
+  const titleText = isWon ? '⚔️ 家族面子大对决 · 完胜战报' : '⚔️ 家族面子大对决 · 遗憾惜败';
+
+  body.appendChild(h('div', 'fd-result-icon', icon));
+  body.appendChild(h('div', 'm-title', titleText));
+  body.appendChild(h('div', badgeClass, badgeText));
+
+  // 2) 四联战果数据看板
+  const statsBox = h('div', 'fd-result-stats');
+  const mvpName = duel.mvpTalent || (isWon ? '综合实力' : '虽败犹荣');
+  const totalDmg = duel.totalDamageDealt || 0;
+  const faceChange = isWon ? '+120' : '-40';
+  const faceColor = isWon ? '#2e7d32' : '#c62828';
+
+  statsBox.innerHTML =
+    '<div class="fd-stat-card">' +
+      '<div class="fd-stat-val">' + mvpName + '</div>' +
+      '<div class="fd-stat-lbl">👑 全场 MVP 出招</div>' +
+    '</div>' +
+    '<div class="fd-stat-card">' +
+      '<div class="fd-stat-val">' + totalDmg + ' 点</div>' +
+      '<div class="fd-stat-lbl">💥 造成面子打击</div>' +
+    '</div>' +
+    '<div class="fd-stat-card">' +
+      '<div class="fd-stat-val">' + duel.myHp + ' / ' + duel.maxMyHp + '</div>' +
+      '<div class="fd-stat-lbl">🛡️ 我方残余气势</div>' +
+    '</div>' +
+    '<div class="fd-stat-card">' +
+      '<div class="fd-stat-val" style="color:' + faceColor + '">' + faceChange + '</div>' +
+      '<div class="fd-stat-lbl">⭐ 家族面子变动</div>' +
+    '</div>';
+  body.appendChild(statsBox);
+
+  // 3) 亲戚退场相声对话
+  const oppName = (duel.opp && duel.opp.name) ? duel.opp.name : '亲戚';
+  let oppQuote = '';
+  let momQuote = '';
+
+  if (isWon) {
+    const lines = (duel.opp && duel.opp.tiltLines && duel.opp.tiltLines.length)
+      ? duel.opp.tiltLines
+      : ['这孩子真厉害……我家里炖着汤，先走一步！'];
+    oppQuote = lines[lines.length - 1];
+    momQuote = '“害，孩子随便学学，哪有你说的那么好～今晚加菜做红烧肉！”';
+  } else {
+    oppQuote = '“哎呀小孩子嘛，基础差点不要紧，慢慢赶总能赶上的！”';
+    momQuote = '（咬牙切齿赔笑）“是是是……回家看我怎么收拾你！”';
+  }
+
+  const diagBox = h('div', 'fd-result-dialogue');
+  diagBox.innerHTML =
+    '<b>' + oppName + '</b>: “' + oppQuote + '”<br><br>' +
+    '<b>老妈</b>: ' + momQuote;
+  body.appendChild(diagBox);
+
+  // 4) 确认按钮与快捷键监听
+  const btnText = isWon ? '🏆 扬眉吐气！收下赞誉 (继续)' : '💨 默默低头离开饭局 (继续)';
+  const confirmBtn = h('button', 'btn big ' + (isWon ? 'primary pulse' : 'secondary'), btnText);
+  confirmBtn.style.width = '100%';
+
+  let resultKeyHandler = null;
+  const doConfirm = () => {
+    if (resultKeyHandler) {
+      window.removeEventListener('keydown', resultKeyHandler);
+      resultKeyHandler = null;
+    }
+    if (isWon) sound.win(); else sound.pop();
+    const r = CP.resolve(0);
+    if (r) toast(r);
+    renderAll();
+  };
+  confirmBtn.onclick = doConfirm;
+  body.appendChild(confirmBtn);
+
+  resultKeyHandler = (e) => {
+    if (e.key === 'Enter' || e.code === 'Space') {
+      e.preventDefault();
+      doConfirm();
+    }
+  };
+  window.addEventListener('keydown', resultKeyHandler);
 
   m.appendChild(body);
 }
@@ -3225,6 +3372,8 @@ function init() {
 
 global.renderHongbaoModal = renderHongbaoModal;
 global.renderHongbaoResult = renderHongbaoResult;
+global.renderFaceDuelModal = renderFaceDuelModal;
+global.renderFaceDuelResult = renderFaceDuelResult;
 global.UI = {
   renderTop,
   renderPhaseTransition,
@@ -3232,6 +3381,8 @@ global.UI = {
   renderModal,
   renderHongbaoModal,
   renderHongbaoResult,
+  renderFaceDuelModal,
+  renderFaceDuelResult,
   renderAll,
   openWishModal,
   openChangelogModal,
