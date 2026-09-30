@@ -116,7 +116,12 @@ assert(hbSenior, '回合35过年必定触发红包');
 assert(hbSenior.difficulty === 1.35, '高中期红包难度系数应为1.35');
 assert(hbSenior.goldenMax - hbSenior.goldenMin < hbBaby.goldenMax - hbBaby.goldenMin, '高难度期黄金区间显著窄于幼儿期');
 while (CP.pending().length) CP.resolve(0);
-console.log('过年收红包动态性格力学、阶段难度缩放、脱靶初始位置与保底跳过全部断言通过！');
+
+// 验证专项测试页面 test_hongbao.html 结构完备性
+const hbHtml = fs.readFileSync('test_hongbao.html', 'utf8');
+assert(hbHtml.includes('hb-sandbox-mount') && hbHtml.includes('sel-rel'), 'test_hongbao.html 必须包含专属挂载点与亲戚选择器');
+assert(hbHtml.includes('tele-pos') && hbHtml.includes('tele-vel'), 'test_hongbao.html 必须包含实时遥测看板');
+console.log('过年收红包动态性格力学、阶段难度缩放、脱靶初始位置、保底跳过与专项实验室 test_hongbao.html 全部断言通过！');
 
 console.log('\n--- 测试 2: ⚔️ 面子对决交互回合制战斗 ---');
 CP.state().turn = 28;

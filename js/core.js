@@ -562,6 +562,7 @@ function pendHongbao() {
   const halfW = Math.round(rel.goldenWidth / 2);
   const goldenMin = clamp(rel.goldenCenter - halfW, 20, 75);
   const goldenMax = clamp(rel.goldenCenter + halfW, goldenMin + 12, 85);
+  const startPos = (rel.driftBias < 0) ? clamp(goldenMax + 8, goldenMax + 5, 90) : clamp(goldenMin - 10, 8, goldenMin - 5);
 
   S.pending.push({
     type: 'hongbao_duel',
@@ -579,7 +580,7 @@ function pendHongbao() {
     goldenMax: goldenMax,
     goldenCenter: rel.goldenCenter,
     goldenWidth: rel.goldenWidth,
-    startPos: rel.startPos,
+    startPos: startPos,
     gustChance: rel.gustChance,
     gustText: rel.gustText,
     amountBase: rel.amountBase,
