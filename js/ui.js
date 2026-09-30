@@ -420,13 +420,16 @@ function renderTop() {
     if (elInsight) elInsight.textContent = i.insight;
   } else {
     // 降级兜底兼容
-    $('#topbar').innerHTML =
-      '<span class="gen-tag">第' + i.gen + '代 ' + genderIcon + i.name + '</span>' +
-      '<span class="chip">📅 回合' + i.turn + ' · ' + i.age + '岁 · ' + i.phase + '</span>' +
-      '<span class="chip" title="面子">⭐面子<b>' + i.face + '</b></span>' +
-      '<span class="chip" title="行动力">⚡行动<b>' + i.act + '</b></span>' +
-      '<span class="chip" title="零花钱">💰零钱<b>' + i.money + '</b></span>' +
-      '<span class="chip" title="悟性">💡悟性<b>' + i.insight + '</b></span>';
+    const topbar = $('#topbar');
+    if (topbar) {
+      topbar.innerHTML =
+        '<span class="gen-tag">第' + i.gen + '代 ' + genderIcon + i.name + '</span>' +
+        '<span class="chip">📅 回合' + i.turn + ' · ' + i.age + '岁 · ' + i.phase + '</span>' +
+        '<span class="chip" title="面子">⭐面子<b>' + i.face + '</b></span>' +
+        '<span class="chip" title="行动力">⚡行动<b>' + i.act + '</b></span>' +
+        '<span class="chip" title="零花钱">💰零钱<b>' + i.money + '</b></span>' +
+        '<span class="chip" title="悟性">💡悟性<b>' + i.insight + '</b></span>';
+    }
   }
   
   const a = i.attrs;
@@ -1449,6 +1452,8 @@ function renderPhaseTransition(p, m) {
 
 /* ---------- 🧧 过年收红包推拉拉扯小游戏 ---------- */
 function renderHongbaoModal(p, m) {
+  m = m || $('#modal');
+  if (!m) return;
   if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
   if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
 
@@ -1538,7 +1543,11 @@ function renderHongbaoModal(p, m) {
     sound.win();
     const r = CP.resolve({ pos: posVal, skipped: isSkip });
     if (r) toast(r);
-    renderAll();
+    if (typeof p.onFinish === 'function') {
+      p.onFinish(posVal, isSkip, r);
+    } else {
+      renderAll();
+    }
   };
 
   // 交互微冲量 (连续微调抗衡)
@@ -2681,6 +2690,7 @@ function closeChangelogModal() {
 }
 
 function renderAll() {
+  if (!$('#game') && !$('#splash')) return;
   if (!CP.state()) {
     updateSplash();
     return;
@@ -2877,6 +2887,7 @@ function renderSaveSlots() {
 
 /* ---------- 初始化绑定 ---------- */
 function init() {
+  if (!$('#game') && !$('#splash')) return;
   sound.updateBtn();
   const soundBtn = $('#sound-btn');
   if (soundBtn) soundBtn.onclick = () => sound.toggle();
@@ -3080,11 +3091,13 @@ function init() {
   }
 }
 
+global.renderHongbaoModal = renderHongbaoModal;
 global.UI = {
   renderTop,
   renderPhaseTransition,
   showReport,
   renderModal,
+  renderHongbaoModal,
   renderAll,
   openWishModal,
   openChangelogModal,

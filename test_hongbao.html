@@ -352,6 +352,7 @@
     </div>
   </div>
 
+  <div id="toasts"></div>
   <div id="modal" class="modal"></div>
 
   <script src="js/data.js"></script>
@@ -360,6 +361,7 @@
   <script>
     // 确保内核与数据初始化
     CP.newGame();
+    const rawCPResolve = CP.resolve;
 
     const relativesData = [
       {
@@ -515,16 +517,25 @@
       CP.state().pending = [eventPayload];
 
       // 劫持 CP.resolve，记录战报与统计
-      const originalResolve = CP.resolve;
       CP.resolve = function(arg) {
-        const resText = originalResolve.apply(this, arguments);
+        const resText = rawCPResolve.apply(this, arguments);
         recordTestResult(eventPayload, arg, resText);
         return resText;
       };
 
+      // 测试对决结束回调，避免触发主界面全量渲染，展现沙盒战报卡片
+      eventPayload.onFinish = function(posVal, isSkip, resText) {
+        renderSandboxSummary(eventPayload, posVal, isSkip, resText);
+      };
+
       // 挂载到沙盒主舞台
       const mount = document.getElementById('hb-sandbox-mount');
-      renderHongbaoModal(eventPayload, mount);
+      const renderFn = window.renderHongbaoModal || (window.UI && window.UI.renderHongbaoModal);
+      if (typeof renderFn === 'function') {
+        renderFn(eventPayload, mount);
+      } else {
+        mount.innerHTML = '<div style="color:red; padding:20px; text-align:center;">未找到 renderHongbaoModal 方法，请检查 js/ui.js 是否正常加载。</div>';
+      }
 
       // 启动实时遥测监控
       startTelemetry(gMin, gMax, totalTime);
@@ -627,6 +638,58 @@
         '<span>#' + stats.total + ' <b>' + payload.rel + '</b> (' + outcome + (isSkip ? ' · 跳过' : '') + ') ➔ 落点: ' + pos + '%</span>' +
         '<span style="font-weight:700;' + (moneyGot > 0 ? 'color:#2e7d32' : 'color:#9e9e9e') + '">+' + moneyGot + '元</span>';
       logBox.insertBefore(entry, logBox.firstChild);
+    }
+
+    function renderSandboxSummary(payload, posVal, isSkip, resText) {
+      if (teleTimer) { clearInterval(teleTimer); teleTimer = null; }
+      const mount = document.getElementById('hb-sandbox-mount');
+      if (!mount) return;
+
+      const isPerfect = (posVal >= payload.goldenMin && posVal <= payload.goldenMax);
+      const isRefuse = (posVal < Math.max(18, payload.goldenMin - 6));
+      const isGreed = (posVal > Math.min(82, payload.goldenMax + 8));
+
+      let badgeTitle = '🌟 进退得体 · 完美博弈';
+      let icon = '✨';
+      if (isPerfect) {
+        badgeTitle = '🌟 进退得体 · 黄金得体区';
+        icon = '✨';
+      } else if (isRefuse) {
+        badgeTitle = '✋ 客套过猛 · 长辈缩手';
+        icon = '💨';
+      } else if (isGreed) {
+        badgeTitle = '🤲 过于猴急 · 亲妈怒视';
+        icon = '💢';
+      } else {
+        badgeTitle = '🧧 顺利收下 · 中规中矩';
+        icon = '🧧';
+      }
+
+      mount.innerHTML =
+        '<div class="m-body hb-modal" style="text-align:center; padding: 22px 14px;">' +
+          '<div style="font-size: 38px; margin-bottom: 6px;">' + icon + '</div>' +
+          '<div class="m-title" style="margin-bottom: 6px;">' + payload.rel + ' 的红包对决结算</div>' +
+          '<div style="margin-bottom: 12px;">' +
+            '<span class="sandbox-tag" style="font-size: 13px; padding: 4px 10px;">' + badgeTitle + '</span>' +
+          '</div>' +
+          '<div style="background:var(--card-subtle); border:1px solid var(--border-line); border-radius:12px; padding:12px; margin: 12px 0; font-size:14px; line-height: 1.6; color:var(--ink-primary);">' +
+            '<div><b>终局落点刻度：</b>' + posVal + '% (黄金平衡区: ' + payload.goldenMin + '% ~ ' + payload.goldenMax + '%)</div>' +
+            '<div style="margin-top: 6px; font-size: 15px; font-weight:700; color: #2e7d32;">' + (resText || '对决已顺利敲定') + '</div>' +
+          '</div>' +
+          '<div class="btn-bar" style="margin-top: 16px;">' +
+            '<button id="btn-sb-retry" class="btn primary">🔄 再试一局 (快捷键 R)</button>' +
+            '<button id="btn-sb-next" class="btn secondary">🎲 换一个亲戚继续测</button>' +
+          '</div>' +
+        '</div>';
+
+      const btnRetry = document.getElementById('btn-sb-retry');
+      if (btnRetry) btnRetry.onclick = () => startSandboxTest();
+      const btnNext = document.getElementById('btn-sb-next');
+      if (btnNext) btnNext.onclick = () => {
+        const nextIdx = (parseInt(document.getElementById('sel-rel').value, 10) + 1) % relativesData.length;
+        document.getElementById('sel-rel').value = nextIdx;
+        startSandboxTest(nextIdx);
+      };
     }
 
     // 绑定按钮事件
