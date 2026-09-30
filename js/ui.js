@@ -1543,10 +1543,11 @@ function renderHongbaoModal(p, m) {
     sound.win();
     const r = CP.resolve({ pos: posVal, skipped: isSkip });
     if (r) toast(r);
+    renderTop();
     if (typeof p.onFinish === 'function') {
       p.onFinish(posVal, isSkip, r);
     } else {
-      renderAll();
+      renderHongbaoResult(p, m, posVal, isSkip, r);
     }
   };
 
@@ -1679,6 +1680,137 @@ function renderHongbaoModal(p, m) {
 
   m.appendChild(body);
   updatePointer();
+}
+
+/* ---------- 🧧 红包对决战报结算卡片 (正式版专属) ---------- */
+function renderHongbaoResult(p, m, posVal, isSkip, resText) {
+  if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+  if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
+
+  m = m || $('#modal');
+  if (!m) return;
+  m.classList.add('show');
+  m.innerHTML = '';
+
+  const gMin = (typeof p.goldenMin === 'number') ? p.goldenMin : 38;
+  const gMax = (typeof p.goldenMax === 'number') ? p.goldenMax : 68;
+  const gWidth = Math.max(12, gMax - gMin);
+  const relName = p.rel || '长辈';
+
+  // 解析奖励与落点评价
+  const isPerfect = (posVal >= gMin && posVal <= gMax);
+  const isRefuse = (posVal < Math.max(18, gMin - 6));
+  const isGreed = (posVal > Math.min(82, gMax + 8));
+
+  const moneyMatch = (resText || '').match(/拿到\s*(\d+)\s*元/);
+  const moneyGot = moneyMatch ? parseInt(moneyMatch[1], 10) : 0;
+  const faceMatch = (resText || '').match(/面子([+-]?\d+)/);
+  const faceGot = faceMatch ? parseInt(faceMatch[1], 10) : (isPerfect ? 20 : (isRefuse ? 10 : (isGreed ? -25 : 5)));
+
+  let outcomeType = 'normal';
+  let badgeTitle = '🧧 几番客套 · 顺利收下';
+  let icon = '🧧✨';
+  let relQuote = '“这就对了嘛！拿着买点文具零食，新年图个大吉大利！”';
+  let momQuote = '“那就谢谢' + relName + '了，小宝快祝长辈新年发大财！”';
+  let btnText = '🧧 喜滋滋揣兜 (+' + moneyGot + '元入账)';
+
+  if (isPerfect) {
+    outcomeType = 'perfect';
+    badgeTitle = '🌟 进退得体 · 红包推拉大师';
+    icon = '🎉🧧';
+    relQuote = '“哎呀这孩子真懂事！既客气又有礼貌，' + relName + '看着你长大的，必须收着！”';
+    momQuote = '老妈眉开眼笑：“那我们可就恭敬不如从命啦，快跟' + relName + '道谢！”';
+    btnText = '🧧 喜滋滋揣兜 (+' + moneyGot + '元入账)';
+  } else if (isRefuse) {
+    outcomeType = 'refuse';
+    badgeTitle = '✋ 推脱过猛 · 长辈顺势缩手';
+    icon = '💨😅';
+    relQuote = '“哎呀小宝这孩子怎么这么老实死活不要……那行吧，下回' + relName + '再给你带礼物！”';
+    momQuote = '老妈暗中叹气：“这傻孩子平时挺机灵，怎么这时候真给推回去了……”';
+    btnText = '💨 尴尬地摸了摸头 (继续)';
+  } else if (isGreed) {
+    outcomeType = 'greed';
+    badgeTitle = '🤲 过于猴急 · 亲妈狠狠怒视';
+    icon = '💢🙈';
+    relQuote = '“哈哈这孩子真是爽快，一点都不见外！”(' + relName + '略显尴尬地塞进你手里)';
+    momQuote = '老妈在身后咬牙切齿地掐了你一把：“平时的规矩都就饭吃了？！快把手缩回来！”';
+    btnText = '🤫 顶着老妈白眼揣兜 (+' + moneyGot + '元入账)';
+  }
+
+  if (isSkip) {
+    badgeTitle += ' (保底结算)';
+  }
+
+  const body = h('div', 'm-body hb-modal hb-result-wrap');
+
+  // 1) 图标与标题
+  body.appendChild(h('div', 'hb-result-icon', icon));
+  body.appendChild(h('div', 'm-title', '🧧 ' + relName + '的压岁钱对决战报'));
+  body.appendChild(h('div', 'hb-result-badge ' + outcomeType, badgeTitle));
+
+  // 2) 动力学终局落点展示
+  const gaugeBox = h('div', 'hb-result-gauge-wrap');
+  let locDesc = '平稳收下';
+  if (isPerfect) locDesc = '精准落在黄金平衡区间！长辈欣慰，父母有面';
+  else if (isRefuse) locDesc = '偏向推脱区，长辈顺坡收回红包';
+  else if (isGreed) locDesc = '偏向急切夺取区，略显猴急失仪';
+  gaugeBox.innerHTML =
+    '<div class="hb-gauge-labels"><span>✋ 客套推脱 (0元)</span><span style="color:#2e7d32">🌟 黄金平衡 (' + gMin + '%~' + gMax + '%)</span><span>🤲 急切夺取 (-面子)</span></div>' +
+    '<div class="hb-gauge-track">' +
+      '<div class="hb-golden-zone" style="left:' + gMin + '%; width:' + gWidth + '%;"></div>' +
+      '<div class="hb-pointer in-zone" style="left:' + posVal + '%;">🧧</div>' +
+    '</div>' +
+    '<div class="hb-result-loc-text">终局落点: <b>' + posVal + '%</b> (' + locDesc + ')</div>';
+  body.appendChild(gaugeBox);
+
+  // 3) 战果数值面板
+  const rwBox = h('div', 'hb-result-rewards');
+  const moneyCard = h('div', 'hb-reward-card money');
+  moneyCard.innerHTML =
+    '<div class="hb-reward-val">+' + moneyGot + ' 元</div>' +
+    '<div class="hb-reward-lbl">💰 压岁钱进账</div>';
+  rwBox.appendChild(moneyCard);
+
+  const faceCard = h('div', 'hb-reward-card');
+  const faceSign = faceGot > 0 ? ('+' + faceGot) : String(faceGot);
+  faceCard.innerHTML =
+    '<div class="hb-reward-val ' + (faceGot >= 0 ? 'pos' : 'neg') + '">' + faceSign + ' 点</div>' +
+    '<div class="hb-reward-lbl">⭐ 家族面子</div>';
+  rwBox.appendChild(faceCard);
+  body.appendChild(rwBox);
+
+  // 4) 对话气泡
+  const diagBox = h('div', 'hb-result-dialogues');
+  diagBox.innerHTML =
+    '<div class="hb-bubble hb-rel-bubble"><b>' + relName + '</b>: ' + relQuote + '</div>' +
+    '<div class="hb-bubble hb-mom-bubble"><b>老妈</b>: ' + momQuote + '</div>';
+  body.appendChild(diagBox);
+
+  // 5) 确认大按钮
+  const confirmBtn = h('button', 'btn big primary pulse hb-confirm-btn', btnText);
+  let resultKeyHandler = null;
+  const doConfirm = () => {
+    if (resultKeyHandler) {
+      window.removeEventListener('keydown', resultKeyHandler);
+      resultKeyHandler = null;
+    }
+    sound.pop();
+    if (moneyGot > 0) sound.coin();
+    renderAll();
+  };
+  confirmBtn.onclick = doConfirm;
+  body.appendChild(confirmBtn);
+
+  // 键盘快捷支持：按 Enter 或 Space 确认继续
+  resultKeyHandler = (e) => {
+    if (e.key === 'Enter' || e.code === 'Space') {
+      e.preventDefault();
+      doConfirm();
+    }
+  };
+  window.addEventListener('keydown', resultKeyHandler);
+
+  m.appendChild(body);
 }
 
 /* ---------- ⚔️ 面子对决卡牌对战场 ---------- */
@@ -3092,12 +3224,14 @@ function init() {
 }
 
 global.renderHongbaoModal = renderHongbaoModal;
+global.renderHongbaoResult = renderHongbaoResult;
 global.UI = {
   renderTop,
   renderPhaseTransition,
   showReport,
   renderModal,
   renderHongbaoModal,
+  renderHongbaoResult,
   renderAll,
   openWishModal,
   openChangelogModal,

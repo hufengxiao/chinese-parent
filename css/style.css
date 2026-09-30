@@ -2538,6 +2538,128 @@ button:active { transform: scale(0.96); }
   font-weight: 600;
 }
 
+/* ---------- 🧧 红包对决结算战报卡片 (正式版专属) ---------- */
+.hb-result-wrap {
+  text-align: center;
+  padding: 20px 16px 16px;
+}
+.hb-result-icon {
+  font-size: 42px;
+  line-height: 1;
+  margin-bottom: 6px;
+  filter: drop-shadow(0 4px 8px rgba(211, 56, 36, 0.25));
+  animation: hbBounceIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes hbBounceIn {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.hb-result-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+  border: 1px solid transparent;
+}
+.hb-result-badge.perfect {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #a5d6a7;
+  box-shadow: 0 0 10px rgba(46, 125, 50, 0.18);
+}
+.hb-result-badge.refuse {
+  background: #e3f2fd;
+  color: #1565c0;
+  border-color: #90caf9;
+}
+.hb-result-badge.greed {
+  background: #ffebee;
+  color: #c62828;
+  border-color: #ef9a9a;
+}
+.hb-result-badge.normal {
+  background: #fff3e0;
+  color: #e65100;
+  border-color: #ffcc80;
+}
+.hb-result-gauge-wrap {
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.hb-result-gauge-wrap .hb-gauge-labels {
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+.hb-result-gauge-wrap .hb-gauge-track {
+  height: 16px;
+}
+.hb-result-gauge-wrap .hb-pointer {
+  top: -6px;
+  font-size: 20px;
+}
+.hb-result-loc-text {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  text-align: center;
+  margin-top: 6px;
+}
+.hb-result-rewards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.hb-reward-card {
+  background: var(--card-subtle);
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.hb-reward-card.money {
+  background: #fffde7;
+  border-color: #fff59d;
+}
+.hb-reward-val {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--gold-main);
+  line-height: 1.2;
+}
+.hb-reward-val.pos {
+  color: #2e7d32;
+}
+.hb-reward-val.neg {
+  color: #c62828;
+}
+.hb-reward-lbl {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  margin-top: 2px;
+}
+.hb-result-dialogues {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+.hb-confirm-btn {
+  width: 100%;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: 800;
+  border-radius: 12px;
+  margin-top: 4px;
+  box-shadow: 0 4px 14px rgba(211, 56, 36, 0.3);
+}
+
 /* ============================================================
  * ⚔️ 面子对决卡牌战斗场
  * ============================================================ */
