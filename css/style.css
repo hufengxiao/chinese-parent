@@ -2370,12 +2370,25 @@ button:active { transform: scale(0.96); }
   align-self: flex-end;
   border-bottom-right-radius: 2px;
 }
+.hb-hint-badge {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  color: #b78103;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  margin-top: 8px;
+  margin-bottom: 6px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
 .hb-gauge-container {
   background: #fff;
   border: 1px solid var(--border-line);
   border-radius: 16px;
   padding: 14px 16px;
-  margin: 12px 0 16px;
+  margin: 10px 0 14px;
   box-shadow: inset 0 2px 6px rgba(0,0,0,0.04);
 }
 .hb-gauge-labels {
@@ -2392,15 +2405,15 @@ button:active { transform: scale(0.96); }
   background: linear-gradient(90deg, #90caf9 0%, #a5d6a7 35%, #66bb6a 50%, #a5d6a7 68%, #ffab91 80%, #ef5350 100%);
   position: relative;
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+  overflow: visible;
 }
 .hb-golden-zone {
   position: absolute;
-  left: 38%;
-  width: 30%;
+  top: 0;
   height: 100%;
   border-left: 2px dashed #2e7d32;
   border-right: 2px dashed #2e7d32;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(46, 125, 50, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2408,6 +2421,8 @@ button:active { transform: scale(0.96); }
   font-weight: 800;
   color: #1b5e20;
   pointer-events: none;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.35);
+  transition: all 0.2s ease;
 }
 .hb-pointer {
   position: absolute;
@@ -2419,21 +2434,60 @@ button:active { transform: scale(0.96); }
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: left 0.1s ease-out;
+  transition: left 0.04s linear, transform 0.12s ease;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25));
   pointer-events: none;
+  user-select: none;
+}
+.hb-pointer.in-zone {
+  filter: drop-shadow(0 0 10px #2e7d32) drop-shadow(0 3px 6px rgba(0,0,0,0.3));
+  transform: scale(1.18);
+}
+.hb-pointer.warn-left {
+  filter: drop-shadow(0 0 8px #1976d2);
+  transform: scale(0.94);
+}
+.hb-pointer.warn-right {
+  filter: drop-shadow(0 0 8px #d32f2f);
+  transform: scale(0.94);
+}
+.hb-pointer-status {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  height: 20px;
+  line-height: 20px;
+  margin: 8px 0 2px;
+}
+.status-perfect {
+  color: #2e7d32;
+}
+.status-warning {
+  color: #1976d2;
+}
+.status-danger {
+  color: #c62828;
 }
 .hb-timer-wrap {
-  margin-top: 10px;
-  height: 6px;
+  margin-top: 8px;
+  height: 7px;
   background: #eee;
-  border-radius: 3px;
+  border-radius: 4px;
   overflow: hidden;
 }
 .hb-timer-bar {
   height: 100%;
   background: var(--red-main);
-  transition: width 0.1s linear;
+  transition: width 0.05s linear;
+}
+.hb-timer-bar.sprint {
+  background: linear-gradient(90deg, #ff1744, #d50000);
+  box-shadow: 0 0 8px rgba(213, 0, 0, 0.6);
+  animation: hbSprintPulse 0.4s infinite alternate ease-in-out;
+}
+@keyframes hbSprintPulse {
+  from { opacity: 0.82; }
+  to { opacity: 1; filter: brightness(1.2); }
 }
 .hb-action-grid {
   display: grid;
@@ -2442,20 +2496,46 @@ button:active { transform: scale(0.96); }
   margin-top: 12px;
 }
 .hb-btn-nudge {
-  padding: 11px;
+  padding: 12px 10px;
   font-size: 14px;
   font-weight: 700;
   border-radius: 10px;
+  user-select: none;
+  touch-action: manipulation;
 }
-.hb-btn-take {
+.hb-btn-climax {
+  grid-column: span 2;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 10px;
+  background: #eceff1;
+  color: #90a4ae;
+  border: 1px solid #cfd8dc;
+  cursor: not-allowed;
+  user-select: none;
+}
+.hb-btn-take.sprint-ready {
   grid-column: span 2;
   padding: 12px;
   font-size: 15px;
   font-weight: 800;
   border-radius: 10px;
-  background: var(--gold-main);
+  background: linear-gradient(135deg, #ff9800, #e65100);
   color: #ffffff;
-  border: 1px solid #d48806;
+  border: 1px solid #bf360c;
+  cursor: pointer;
+  animation: hbSprintReady 0.5s infinite alternate ease-in-out;
+  box-shadow: 0 4px 14px rgba(230, 81, 0, 0.4);
+}
+@keyframes hbSprintReady {
+  from { transform: scale(1); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+  to { transform: scale(1.02); filter: drop-shadow(0 4px 12px rgba(230, 81, 0, 0.6)); }
+}
+.hb-pc-hint {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  font-weight: 600;
 }
 
 /* ============================================================

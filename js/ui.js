@@ -1251,6 +1251,9 @@ function niceEff(e) {
 }
 
 /* ---------- 弹窗系统 ---------- */
+let hbTimer = null;
+let hbKeyHandler = null;
+
 function renderModal() {
   const m = $('#modal');
   const pend = CP.pending();
@@ -1261,6 +1264,8 @@ function renderModal() {
   // 系统模态框强制解绑点击遮罩关闭，防止误触导致重要系统交互（高考/竞选/选秀）中断卡死
   m.onclick = null;
   if (!CP.state() || !pend.length) {
+    if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+    if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
     m.classList.remove('show');
     m.innerHTML = '';
     return;
@@ -1443,88 +1448,200 @@ function renderPhaseTransition(p, m) {
 }
 
 /* ---------- 🧧 过年收红包推拉拉扯小游戏 ---------- */
-let hbTimer = null;
 function renderHongbaoModal(p, m) {
   if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+  if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
+
   m.classList.add('show');
   m.innerHTML = '';
   const body = h('div', 'm-body hb-modal');
-  body.appendChild(h('div', 'm-title', p.title || '🧧 过年收红包 · 推拉拉扯战'));
+  body.appendChild(h('div', 'm-title', p.title || '🧧 过年收红包 · 客套推拉大对决'));
 
+  // 亲戚对话与妈妈推脱气泡
   const diagWrap = h('div', 'hb-dialogues');
   diagWrap.innerHTML =
-    '<div class="hb-bubble hb-rel-bubble"><b>' + (p.rel || '长辈') + '</b>: ' + (p.quote || '“拿着拿着，给孩子的压岁钱！”') + '</div>' +
+    '<div class="hb-bubble hb-rel-bubble" id="hbRelBubble"><b>' + (p.rel || '长辈') + '</b>: ' + (p.quote || '“拿着拿着，给孩子的压岁钱！”') + '</div>' +
     '<div class="hb-bubble hb-mom-bubble"><b>妈妈</b>: ' + (p.momQuote || '“哎呀使不得使不得，他小孩子要什么钱！”') + '</div>';
   body.appendChild(diagWrap);
 
+  // 提示与动态阵风看板
+  const hintBadge = h('div', 'hb-hint-badge', '✨ 左右推拉博弈，将红包稳定在黄金得体区！(支持空格/←/→键)');
+  hintBadge.id = 'hbHintBadge';
+  body.appendChild(hintBadge);
+
+  // 动态黄金区间与初始脱位参数
+  const gMin = (typeof p.goldenMin === 'number') ? p.goldenMin : 38;
+  const gMax = (typeof p.goldenMax === 'number') ? p.goldenMax : 68;
+  const gWidth = Math.max(12, gMax - gMin);
+  let curPos = (typeof p.startPos === 'number') ? p.startPos : 24;
+
   const gaugeBox = h('div', 'hb-gauge-container');
   gaugeBox.innerHTML =
-    '<div class="hb-gauge-labels"><span>✋ 客套推脱 (拒收)</span><span style="color:#2e7d32">🌟 黄金平衡区</span><span>🤲 急切收下 (夺取)</span></div>' +
-    '<div class="hb-gauge-track">' +
-      '<div class="hb-golden-zone">黄金得体</div>' +
-      '<div class="hb-pointer" id="hbPointer" style="left:52%">🧧</div>' +
+    '<div class="hb-gauge-labels"><span>✋ 客套推脱 (拒收)</span><span style="color:#2e7d32">🌟 黄金平衡区 (' + gMin + '%~' + gMax + '%)</span><span>🤲 急切收下 (夺取)</span></div>' +
+    '<div class="hb-gauge-track" id="hbTrack">' +
+      '<div class="hb-golden-zone" style="left:' + gMin + '%; width:' + gWidth + '%;">🌟 黄金得体</div>' +
+      '<div class="hb-pointer" id="hbPointer" style="left:' + curPos + '%">🧧</div>' +
     '</div>' +
+    '<div class="hb-pointer-status" id="hbPointerStatus">...</div>' +
     '<div class="hb-timer-wrap"><div class="hb-timer-bar" id="hbTimerBar" style="width:100%"></div></div>';
   body.appendChild(gaugeBox);
 
-  let curPos = 52;
+  // 物理动力学变量
+  let velocity = 0;
+  const damping = 0.88;
+  const baseDrift = (typeof p.driftForce === 'number') ? p.driftForce : 1.4;
+  const waveAmp = (typeof p.waveAmp === 'number') ? p.waveAmp : 0;
+  const gustChance = (typeof p.gustChance === 'number') ? p.gustChance : 0.35;
+  const gustText = p.gustText || ((p.rel || '长辈') + '突然猛地往前一塞！');
+  let gustRemaining = 0;
+  let gustForce = 0;
   let timeLeft = 4.5;
   const totalTime = 4.5;
+  let tickCount = 0;
+  let isFinished = false;
 
   const updatePointer = () => {
     const pt = $('#hbPointer');
-    if (pt) pt.style.left = clamp(curPos, 4, 96) + '%';
+    const statusEl = $('#hbPointerStatus');
+    if (!pt) return;
+    pt.style.left = clamp(curPos, 4, 96) + '%';
+
+    if (curPos >= gMin && curPos <= gMax) {
+      pt.className = 'hb-pointer in-zone';
+      if (statusEl) statusEl.innerHTML = '<span class="status-perfect">✨ 进退得体！处于黄金平衡区</span>';
+    } else if (curPos < gMin) {
+      pt.className = 'hb-pointer warn-left';
+      if (statusEl) statusEl.innerHTML = '<span class="status-warning">✋ 推辞过猛！长辈可能会收回红包</span>';
+    } else {
+      pt.className = 'hb-pointer warn-right';
+      if (statusEl) statusEl.innerHTML = '<span class="status-danger">🤲 过于急切！老妈在旁边掐你</span>';
+    }
   };
 
-  const finishHb = (posVal) => {
+  const finishHb = (posVal, isSkip) => {
+    if (isFinished) return;
+    isFinished = true;
     if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+    if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
     sound.win();
-    const r = CP.resolve({ pos: posVal });
+    const r = CP.resolve({ pos: posVal, skipped: isSkip });
     if (r) toast(r);
     renderAll();
   };
 
-  hbTimer = setInterval(() => {
-    timeLeft -= 0.1;
-    curPos = clamp(curPos + 1.2 + (Math.random() * 1.6 - 0.8), 2, 98);
+  // 交互微冲量
+  const doNudgeLeft = () => {
+    if (isFinished) return;
+    sound.pop();
+    velocity = Math.min(velocity, 0) - 7.5;
+    curPos = clamp(curPos - 3.8, 3, 97);
     updatePointer();
-    const bar = $('#hbTimerBar');
-    if (bar) bar.style.width = Math.max(0, (timeLeft / totalTime) * 100) + '%';
-    if (timeLeft <= 0) {
-      finishHb(Math.round(curPos));
-    }
-  }, 100);
+  };
 
+  const doNudgeRight = () => {
+    if (isFinished) return;
+    sound.pop();
+    velocity = Math.max(velocity, 0) + 7.5;
+    curPos = clamp(curPos + 3.8, 3, 97);
+    updatePointer();
+  };
+
+  // 键盘快捷键监听
+  hbKeyHandler = (e) => {
+    if (isFinished) return;
+    if (e.key === 'ArrowLeft' || e.code === 'KeyA') {
+      e.preventDefault();
+      doNudgeLeft();
+    } else if (e.key === 'ArrowRight' || e.code === 'KeyD' || e.code === 'Space') {
+      e.preventDefault();
+      doNudgeRight();
+    } else if ((e.key === 'Enter') && timeLeft <= 1.5) {
+      e.preventDefault();
+      finishHb(Math.round(curPos), false);
+    }
+  };
+  window.addEventListener('keydown', hbKeyHandler);
+
+  // 物理主循环 (33ms ~ 30FPS)
+  hbTimer = setInterval(() => {
+    if (isFinished) return;
+    tickCount++;
+    timeLeft = Math.max(0, timeLeft - 0.033);
+
+    // 演算合力
+    let f = baseDrift;
+    if (waveAmp > 0) {
+      f += Math.sin(tickCount * 0.16) * waveAmp * 1.5;
+    }
+
+    // 随机客套阵风
+    if (gustRemaining <= 0) {
+      if (Math.random() < gustChance * 0.035) {
+        gustRemaining = 0.55;
+        gustForce = (baseDrift >= 0 ? 1 : -1) * (2.2 + Math.random() * 1.8);
+        const hint = $('#hbHintBadge');
+        if (hint) hint.innerHTML = '⚡ <b>' + (p.rel || '长辈') + '</b>: ' + gustText;
+      }
+    } else {
+      gustRemaining -= 0.033;
+      f += gustForce;
+    }
+
+    velocity = (velocity + f * 0.36) * damping;
+    curPos = clamp(curPos + velocity * 0.52, 3, 97);
+    updatePointer();
+
+    // 倒计时与冲刺决胜按钮
+    const bar = $('#hbTimerBar');
+    if (bar) {
+      bar.style.width = Math.max(0, (timeLeft / totalTime) * 100) + '%';
+      if (timeLeft <= 1.5) {
+        bar.classList.add('sprint');
+        const btnC = $('#hbBtnClimax');
+        if (btnC && btnC.disabled) {
+          btnC.disabled = false;
+          btnC.className = 'btn hb-btn-take sprint-ready';
+          btnC.innerHTML = '🧧 见好就收！(立刻敲定结算)';
+          btnC.onclick = () => finishHb(Math.round(curPos), false);
+        }
+      }
+    }
+
+    if (timeLeft <= 0) {
+      finishHb(Math.round(curPos), false);
+    }
+  }, 33);
+
+  // 操作按钮网格
   const actGrid = h('div', 'hb-action-grid');
-  const btnPush = h('button', 'btn secondary hb-btn-nudge', '✋ 假意推辞 (-14%)');
-  btnPush.onclick = () => {
-    sound.click();
-    curPos = clamp(curPos - 14, 5, 95);
-    updatePointer();
-  };
-  const btnPull = h('button', 'btn secondary hb-btn-nudge', '🤲 勉为其实 (+14%)');
-  btnPull.onclick = () => {
-    sound.click();
-    curPos = clamp(curPos + 14, 5, 95);
-    updatePointer();
-  };
-  const btnTake = h('button', 'btn hb-btn-take', '🧧 顺势收下 (立刻定局结算)');
-  btnTake.onclick = () => {
-    finishHb(Math.round(curPos));
-  };
+  const btnPush = h('button', 'btn secondary hb-btn-nudge', '✋ 假意推辞 (←键)');
+  btnPush.onclick = doNudgeLeft;
+
+  const btnPull = h('button', 'btn secondary hb-btn-nudge', '🤲 假推实收 (→/空格)');
+  btnPull.onclick = doNudgeRight;
+
+  const btnClimax = h('button', 'btn hb-btn-climax', '⏳ 见机行事 (倒计时结束定局)');
+  btnClimax.id = 'hbBtnClimax';
+  btnClimax.disabled = true;
+
   actGrid.appendChild(btnPush);
   actGrid.appendChild(btnPull);
-  actGrid.appendChild(btnTake);
+  actGrid.appendChild(btnClimax);
   body.appendChild(actGrid);
 
+  // 底部辅助提示与跳过
   const fallbackRow = h('div', 'sub-btns flex-between');
   fallbackRow.style.marginTop = '12px';
-  const fastBtn = h('button', 'mini-btn ghost', '⏩ 快速直接收下(跳过拉扯)');
-  fastBtn.onclick = () => { finishHb(52); };
+  const pcHint = h('span', 'hb-pc-hint', '💡 支持键盘 ← / → 或 空格键 连续抗衡推拉');
+  const fastBtn = h('button', 'mini-btn ghost', '⏩ 快速收下 (保底结算)');
+  fastBtn.onclick = () => { finishHb(Math.round((gMin + gMax) / 2), true); };
+
+  fallbackRow.appendChild(pcHint);
   fallbackRow.appendChild(fastBtn);
   body.appendChild(fallbackRow);
 
   m.appendChild(body);
+  updatePointer();
 }
 
 /* ---------- ⚔️ 面子对决卡牌对战场 ---------- */

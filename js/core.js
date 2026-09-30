@@ -490,20 +490,86 @@ function importSlot(rawInput, targetSlot) {
   };
 }
 function pendHongbao() {
+  const t = S ? S.turn : 7;
+  let diff = 1.0;
+  if (t <= 14) diff = 0.8;
+  else if (t <= 28) diff = 1.0;
+  else diff = 1.35;
+
   const relatives = [
-    { n: '大姑妈', line: '“哎呀小宝又长高了！拿着，大姑给买新书包的！”', mom: '“使不得使不得，大姐你留着买菜！”' },
-    { n: '二叔叔', line: '“小男子汉/漂亮姑娘！二叔给的压岁钱，必须收着！”', mom: '“二弟你太客气了，小孩子不能惯着！”' },
-    { n: '表舅爷', line: '“舅爷的一点心意！好好读书考大学！”', mom: '“舅爷快收回去，我们怎么能要您的钱！”' },
-    { n: '隔壁王阿姨', line: '“压岁钱给孩子讨个好彩头，大吉大利！”', mom: '“王姐真不用，平时承蒙您多关照了！”' },
+    {
+      n: '大姑妈',
+      line: '“哎呀小宝又长高了！拿着，大姑给买新书包的！”',
+      mom: '“使不得使不得，大姐你留着买菜！”',
+      driftForce: 1.6, // 猛塞，持续向右推
+      goldenCenter: 56,
+      goldenWidth: Math.round(26 / diff),
+      startPos: 24, // 初始落在左侧拒收边缘
+      gustChance: 0.35,
+      gustText: '大姑妈猛地往你羽绒服口袋一塞：“拿着买肉吃！”',
+      amountBase: 240
+    },
+    {
+      n: '二叔叔',
+      line: '“小男子汉/漂亮姑娘！二叔给的压岁钱，必须收着！”',
+      mom: '“二弟你太客气了，小孩子不能惯着！”',
+      driftForce: -1.4, // 假意客套，暗中往回缩
+      goldenCenter: 62,
+      goldenWidth: Math.round(28 / diff),
+      startPos: 78, // 初始落在右侧
+      gustChance: 0.4,
+      gustText: '二叔顺坡下驴往回缩：“哎呀孩子不要那就算了……”',
+      amountBase: 200
+    },
+    {
+      n: '表舅爷',
+      line: '“舅爷的一点心意！好好读书考大学！”',
+      mom: '“舅爷快收回去，我们怎么能要您的钱！”',
+      driftForce: 0.8, // 强振荡波
+      waveAmp: 1.8,
+      goldenCenter: 50,
+      goldenWidth: Math.round(22 / diff),
+      startPos: 20,
+      gustChance: 0.45,
+      gustText: '表舅爷爽朗大喝：“读书人的事！谁也别拦着！”',
+      amountBase: 280
+    },
+    {
+      n: '隔壁王阿姨',
+      line: '“压岁钱给孩子讨个好彩头，大吉大利！”',
+      mom: '“王姐真不用，平时承蒙您多关照了！”',
+      driftForce: 1.1,
+      goldenCenter: 52,
+      goldenWidth: Math.round(18 / diff), // 超窄黄金区间
+      startPos: 26,
+      gustChance: 0.25,
+      gustText: '王阿姨笑盈盈地打量着你的神色反应……',
+      amountBase: 210
+    },
   ];
   const rel = pick(relatives);
+  const halfW = Math.round(rel.goldenWidth / 2);
+  const goldenMin = clamp(rel.goldenCenter - halfW, 20, 75);
+  const goldenMax = clamp(rel.goldenCenter + halfW, goldenMin + 12, 85);
+
   S.pending.push({
     type: 'hongbao_duel',
-    title: '🧧 过年收红包 · 推拉拉扯战',
+    title: '🧧 过年收红包 · 客套推拉大对决',
     rel: rel.n,
     quote: rel.line,
     momQuote: rel.mom,
     body: rel.n + '递过一个沉甸甸的红信封！\n' + rel.line + '\n\n妈妈在旁边拼命拉扯推脱：\n' + rel.mom,
+    driftForce: rel.driftForce,
+    waveAmp: rel.waveAmp || 0,
+    goldenMin: goldenMin,
+    goldenMax: goldenMax,
+    goldenCenter: rel.goldenCenter,
+    goldenWidth: rel.goldenWidth,
+    startPos: rel.startPos,
+    gustChance: rel.gustChance,
+    gustText: rel.gustText,
+    amountBase: rel.amountBase,
+    difficulty: diff,
     opts: [
       { label: '🤝 适度推脱，见好就收 (黄金平衡)', sub: '得体客套，既拿红包又赚面子' },
       { label: '✋ 坚决推辞到底 (推脱过猛)', sub: '过于客气，亲戚可能真收回去了' },
@@ -2747,6 +2813,7 @@ const API = {
   achievements: () => D.achievements || [],
   familyHistory: () => (S && S.fam && S.fam.history) || (loadFam() && loadFam().history) || [],
   talentShowPerform,
+  pendHongbao: () => pendHongbao(),
   talentsList: () => (S ? (S.talents || []).map(id => D.talentData.find(x => x.id === id)).filter(Boolean) : []),
   election: () => (S && S.election),
   saveManager: {
@@ -2795,37 +2862,47 @@ function resolvePend(i) {
     case 'mini_hb':
     case 'hongbao_duel': {
       S.pending.shift();
-      let pos = 52;
+      const gMin = (m && typeof m.goldenMin === 'number') ? m.goldenMin : 38;
+      const gMax = (m && typeof m.goldenMax === 'number') ? m.goldenMax : 68;
+      const amtBase = (m && typeof m.amountBase === 'number') ? m.amountBase : 220;
+      const relName = (m && m.rel) ? m.rel : '长辈';
+
+      let pos = Math.round((gMin + gMax) / 2);
+      let isSkip = false;
       if (typeof i === 'object' && i !== null && typeof i.pos === 'number') {
         pos = clamp(i.pos, 0, 100);
+        if (i.skipped) isSkip = true;
       } else if (i === 1) {
         pos = 15;
       } else if (i === 2) {
         pos = 92;
       } else {
-        pos = 52;
+        pos = Math.round((gMin + gMax) / 2);
       }
 
-      if (pos >= 38 && pos <= 68) {
-        const v = RI(180, 260);
+      if (pos >= gMin && pos <= gMax) {
+        const v = Math.round(amtBase * (0.9 + Math.random() * 0.25));
         S.money += v;
         S.face += 20;
         S.sat = clamp(S.sat + 6, 0, 140);
-        res = '🎉 进退得体，堪称红包推拉大师！长辈欣慰塞下红包，父母在旁倍感有面！拿到 ' + v + ' 元压岁钱，面子+20！';
-      } else if (pos < 35) {
+        res = '🎉 进退得体，堪称红包推拉大师！' + relName + '欣慰塞下红包，父母在旁倍感有面！拿到 ' + v + ' 元压岁钱，面子+20！';
+      } else if (pos < Math.max(18, gMin - 6)) {
         S.face += 10;
-        res = '✋ 推辞得过于逼真，长辈叹口气收了回去：“这孩子太老实了！”(拿到 0 元，面子+10)';
-      } else if (pos > 75) {
-        const v = RI(120, 180);
+        res = '✋ 推辞得过于逼真，' + relName + '叹口气收了回去：“这孩子太老实了！”(拿到 0 元，面子+10)';
+      } else if (pos > Math.min(82, gMax + 8)) {
+        const v = Math.round(amtBase * 0.65);
         S.money += v;
         S.face = Math.max(0, S.face - 25);
         S.sat = Math.max(0, S.sat - 8);
-        res = '💨 伸手太急！长辈尬笑塞给你，老妈在旁边狠狠掐了你一把……(拿到 ' + v + ' 元，面子-25)';
+        res = '💨 伸手太急！' + relName + '尬笑塞给你，老妈在旁边狠狠掐了你一把……(拿到 ' + v + ' 元，面子-25)';
       } else {
-        const v = RI(120, 180);
+        const v = Math.round(amtBase * 0.75);
         S.money += v;
         S.face += 5;
-        res = '🧧 几番客套拉扯下顺利收下，长辈笑得合不拢嘴。(拿到 ' + v + ' 元，面子+5)';
+        res = '🧧 几番客套拉扯下顺利收下，' + relName + '笑得合不拢嘴。(拿到 ' + v + ' 元，面子+5)';
+      }
+      if (isSkip) {
+        res = '⏩ [保底收下] ' + res;
       }
       break;
     }

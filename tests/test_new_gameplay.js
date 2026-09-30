@@ -56,6 +56,68 @@ assert(resOverRefuse.includes('推辞得过于逼真') || resOverRefuse.includes
 assert.strictEqual(CP.state().money, mBefore, '推脱过猛零钱不变');
 console.log('推脱过猛结算断言通过:', resOverRefuse);
 
+// 验证原版动力学重塑：动态个性化区间与亲戚力学Profile
+CP.state().pending.push({
+  type: 'hongbao_duel',
+  title: '🧧 过年收红包 · 客套推拉大对决',
+  rel: '二叔叔',
+  goldenMin: 48,
+  goldenMax: 76,
+  amountBase: 200,
+  opts: ['好']
+});
+const resCustomGolden = CP.resolve({ pos: 60 });
+assert(resCustomGolden.includes('进退得体') && resCustomGolden.includes('二叔叔'), '个性化亲戚区间应正确获得进退得体评价');
+
+// 验证过于猴急夺取惩罚 (pos = 95)
+const faceBeforeGreed = CP.state().face;
+CP.state().pending.push({
+  type: 'hongbao_duel',
+  title: '🧧 过年收红包 · 客套推拉大对决',
+  rel: '大姑妈',
+  goldenMin: 45,
+  goldenMax: 69,
+  amountBase: 240,
+  opts: ['好']
+});
+const resGreed = CP.resolve({ pos: 95 });
+assert(resGreed.includes('伸手太急') || resGreed.includes('掐了你一把'), '猴急夺取应触发长辈尴尬与老妈惩罚');
+assert(CP.state().face <= faceBeforeGreed - 20, '过于急切应大幅扣减家庭面子');
+
+// 验证快速跳过保底机制
+CP.state().pending.push({
+  type: 'hongbao_duel',
+  title: '🧧 过年收红包 · 客套推拉大对决',
+  rel: '隔壁王阿姨',
+  goldenMin: 42,
+  goldenMax: 60,
+  amountBase: 210,
+  opts: ['好']
+});
+const resSkip = CP.resolve({ pos: 51, skipped: true });
+assert(resSkip.includes('⏩ [保底收下]'), '快速跳过应打上保底收下标签');
+
+// 验证全生命周期过年回合真实 pendHongbao() 生成参数
+CP.state().turn = 7; // 幼儿期
+CP.state().pending = [];
+CP.pendHongbao();
+const hbBaby = CP.pending().find(p => p.type === 'hongbao_duel');
+assert(hbBaby, '回合7过年必定触发红包');
+assert(hbBaby.difficulty === 0.8, '幼儿期红包难度系数应为0.8');
+assert(hbBaby.goldenMin && hbBaby.goldenMax && hbBaby.startPos !== undefined, '红包事件必须携带动态动力学参数');
+assert(hbBaby.startPos < hbBaby.goldenMin || hbBaby.startPos > hbBaby.goldenMax, '初始位置必须脱离黄金区，严禁开局直接躺赢');
+while (CP.pending().length) CP.resolve(0);
+
+CP.state().turn = 35; // 高中冲刺期
+CP.state().pending = [];
+CP.pendHongbao();
+const hbSenior = CP.pending().find(p => p.type === 'hongbao_duel');
+assert(hbSenior, '回合35过年必定触发红包');
+assert(hbSenior.difficulty === 1.35, '高中期红包难度系数应为1.35');
+assert(hbSenior.goldenMax - hbSenior.goldenMin < hbBaby.goldenMax - hbBaby.goldenMin, '高难度期黄金区间显著窄于幼儿期');
+while (CP.pending().length) CP.resolve(0);
+console.log('过年收红包动态性格力学、阶段难度缩放、脱靶初始位置与保底跳过全部断言通过！');
+
 console.log('\n--- 测试 2: ⚔️ 面子对决交互回合制战斗 ---');
 CP.state().turn = 28;
 while (CP.pending().length) CP.resolve(0);
