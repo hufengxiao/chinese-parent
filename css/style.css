@@ -3966,6 +3966,103 @@ button:active { transform: scale(0.96); }
   line-height: 1.3;
 }
 
+/* 三大选民阵营实时支持度波形卡 */
+.el-blocs-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 10px 0;
+}
+.el-bloc-card {
+  background: #f8fafc;
+  border: 1px solid var(--border-line);
+  border-radius: 8px;
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 10px;
+}
+.el-bloc-name {
+  font-weight: 800;
+  color: var(--ink-primary);
+  margin-bottom: 3px;
+}
+.el-bloc-bar-wrap {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  margin: 4px 0;
+}
+.el-bloc-fill.mine {
+  background: #4f46e5;
+  height: 100%;
+}
+.el-bloc-fill.rival {
+  background: #ef4444;
+  height: 100%;
+}
+.el-bloc-stat {
+  font-size: 9px;
+  color: var(--ink-secondary);
+}
+
+/* 班干部正式任命聘书战报卡片 */
+.el-cert-card {
+  background: #fffdf5;
+  border: 2px solid #b45309;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 12px 0;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 4px 18px rgba(180, 83, 9, 0.15);
+}
+.el-sleeve-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 52px;
+  height: 52px;
+  background: #dc2626;
+  border: 2px solid #fef08a;
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.35);
+  margin-bottom: 8px;
+}
+.el-sleeve-bar {
+  width: 34px;
+  height: 4px;
+  background: #ffffff;
+  border-radius: 2px;
+}
+.el-cert-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #92400e;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+.el-cert-seal {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  width: 58px;
+  height: 58px;
+  border: 2px dashed #dc2626;
+  border-radius: 50%;
+  color: #dc2626;
+  font-size: 10px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-15deg);
+  opacity: 0.85;
+}
+
 /* ============================================================
  * 💘 终局求婚与长辈相亲角舞台
  * ============================================================ */
@@ -4288,4 +4385,108 @@ button:active { transform: scale(0.96); }
   font-size: 10px;
   color: #64748b;
   line-height: 1.3;
+}
+
+/* ---------- 🌟 特长才艺选秀 2.0 (Showtime & Encore) ---------- */
+.ts-showtime-stage {
+  padding: 16px 14px;
+  background: linear-gradient(180deg, #1e1b4b, #312e81);
+  border-radius: 14px;
+  color: #fff;
+  text-align: center;
+  margin: 12px 0;
+  box-shadow: 0 4px 16px rgba(49, 46, 129, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+.ts-showtime-title {
+  font-size: 15px;
+  font-weight: 900;
+  color: #fde047;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.ts-showtime-sub {
+  font-size: 11px;
+  color: #c7d2fe;
+  margin-bottom: 12px;
+}
+.ts-beat-track {
+  position: relative;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 11px;
+  margin: 14px 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.ts-beat-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 65%;
+  width: 25%;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.8);
+}
+.ts-beat-pointer {
+  position: absolute;
+  top: -1px;
+  width: 14px;
+  height: 24px;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+  transform: translateX(-50%);
+  transition: left 0.03s linear;
+}
+.ts-beat-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+}
+.ts-encore-box {
+  background: #fffbeb;
+  border: 1px dashed #f59e0b;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 12px 0;
+  text-align: center;
+}
+.ts-encore-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #b45309;
+  margin-bottom: 6px;
+}
+.ts-encore-desc {
+  font-size: 11px;
+  color: #92400e;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+.ts-encore-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f59e0b, #b45309);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(180, 83, 9, 0.3);
+}
+.ts-badge.grandslam {
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.5);
 }

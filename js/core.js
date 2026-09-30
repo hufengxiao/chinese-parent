@@ -1579,7 +1579,7 @@ function pendShow(tier, title) {
   });
 }
 
-function talentShowPerform(chosenTalentId) {
+function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
   const m = S.pending[0];
   if (!m || m.type !== 'show') return null;
   const tier = m.tier || 1;
@@ -1594,26 +1594,75 @@ function talentShowPerform(chosenTalentId) {
   }
   // 如果玩家没有任何特长，赋予保底【大嗓门】
   if (!mine) {
-    mine = { id: 'voice_loud', n: '大嗓门', icon: '📢', r: 1, atk: 7, src: '天生大嗓门' };
+    mine = { id: 'voice_loud', n: '大嗓门', icon: '📢', r: 1, cat: 'art', atk: 7, src: '天生大嗓门' };
   }
+  if (!mine.cat) mine.cat = 'art';
 
   const rival = m.rival || {
     name: '隔壁小明',
-    talent: { id: 'rival_t', n: '儿歌串烧', r: 1, icon: '🎶', atk: 7 }
+    talent: { id: 'rival_t', n: '儿歌串烧', r: 1, icon: '🎶', atk: 7, cat: 'art' }
   };
   const rivalR = (rival.talent && rival.talent.r) || 1;
 
-  // 3位评委依次亮灯判定
-  const l1 = (mine.r > rivalR) || (mine.r === rivalR && Math.random() < 0.6) || (mine.r < rivalR && Math.random() < 0.10);
-  const l2 = (mine.r >= rivalR && Math.random() < 0.85) || (mine.r < rivalR && Math.random() < 0.35);
-  const l3 = (mine.r >= rivalR && Math.random() < 0.95) || (mine.r < rivalR && Math.random() < 0.50);
+  // 1) 基础胜率基准
+  let pBase = 0.50;
+  if (mine.r >= rivalR) {
+    pBase = clamp(0.75 + (mine.r - rivalR) * 0.20, 0.08, 0.95);
+  } else {
+    pBase = clamp(0.25 - (rivalR - mine.r) * 0.10, 0.08, 0.95);
+  }
 
-  const lights = [l1, l2, l3];
+  // 2) Showtime 演出操作加成
+  const sGrade = showtimeGrade || 'normal';
+  let deltaShowtime = 0;
+  if (sGrade === 'perfect') deltaShowtime = 0.25;
+  else if (sGrade === 'good') deltaShowtime = 0.12;
+
+  // 3) 三位评委个性化偏好加权
+  // 张教授 (严谨学术派)
+  let bZhang = (mine.cat === 'stem' ? 0.20 : 0) + (mine.r >= 3 ? 0.15 : 0) - (mine.cat === 'witty' ? 0.18 : 0);
+  const pZhang = clamp(pBase + deltaShowtime + bZhang, 0.05, 0.98);
+  const l1 = Math.random() < pZhang;
+
+  // 麦克老师 (前卫舞台派)
+  let bMike = ((mine.cat === 'art' || mine.cat === 'witty' || mine.cat === 'phy') ? 0.22 : 0) + (sGrade === 'perfect' ? 0.15 : 0) - (mine.r <= 1 ? 0.10 : 0);
+  const pMike = clamp(pBase + deltaShowtime + bMike, 0.05, 0.98);
+  const l2 = Math.random() < pMike;
+
+  // 李主任 (德育亲和派)
+  let bLi = (mine.r === 1 ? 0.15 : 0) + (mine.cat === 'phy' ? 0.12 : 0) + 0.10;
+  const pLi = clamp(pBase + deltaShowtime + bLi, 0.05, 0.98);
+  const l3 = Math.random() < pLi;
+
+  let lights = [l1, l2, l3];
+
+  // 4) 危急时刻【绝活返场 (Encore)】判定
+  let encoreTriggered = false;
+  let encoreSuccess = false;
+  if (encoreChoice && lights.filter(Boolean).length <= 1) {
+    encoreTriggered = true;
+    const pEncore = clamp(0.55 + ((S.attrs && S.attrs.eq) ? S.attrs.eq / 250 : 0.05) + (sGrade === 'perfect' ? 0.15 : 0), 0.35, 0.88);
+    if (Math.random() < pEncore) {
+      encoreSuccess = true;
+      for (let k = 0; k < 3; k++) {
+        if (!lights[k]) {
+          lights[k] = true;
+          break;
+        }
+      }
+    }
+  }
+
   const greenCount = lights.filter(Boolean).length;
   const win = greenCount >= 2;
 
-  const gi = win ? (tier >= 3 ? 500 : 200) : 40;
-  const gf = win ? (tier >= 3 ? 150 : 60) : -5;
+  let gi = win ? (tier >= 3 ? 500 : 200) : 40;
+  let gf = win ? (tier >= 3 ? 150 : 60) : -5;
+  // 3 盏全绿大满贯额外加奖
+  if (win && greenCount === 3) {
+    gi = Math.round(gi * 1.25);
+    gf += 30;
+  }
   S.insight += gi;
   if (win) {
     S.face += gf;
@@ -1621,15 +1670,21 @@ function talentShowPerform(chosenTalentId) {
     S.face = Math.max(0, S.face + gf);
   }
 
-  // 评委点评
+  // 5) 评委个性化针对性点评
   const judgeQuotes = [
-    l1 ? '张教授推了推眼镜：“出招沉稳，功底扎实，是个可塑之才！”' : '张教授严肃摇头：“技艺尚浅，回去仍需戒骄戒躁，勤加苦练。”',
-    l2 ? '麦克老师兴奋击节：“太炸了！全场的节奏都在你的指尖！”' : '麦克老师揉了揉太阳穴：“感觉还是少了一点爆发力，缺了灵魂。”',
-    l3 ? '李主任慈祥鼓掌：“小小年纪敢于登台就非常值得鼓励，阿姨亮灯支持你！”' : '李主任微笑：“虽然稍有欠缺，但能站在这个舞台就是好样的！”'
+    lights[0]
+      ? (mine.cat === 'stem' ? '张教授扶镜赞叹：“严谨求实，大将之风！理科底蕴非一日之功！”' : '张教授推了推眼镜：“出招沉稳，功底扎实，是个可塑之才！”')
+      : (mine.cat === 'witty' ? '张教授严肃摇头：“花拳绣腿，不够庄重，回去多读经典戒骄戒躁。”' : '张教授严肃摇头：“技艺尚浅，回去仍需勤加苦练。”'),
+    lights[1]
+      ? (sGrade === 'perfect' ? '麦克老师起立欢呼：“Oh My God！全场的节奏与尖叫都被你引爆了！完美Showtime！”' : '麦克老师兴奋击节：“太炸了！全场的节奏都在你的指尖！”')
+      : '麦克老师揉了揉太阳穴：“感觉还是少了一点舞台张力，缺了灵魂与律动。”',
+    lights[2]
+      ? '李主任慈祥鼓掌：“小小年纪敢于登台就非常值得鼓励，阿姨亮灯支持你！”'
+      : '李主任微笑：“虽然稍有欠缺，但能勇敢站在这个舞台就是最棒的好孩子！”'
   ];
 
   const danmaku = win ? [
-    '“哇！这也太神了！！”',
+    (greenCount === 3 ? '“全场大满贯！！！太帅了吧！！”' : '“哇！这也太神了！！”'),
     '“实至名归的冠军！给跪了！”',
     '“这就是传说中的神童吗！？”',
     '“快看快看，全场都在为TA喝彩！”'
@@ -1647,6 +1702,9 @@ function talentShowPerform(chosenTalentId) {
     win,
     greenCount,
     lights,
+    showtimeGrade: sGrade,
+    encoreTriggered,
+    encoreSuccess,
     judgeQuotes,
     danmaku,
     mine,
@@ -1654,7 +1712,9 @@ function talentShowPerform(chosenTalentId) {
     gi,
     gf,
     body: (win
-      ? `🎉 技惊四座！凭借【${mine.n}】力克对手【${rival.talent.n}】，赢得 ${greenCount}/3 盏全场绿灯夺得冠军！(悟性+${gi}, 面子+${gf})`
+      ? (greenCount === 3
+        ? `🌟 全场大满贯！凭借【${mine.n}】斩获 3/3 盏全绿灯，全场起立欢呼！(悟性+${gi}, 面子+${gf})`
+        : `🎉 技惊四座！凭借【${mine.n}】赢得 ${greenCount}/3 盏绿灯夺得冠军！(悟性+${gi}, 面子+${gf})`)
       : `惜败……对手【${rival.talent.n}】稍胜一筹，斩获优秀奖。(悟性+${gi}, 面子${gf})`),
     opts: ['收下奖项，走下舞台 🏆']
   };
@@ -1960,25 +2020,32 @@ function faceDuelStep(actionIdx) {
   }
 }
 
-/* ---------- 🗳️ 班干部竞选演说策略博弈 (Class Committee Election) ---------- */
+/* ---------- 🗳️ 班干部竞选演说策略博弈 2.0 (Class Committee Election) ---------- */
 function pendElection() {
   const rivals = [
-    { name: '王小明', title: '原班长·全科代表', icon: '🧑‍🏫', motto: '“带领全班考第一是我的责任！”', votes: 0 },
-    { name: '李华', title: '文艺课代表', icon: '🎨', motto: '“让大家的校园生活更多姿多彩！”', votes: 0 },
-    { name: '赵小刚', title: '热血体育委员', icon: '🏀', motto: '“选我！以后体育课我带大家练球！”', votes: 0 }
+    { name: '王小明', title: '原班长·全科代表', icon: '🧑‍🏫', motto: '“带领全班考第一是我的责任！”', votes: 0, favBloc: 'studious' },
+    { name: '李华', title: '文艺课代表', icon: '🎨', motto: '“让大家的校园生活更多姿多彩！”', votes: 0, favBloc: 'middle' },
+    { name: '赵小刚', title: '热血体育委员', icon: '🏀', motto: '“选我！以后体育课我带大家练球！”', votes: 0, favBloc: 'rowdy' }
   ];
   const rival = rivals[Math.floor(Math.random() * rivals.length)];
   const totalVotes = 50;
   const targetVotes = 26; // 过半当选门槛
+
+  const blocs = {
+    studious: { name: '学霸尖子圈', icon: '🎓', total: 15, myVotes: 0, rivalVotes: 0, remaining: 15 },
+    middle: { name: '中立吃瓜圈', icon: '👥', total: 20, myVotes: 0, rivalVotes: 0, remaining: 20 },
+    rowdy: { name: '后排活跃圈', icon: '🏀', total: 15, myVotes: 0, rivalVotes: 0, remaining: 15 }
+  };
 
   S.election = {
     round: 1,
     maxRound: 3,
     myVotes: 0,
     rival,
+    blocs,
     totalVotes,
     targetVotes,
-    logs: ['班级黑板报下，全班 50 名同学的班干部竞选演说大会正式开幕！'],
+    logs: ['班级黑板报下，全班 50 名少先队员的班干部竞选演说大会正式开幕！三大选民圈子屏息聆听！'],
     finished: false,
     won: false
   };
@@ -1989,10 +2056,10 @@ function pendElection() {
     body: '登上讲台，向全班同学发表施政演说！争夺班级中队长/班长席位！',
     election: S.election,
     opts: [
-      { label: '🤝 亲民路线·倾听心声', sub: '基于情商，拉拢广大同学支持' },
-      { label: '🌟 才艺展示·硬核特长', sub: '亮出最高特长才华，惊艳全场' },
-      { label: '🍭 零食许诺·请客公关', sub: '花费 20 元买零食，吸引调皮同学' },
-      { label: '📜 严密施政·学业互助', sub: '基于智商，赢得学霸与老师信赖' }
+      { label: '🤝 亲民路线·倾听心声', sub: '基于情商，重点拉拢中立吃瓜群众(20票)' },
+      { label: '🌟 才艺展示·硬核特长', sub: '亮出最高特长才华，吸引中立与后排同学' },
+      { label: '🍭 零食许诺·请客公关', sub: '花费 20 元买零食，绝杀收割后排圈(15票)' },
+      { label: '📜 严密施政·学业互助', sub: '基于智商，强力斩获学霸尖子圈(15票)' }
     ]
   });
 }
@@ -2001,38 +2068,73 @@ function doElection(o) {
   const el = S.election;
   if (!el || el.finished) return 0;
 
-  let myGain = 0;
-  let logText = '';
-
-  // 1) 玩家演讲拉票策略结算
-  if (o === 0) {
-    // 亲民路线: 依赖情商
-    const eqBonus = Math.min(6, Math.floor(((S.attrs && S.attrs.eq) || 0) / 35));
-    myGain = RI(8, 14) + eqBonus;
-    S.sat = clamp(S.sat + 3, 0, 140);
-    logText = '第' + el.round + '轮: 🤝 你真挚地倾听同学心声并承诺课后互助辅导，打动了普通同学，斩获 ' + myGain + ' 票！';
-  } else if (o === 1) {
-    // 才艺特长: 依赖特长稀有度
-    const t = bestTalent();
-    const rBonus = t ? t.r * 3 : 0;
-    myGain = RI(7, 12) + rBonus;
-    logText = '第' + el.round + '轮: 🌟 你当众亮出拿手绝活【' + (t ? t.n : '大嗓门') + '】，技惊四座，赢得 ' + myGain + ' 票！';
-  } else if (o === 2) {
-    // 零食公关: 消耗金钱
-    S.money = Math.max(0, S.money - 20);
-    S.sat = clamp(S.sat - 2, 0, 140);
-    myGain = RI(10, 16);
-    logText = '第' + el.round + '轮: 🍭 你许诺考后请大家吃校门口雪糕辣条，后排同学欢声雷动，获得 ' + myGain + ' 票！(零花钱-20)';
-  } else {
-    // 严密施政: 依赖智商
-    const iqBonus = Math.min(6, Math.floor(((S.attrs && S.attrs.iq) || 0) / 35));
-    myGain = RI(8, 13) + iqBonus;
-    logText = '第' + el.round + '轮: 📜 你有条不紊地列出班级学习互助管理方案，学霸群体纷纷举手表决，获得 ' + myGain + ' 票！';
+  // 兜底自愈三大选民圈子
+  if (!el.blocs) {
+    el.blocs = {
+      studious: { name: '学霸尖子圈', icon: '🎓', total: 15, myVotes: 0, rivalVotes: 0, remaining: 15 },
+      middle: { name: '中立吃瓜圈', icon: '👥', total: 20, myVotes: 0, rivalVotes: 0, remaining: 20 },
+      rowdy: { name: '后排活跃圈', icon: '🏀', total: 15, myVotes: 0, rivalVotes: 0, remaining: 15 }
+    };
   }
 
-  // 2) 对手竞选拉票
-  const rivalGain = RI(6, 12);
+  let gStud = 0, gMid = 0, gRowdy = 0;
+  let logText = '';
+
+  // 1) 玩家演讲拉票策略结算 (针对三大选民群体)
+  if (o === 0) {
+    // 亲民路线: 重点吸纳中立圈，兼顾学霸
+    const eqBonus = Math.min(5, Math.floor(((S.attrs && S.attrs.eq) || 0) / 35));
+    gMid = clamp(RI(5, 8) + eqBonus, 0, el.blocs.middle.remaining);
+    gStud = clamp(RI(2, 4), 0, el.blocs.studious.remaining);
+    gRowdy = clamp(RI(1, 3), 0, el.blocs.rowdy.remaining);
+    S.sat = clamp(S.sat + 3, 0, 140);
+    logText = '第' + el.round + '轮: 🤝 你真挚倾听同学心声并承诺减负互助，深得中立吃瓜同学共鸣，获得 ' + (gStud + gMid + gRowdy) + ' 票！';
+  } else if (o === 1) {
+    // 才艺特长: 吸引中立与后排圈
+    const t = bestTalent();
+    const rBonus = t ? Math.min(4, t.r * 2) : 1;
+    gMid = clamp(RI(4, 7) + rBonus, 0, el.blocs.middle.remaining);
+    gRowdy = clamp(RI(2, 5) + (t && t.cat === 'witty' ? 2 : 0), 0, el.blocs.rowdy.remaining);
+    gStud = clamp(RI(1, 3), 0, el.blocs.studious.remaining);
+    logText = '第' + el.round + '轮: 🌟 你当众亮出绝活【' + (t ? t.n : '大嗓门') + '】，技惊四座，赢得 ' + (gStud + gMid + gRowdy) + ' 票！';
+  } else if (o === 2) {
+    // 零食公关: 消耗金钱，绝杀后排圈
+    S.money = Math.max(0, S.money - 20);
+    S.sat = clamp(S.sat - 2, 0, 140);
+    gRowdy = clamp(RI(8, 12), 0, el.blocs.rowdy.remaining);
+    gMid = clamp(RI(2, 4), 0, el.blocs.middle.remaining);
+    gStud = clamp(RI(0, 1), 0, el.blocs.studious.remaining);
+    logText = '第' + el.round + '轮: 🍭 你许诺考后请大家吃雪糕辣条，后排同学欢声雷动当场反水！怒揽 ' + (gStud + gMid + gRowdy) + ' 票！(零花钱-20)';
+  } else {
+    // 严密施政: 重点收割学霸尖子圈
+    const iqBonus = Math.min(5, Math.floor(((S.attrs && S.attrs.iq) || 0) / 35));
+    gStud = clamp(RI(6, 9) + iqBonus, 0, el.blocs.studious.remaining);
+    gMid = clamp(RI(2, 4), 0, el.blocs.middle.remaining);
+    gRowdy = clamp(RI(0, 1), 0, el.blocs.rowdy.remaining);
+    logText = '第' + el.round + '轮: 📜 你有条不紊阐述期末复习与学业提分互助方案，学霸尖子圈纷纷举手表决！斩获 ' + (gStud + gMid + gRowdy) + ' 票！';
+  }
+
+  el.blocs.studious.myVotes += gStud;
+  el.blocs.studious.remaining -= gStud;
+  el.blocs.middle.myVotes += gMid;
+  el.blocs.middle.remaining -= gMid;
+  el.blocs.rowdy.myVotes += gRowdy;
+  el.blocs.rowdy.remaining -= gRowdy;
+  const myGain = gStud + gMid + gRowdy;
+
+  // 2) 对手竞选拉票 (从优势圈与中立圈吸票)
+  const favKey = (el.rival && el.rival.favBloc) || 'studious';
+  const rFav = clamp(RI(4, 7), 0, el.blocs[favKey] ? el.blocs[favKey].remaining : 5);
+  if (el.blocs[favKey]) {
+    el.blocs[favKey].rivalVotes += rFav;
+    el.blocs[favKey].remaining -= rFav;
+  }
+  const rMid = clamp(RI(2, 4), 0, el.blocs.middle.remaining);
+  el.blocs.middle.rivalVotes += rMid;
+  el.blocs.middle.remaining -= rMid;
+  const rivalGain = rFav + rMid;
   el.rival.votes += rivalGain;
+
   const rivalLog = '对手【' + el.rival.name + '】' + el.rival.motto + '，拉走了 ' + rivalGain + ' 票！';
 
   el.myVotes += myGain;
@@ -2063,21 +2165,20 @@ function electionFinish() {
     Object.keys(S.npcAff || {}).forEach(k => {
       S.npcAff[k] = (S.npcAff[k] || 0) + 8;
     });
-    S.pending.push({
-      type: 'news',
-      title: '🏆 成功当选班级中队长！',
-      body: '经过三轮激烈的竞选演说，你以 ' + el.myVotes + ' 票力压对手【' + el.rival.name + '】(' + el.rival.votes + '票)！\n\n🎉 班主任郑重为你佩戴上光荣的“三道杠”中队长臂章！全班掌声雷动！\n(家庭面子+60, 父母满意+15, 同学全员好感+8)',
-      opts: ['光荣就任 🎖️']
-    });
   } else {
     S.face = Math.max(0, S.face - 10);
-    S.pending.push({
-      type: 'news',
-      title: '竞选惜败：就任劳动委员',
-      body: '最终得票 ' + el.myVotes + ' 票 vs ' + el.rival.votes + ' 票，对手【' + el.rival.name + '】胜选。\n\n班主任走下讲台拍拍你：“表现非常出色！虽然没当上班长，老师特委任你为劳动委员，继续发光发热！”\n(面子-10, 演说技巧大获提升)',
-      opts: ['欣然受任 🧹']
-    });
   }
+
+  S.pending.push({
+    type: 'electionr',
+    title: win ? '🏆 班干部正式任命聘书' : '📜 班干部竞选公报',
+    election: el,
+    win,
+    body: win
+      ? '🎉 经过三轮激烈的竞选演说，你以 ' + el.myVotes + ' 票力压对手【' + el.rival.name + '】(' + el.rival.votes + '票)！\n\n班主任郑重为你佩戴上光荣的“三道杠”中队长臂章！全班掌声雷动！\n(家庭面子+60, 父母满意+15, 同学全员好感+8)'
+      : '最终得票 ' + el.myVotes + ' 票 vs ' + el.rival.votes + ' 票，对手【' + el.rival.name + '】胜选。\n\n班主任走下讲台拍拍你：“表现非常出色！老师特委任你为劳动委员，继续发光发热！”\n(面子-10, 演说技巧大获提升)',
+    opts: [win ? '光荣就任 🎖️' : '欣然受任 🧹']
+  });
 }
 
 /* ---------- 职业 / 婚姻 / 世代 ---------- */
@@ -3140,16 +3241,20 @@ function resolvePend(i) {
     }
     case 'show': {
       let chosenId = null;
+      let showtimeGrade = 'normal';
+      let encoreChoice = false;
       if (typeof i === 'string') {
         chosenId = i;
-      } else if (typeof i === 'object' && i && i.talentId) {
-        chosenId = i.talentId;
+      } else if (typeof i === 'object' && i) {
+        if (i.talentId) chosenId = i.talentId;
+        if (i.showtimeGrade) showtimeGrade = i.showtimeGrade;
+        if (i.encore) encoreChoice = true;
       } else if (typeof i === 'number') {
         const tList = (S.talents || []).map(id => D.talentData.find(x => x.id === id)).filter(Boolean);
         if (tList[i]) chosenId = tList[i].id;
       }
-      const resModal = talentShowPerform(chosenId);
-      res = resModal && resModal.win ? '才艺选秀夺冠！' : '才艺选秀登台';
+      const resModal = talentShowPerform(chosenId, showtimeGrade, encoreChoice);
+      res = resModal && resModal.win ? '🏆 才艺选秀夺冠！' : '才艺选秀登台';
       break;
     }
     case 'showr': {

@@ -1322,6 +1322,10 @@ function renderModal() {
     renderElectionModal(p, m);
     return;
   }
+  if (p.type === 'electionr') {
+    renderElectionResultModal(p, m);
+    return;
+  }
 
   // 针对终局求婚与长辈相亲角舞台
   if (p.type === 'marry') {
@@ -2065,7 +2069,10 @@ function renderGaokaoApplyModal(p, m) {
 }
 
 /* ---------- 🌟 特长才艺选秀大会舞台 ---------- */
+/* ---------- 🌟 特长才艺选秀大会舞台 2.0 (Showtime & 评委偏好) ---------- */
 function renderTalentShowModal(p, m) {
+  m = m || $('#modal');
+  if (!m) return;
   m.classList.add('show');
   m.innerHTML = '';
   const body = h('div', 'm-body ts-modal');
@@ -2077,7 +2084,7 @@ function renderTalentShowModal(p, m) {
   head.innerHTML =
     '<div class="ts-badge">🎪 全国少儿才艺大奖赛 · 舞台争霸</div>' +
     '<div class="ts-title">' + (p.title || '特长才艺选秀大会') + '</div>' +
-    '<div class="ts-reward-tag">🏆 夺冠重奖：+' + rewardInsight + ' 悟性 · +' + rewardFace + ' 面子</div>';
+    '<div class="ts-reward-tag">🏆 夺冠重奖：+' + rewardInsight + ' 悟性 · +' + rewardFace + ' 面子 (大满贯额外+25%)</div>';
   body.appendChild(head);
 
   // 2) 登台对手卡片
@@ -2092,11 +2099,11 @@ function renderTalentShowModal(p, m) {
     '</div>';
   body.appendChild(rivalBox);
 
-  // 3) 三位评委席
+  // 3) 三位评委席与偏好公示
   const judges = p.judges || [
-    { name: '张教授', icon: '🧐', title: '资深老学究', style: '严苛治学', motto: '“基本功是骗不了人的！”' },
-    { name: '麦克老师', icon: '🕶️', title: '前卫潮人导师', style: '看重舞台张力', motto: '“Show me the passion!”' },
-    { name: '李主任', icon: '👩‍🏫', title: '少年宫主任', style: '慈祥鼓励', motto: '“每个登台的孩子都是最棒的！”' },
+    { name: '张教授', icon: '🧐', title: '资深老学究', style: '偏定理/文学·重Rank', motto: '“基本功是骗不了人的！”' },
+    { name: '麦克老师', icon: '🕶️', title: '前卫潮人导师', style: '偏艺术/舞台·重Showtime', motto: '“Show me the passion!”' },
+    { name: '李主任', icon: '👩‍🏫', title: '少年宫主任', style: '偏生活体魄·亲和包容', motto: '“每个登台的孩子都是最棒的！”' },
   ];
   const judgeRow = h('div', 'ts-judges-row');
   judges.forEach(j => {
@@ -2104,7 +2111,7 @@ function renderTalentShowModal(p, m) {
     jc.innerHTML =
       '<div class="ts-judge-ico">' + j.icon + '</div>' +
       '<div class="ts-judge-name">' + j.name + '</div>' +
-      '<div class="ts-judge-style">' + j.title + '</div>' +
+      '<div class="ts-judge-style">' + j.style + '</div>' +
       '<div class="ts-judge-status">⚪ 待登台评分</div>';
     judgeRow.appendChild(jc);
   });
@@ -2113,7 +2120,7 @@ function renderTalentShowModal(p, m) {
   // 4) 玩家特长卡组检录
   const myTalents = CP.talentsList ? CP.talentsList() : [];
   const displayTalents = myTalents.length > 0 ? myTalents : [
-    { id: 'voice_loud', n: '大嗓门', icon: '📢', r: 1, atk: 7, src: '天生大嗓门' }
+    { id: 'voice_loud', n: '大嗓门', icon: '📢', r: 1, atk: 7, cat: 'art', src: '天生大嗓门' }
   ];
 
   let selectedTalent = displayTalents[0];
@@ -2127,17 +2134,18 @@ function renderTalentShowModal(p, m) {
       if (displayTalents[idx] && displayTalents[idx].id === selectedTalent.id) el.classList.add('selected');
       else el.classList.remove('selected');
     });
-    btn.innerHTML = '🌟 携带【' + selectedTalent.n + '】登台演出！';
+    btn.innerHTML = '🌟 携【' + selectedTalent.n + '】登台开启 Showtime 即兴演出！';
   };
 
   displayTalents.forEach(t => {
     const card = h('div', 'ts-talent-card' + (t.id === selectedTalent.id ? ' selected' : ''));
     const rankStars = '★'.repeat(t.r || 1);
     const atkVal = t.atk || Math.pow(7, t.r || 1);
+    const catLabel = (t.cat === 'stem' ? '⚡理科' : (t.cat === 'art' ? '📜文雅' : (t.cat === 'witty' ? '💡机灵' : '🏃健体')));
     card.innerHTML =
       '<div class="ts-card-top">' +
         '<span class="ts-card-ico">' + t.icon + '</span>' +
-        '<span class="ts-card-rank r' + (t.r || 1) + '">' + rankStars + ' R' + (t.r || 1) + '</span>' +
+        '<span class="ts-card-rank r' + (t.r || 1) + '">' + rankStars + ' R' + (t.r || 1) + ' · ' + catLabel + '</span>' +
       '</div>' +
       '<div class="ts-card-name">' + t.n + '</div>' +
       '<div class="ts-card-atk">战力: ' + atkVal + '</div>' +
@@ -2152,22 +2160,94 @@ function renderTalentShowModal(p, m) {
   deckBox.appendChild(grid);
   body.appendChild(deckBox);
 
-  // 5) 登台演出按钮
+  // 5) 登台开启 Showtime 按钮
   const btn = h('button', 'ts-perform-btn');
-  btn.innerHTML = '🌟 携带【' + selectedTalent.n + '】登台演出！';
+  btn.innerHTML = '🌟 携【' + selectedTalent.n + '】登台开启 Showtime 即兴演出！';
+
+  // 启动 Showtime 舞台微操
   btn.onclick = () => {
     sound.win();
-    const r = CP.resolve({ talentId: selectedTalent.id });
-    if (r) toast(r);
-    renderAll();
+    body.innerHTML = '';
+    
+    // 渲染 Showtime 节拍互动
+    const stWrap = h('div', 'ts-showtime-stage');
+    stWrap.innerHTML =
+      '<div class="ts-showtime-title">✨ Showtime 现场绝活点题微操！</div>' +
+      '<div class="ts-showtime-sub">正在表演【' + selectedTalent.n + '】！把握聚光灯节拍，在黄金区域释放绝活！</div>' +
+      '<div class="ts-beat-track">' +
+        '<div class="ts-beat-zone" style="left:65%; width:25%;"></div>' +
+        '<div class="ts-beat-pointer" id="tsBeatPointer" style="left:10%;"></div>' +
+      '</div>';
+    body.appendChild(stWrap);
+
+    const beatBtn = h('button', 'ts-beat-btn pulse', '🔥 把握节拍·秀出绝活！(支持空格/回车)');
+    body.appendChild(beatBtn);
+
+    let curPos = 10;
+    let dir = 1;
+    let finished = false;
+    let timer = null;
+    let keyHandler = null;
+
+    const pointerEl = $('#tsBeatPointer');
+
+    timer = setInterval(() => {
+      curPos += dir * 3.5;
+      if (curPos >= 92) { curPos = 92; dir = -1; }
+      else if (curPos <= 8) { curPos = 8; dir = 1; }
+      if (pointerEl) pointerEl.style.left = curPos + '%';
+    }, 33);
+
+    // 3.5秒超时自动判定
+    const timeoutTimer = setTimeout(() => {
+      triggerBeat('timeout');
+    }, 3500);
+
+    const triggerBeat = (mode) => {
+      if (finished) return;
+      finished = true;
+      clearInterval(timer);
+      clearTimeout(timeoutTimer);
+      if (keyHandler) window.removeEventListener('keydown', keyHandler);
+
+      let grade = 'normal';
+      if (mode !== 'timeout') {
+        if (curPos >= 65 && curPos <= 90) {
+          grade = 'perfect';
+          sound.win();
+          toast('🌟 PERFECT！卡点绝活引爆全场！评分+25%！');
+        } else {
+          grade = 'good';
+          sound.pop();
+          toast('✨ GOOD！发挥稳健，掌声雷动！评分+12%！');
+        }
+      } else {
+        toast('平稳发挥完成演出～');
+      }
+
+      const r = CP.resolve({ talentId: selectedTalent.id, showtimeGrade: grade });
+      if (r) toast(r);
+      renderAll();
+    };
+
+    beatBtn.onclick = () => triggerBeat('click');
+    keyHandler = (e) => {
+      if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
+        e.preventDefault();
+        triggerBeat('key');
+      }
+    };
+    window.addEventListener('keydown', keyHandler);
   };
   body.appendChild(btn);
 
   m.appendChild(body);
 }
 
-/* ---------- 🌟 选秀结算结果舞台 ---------- */
+/* ---------- 🌟 选秀结算结果舞台 2.0 (Encore & 颁奖台) ---------- */
 function renderTalentShowResultModal(p, m) {
+  m = m || $('#modal');
+  if (!m) return;
   m.classList.add('show');
   m.innerHTML = '';
   if (p.win) {
@@ -2179,12 +2259,14 @@ function renderTalentShowResultModal(p, m) {
 
   // 1) 顶部结果徽章
   const head = h('div', 'ts-header');
+  const badgeClass = (p.greenCount === 3 ? 'ts-badge grandslam' : (p.win ? 'ts-badge win' : 'ts-badge lose'));
+  const badgeText = (p.greenCount === 3 ? '🌟 全场大满贯 · 天才神童' : (p.win ? '🎉 冠军诞生 · 技惊四座' : '📜 虽败犹荣 · 参与纪念'));
   head.innerHTML =
-    '<div class="ts-badge ' + (p.win ? 'win' : 'lose') + '">' + (p.win ? '🎉 冠军诞生 · 技惊四座' : '📜 虽败犹荣 · 参与纪念') + '</div>' +
+    '<div class="' + badgeClass + '">' + badgeText + '</div>' +
     '<div class="ts-title">' + (p.title || '特长才艺选秀') + '</div>';
   body.appendChild(head);
 
-  // 2) 三位评委亮灯与点评
+  // 2) 三位评委亮灯与个性化点评
   const judges = [
     { name: '张教授', icon: '🧐' },
     { name: '麦克老师', icon: '🕶️' },
@@ -2203,7 +2285,26 @@ function renderTalentShowResultModal(p, m) {
   });
   body.appendChild(judgeRow);
 
-  // 3) 现场弹幕反响
+  // 3) 若处于危急濒临出局状态，且尚未触发 Encore，展示加演翻盘机会
+  if (p.greenCount <= 1 && !p.encoreTriggered) {
+    const encoreBox = h('div', 'ts-encore-box');
+    encoreBox.innerHTML =
+      '<div class="ts-encore-title">🎤 濒临出局！李主任与麦克老师招手：</div>' +
+      '<div class="ts-encore-desc">“这位同学先别下台！如果还有加演一段绝活，可以再争取一次灭灯评委的重新亮灯！”</div>';
+    
+    const encoreBtn = h('button', 'ts-encore-btn pulse', '🔥 消耗25体力【绝活返场·奋力翻盘】');
+    encoreBtn.onclick = () => {
+      sound.win();
+      if (CP.state().act >= 25) CP.state().act -= 25;
+      const r = CP.resolve({ talentId: p.mine ? p.mine.id : null, showtimeGrade: p.showtimeGrade, encore: true });
+      if (r) toast(r);
+      renderAll();
+    };
+    encoreBox.appendChild(encoreBtn);
+    body.appendChild(encoreBox);
+  }
+
+  // 4) 现场弹幕反响
   const danmakuBox = h('div', 'ts-danmaku-container');
   const dList = p.danmaku || (p.win ? ['“太震撼了！”', '“全场起立鼓掌！”'] : ['“加油，下次一定能赢！”']);
   danmakuBox.innerHTML =
@@ -2211,11 +2312,13 @@ function renderTalentShowResultModal(p, m) {
     '<div class="ts-danmaku-stream">' + dList.map(txt => '<span class="dm-chip">' + txt + '</span>').join('') + '</div>';
   body.appendChild(danmakuBox);
 
-  // 4) 核心大奖结算区域
+  // 5) 核心大奖结算卡片
   const prizeBox = h('div', 'ts-prize-card ' + (p.win ? 'win' : 'lose'));
+  const iconPrize = p.greenCount === 3 ? '👑' : (p.win ? '🏆' : '📜');
+  const titlePrize = p.greenCount === 3 ? '全场大满贯 · 斩获特等奖！' : (p.win ? '荣获大赛总冠军！' : '获得大赛优秀参与奖');
   prizeBox.innerHTML =
-    '<div class="ts-prize-ico">' + (p.win ? '🏆' : '📜') + '</div>' +
-    '<div class="ts-prize-title">' + (p.win ? '荣获大赛总冠军！' : '获得大赛优秀参与奖') + '</div>' +
+    '<div class="ts-prize-ico">' + iconPrize + '</div>' +
+    '<div class="ts-prize-title">' + titlePrize + '</div>' +
     '<div class="ts-prize-sub">登台特长：' + ((p.mine && p.mine.n) || '特长表演') + '  vs  对手：' + ((p.rival && p.rival.talent && p.rival.talent.n) || '对手') + '</div>' +
     '<div class="ts-rewards-row">' +
       '<span class="ts-rw-item ins">💡 悟性 +' + (p.gi || (p.win ? 500 : 40)) + '</span>' +
@@ -2223,21 +2326,36 @@ function renderTalentShowResultModal(p, m) {
     '</div>';
   body.appendChild(prizeBox);
 
-  // 5) 确认离开按钮
+  // 6) 确认离开按钮 (支持 Space/Enter)
   const btn = h('button', 'ts-perform-btn finish-btn');
-  btn.innerHTML = '收下荣誉，走下舞台 👏';
-  btn.onclick = () => {
+  btn.innerHTML = '收下荣誉，走下舞台 👏 (按回车/空格确认)';
+  let resultKeyHandler = null;
+  const doConfirm = () => {
+    if (resultKeyHandler) {
+      window.removeEventListener('keydown', resultKeyHandler);
+      resultKeyHandler = null;
+    }
     sound.click();
     CP.resolve(0);
     renderAll();
   };
+  btn.onclick = doConfirm;
+  resultKeyHandler = (e) => {
+    if (e.key === 'Enter' || e.code === 'Space') {
+      e.preventDefault();
+      doConfirm();
+    }
+  };
+  window.addEventListener('keydown', resultKeyHandler);
   body.appendChild(btn);
 
   m.appendChild(body);
 }
 
-/* ---------- 🗳️ 班干部三向竞选演说博弈台 ---------- */
+/* ---------- 🗳️ 班干部三向竞选演说博弈台 2.0 ---------- */
 function renderElectionModal(p, m) {
+  m = m || $('#modal');
+  if (!m) return;
   m.classList.add('show');
   m.innerHTML = '';
   const body = h('div', 'm-body el-modal');
@@ -2247,12 +2365,19 @@ function renderElectionModal(p, m) {
     targetVotes: 26, totalVotes: 50, logs: []
   };
 
+  // 兜底三大选民阵营数据
+  const blocs = el.blocs || {
+    studious: { name: '学霸尖子圈', icon: '🎓', total: 15, myVotes: 0, rivalVotes: 0, remaining: 15 },
+    middle: { name: '中立吃瓜圈', icon: '👥', total: 20, myVotes: 0, rivalVotes: 0, remaining: 20 },
+    rowdy: { name: '后排活跃圈', icon: '🏀', total: 15, myVotes: 0, rivalVotes: 0, remaining: 15 }
+  };
+
   // 1) 竞选讲台横幅
   const head = h('div', 'el-header');
   head.innerHTML =
-    '<div class="el-badge">🗳️ 班干部三向竞选演说大会</div>' +
+    '<div class="el-badge">🗳️ 班干部三向竞选演说大会 2.0</div>' +
     '<div class="el-title">第 ' + (el.round || 1) + ' / ' + (el.maxRound || 3) + ' 轮演说 · 争夺班级中队长</div>' +
-    '<div class="el-sub">向全班 50 名同学发表施政演说，拉取过半关键选票！</div>';
+    '<div class="el-sub">全班 50 名少先队员三大圈子无记名投票，过半 (26票) 即告当选！</div>';
   body.appendChild(head);
 
   // 2) 双方得票与候选人PK看台
@@ -2280,7 +2405,25 @@ function renderElectionModal(p, m) {
     '</div>';
   body.appendChild(arena);
 
-  // 3) 讲台黑板报实时速记
+  // 3) 三大选民阵营实时支持度波形卡
+  const blocsRow = h('div', 'el-blocs-row');
+  Object.keys(blocs).forEach(k => {
+    const b = blocs[k];
+    const myW = Math.round((b.myVotes / b.total) * 100);
+    const rivalW = Math.round((b.rivalVotes / b.total) * 100);
+    const card = h('div', 'el-bloc-card');
+    card.innerHTML =
+      '<div class="el-bloc-name">' + b.icon + ' ' + b.name + '</div>' +
+      '<div class="el-bloc-bar-wrap">' +
+        '<div class="el-bloc-fill mine" style="width:' + myW + '%"></div>' +
+        '<div class="el-bloc-fill rival" style="width:' + rivalW + '%"></div>' +
+      '</div>' +
+      '<div class="el-bloc-stat">我 ' + b.myVotes + ' vs 敌 ' + b.rivalVotes + ' (剩 ' + b.remaining + ')</div>';
+    blocsRow.appendChild(card);
+  });
+  body.appendChild(blocsRow);
+
+  // 4) 讲台黑板报实时速记
   const blackboard = h('div', 'el-blackboard');
   const logs = el.logs || [];
   blackboard.innerHTML =
@@ -2290,16 +2433,16 @@ function renderElectionModal(p, m) {
     '</div>';
   body.appendChild(blackboard);
 
-  // 4) 四大施政演说策略卡牌
+  // 5) 四大施政演说策略卡牌
   const tacticsBox = h('div', 'el-tactics-box');
-  tacticsBox.innerHTML = '<div class="el-tactics-title">🗣️ 请选择本轮演说与拉票策略：</div>';
+  tacticsBox.innerHTML = '<div class="el-tactics-title">🗣️ 请选择本轮施政演说策略 (见招拆招争夺三大选民群体)：</div>';
   const grid = h('div', 'el-tactics-grid');
 
   const defaultOpts = [
-    { label: '🤝 亲民路线·倾听心声', sub: '基于情商，拉拢广大同学支持' },
-    { label: '🌟 才艺展示·硬核特长', sub: '亮出最高特长才华，惊艳全场' },
-    { label: '🍭 零食许诺·请客公关', sub: '花费 20 元买零食，吸引调皮同学' },
-    { label: '📜 严密施政·学业互助', sub: '基于智商，赢得学霸与老师信赖' }
+    { label: '🤝 亲民路线·倾听心声', sub: '基于情商，重点拉拢中立吃瓜圈(20票)' },
+    { label: '🌟 才艺展示·硬核特长', sub: '亮出最高特长才华，吸引中立与后排同学' },
+    { label: '🍭 零食许诺·请客公关', sub: '花费 20 元买零食，绝杀收割后排圈(15票)' },
+    { label: '📜 严密施政·学业互助', sub: '基于智商，强力斩获学霸尖子圈(15票)' }
   ];
   const opts = (p.opts && p.opts.length === 4) ? p.opts : defaultOpts;
 
@@ -2318,6 +2461,103 @@ function renderElectionModal(p, m) {
   });
   tacticsBox.appendChild(grid);
   body.appendChild(tacticsBox);
+
+  m.appendChild(body);
+}
+
+/* ---------- 🏆 班干部正式任命聘书战报卡片 2.0 ---------- */
+function renderElectionResultModal(p, m) {
+  m = m || $('#modal');
+  if (!m) return;
+  m.classList.add('show');
+  m.innerHTML = '';
+
+  const el = p.election || (CP.election ? CP.election() : {}) || {};
+  const isWon = p.win != null ? p.win : (el.myVotes >= (el.rival ? el.rival.votes : 0));
+
+  if (isWon) sound.win(); else sound.fail();
+
+  const body = h('div', 'm-body el-modal');
+
+  // 1) 顶部徽章
+  const head = h('div', 'el-header');
+  head.innerHTML =
+    '<div class="el-badge ' + (isWon ? 'win' : 'lose') + '">' + (isWon ? '🎉 胜选出线 · 光荣履新' : '📜 虽败犹荣 · 课代表任职') + '</div>' +
+    '<div class="el-title">' + (p.title || '班干部竞选任命公报') + '</div>';
+  body.appendChild(head);
+
+  // 2) 红底任命聘书卡片
+  const certCard = h('div', 'el-cert-card');
+  if (isWon) {
+    certCard.innerHTML =
+      '<div class="el-sleeve-badge">' +
+        '<div class="el-sleeve-bar"></div>' +
+        '<div class="el-sleeve-bar"></div>' +
+        '<div class="el-sleeve-bar"></div>' +
+      '</div>' +
+      '<div class="el-cert-title">班级中队长任命聘书</div>' +
+      '<div style="font-size:12px; color:#78350f; line-height:1.6; margin:8px 0 12px;">' +
+        '兹聘任你为本学年 <b>班级中队长</b>！<br>经全班 50 名少先队员民主投票，你以 <b>' + el.myVotes + '</b> 票绝对优势胜选，特颁此证！' +
+      '</div>' +
+      '<div class="el-cert-seal">少先队中队<br>正式特聘</div>';
+  } else {
+    certCard.innerHTML =
+      '<div style="font-size:32px; margin-bottom:4px;">🧹</div>' +
+      '<div class="el-cert-title" style="color:#475569;">班级劳动委员委任书</div>' +
+      '<div style="font-size:12px; color:#475569; line-height:1.6; margin:8px 0 12px;">' +
+        '最终斩获 <b>' + el.myVotes + '</b> 票！虽与班长失之交臂，班主任与全班同学特委任你为 <b>劳动委员</b>，带领大家打扫包干区！' +
+      '</div>';
+  }
+  body.appendChild(certCard);
+
+  // 3) 三大圈子选票大盘复盘
+  if (el.blocs) {
+    const blocsRow = h('div', 'el-blocs-row');
+    Object.keys(el.blocs).forEach(k => {
+      const b = el.blocs[k];
+      const card = h('div', 'el-bloc-card');
+      card.innerHTML =
+        '<div class="el-bloc-name">' + b.icon + ' ' + b.name + '</div>' +
+        '<div style="font-size:11px; font-weight:800; color:' + (b.myVotes >= b.rivalVotes ? '#4f46e5' : '#ef4444') + ';">' +
+          '我 ' + b.myVotes + ' 票 vs 敌 ' + b.rivalVotes + ' 票' +
+        '</div>';
+      blocsRow.appendChild(card);
+    });
+    body.appendChild(blocsRow);
+  }
+
+  // 4) 战果收益面板
+  const rwBox = h('div', 'ts-rewards-row');
+  rwBox.innerHTML =
+    '<span class="ts-rw-item face pos">⭐ 家族面子 ' + (isWon ? '+60' : '-10') + '</span>' +
+    '<span class="ts-rw-item ins">❤️ 全员好感 ' + (isWon ? '+8' : '+3') + '</span>';
+  body.appendChild(rwBox);
+
+  // 5) 确认就任按钮 (支持 Enter/Space)
+  const btnText = isWon ? '🎖️ 光荣佩戴三道杠就任！(按回车/空格确认)' : '🧹 欣然受任劳动委员 (按回车/空格确认)';
+  const confirmBtn = h('button', 'btn big ' + (isWon ? 'primary pulse' : 'secondary'), btnText);
+  confirmBtn.style.width = '100%';
+  confirmBtn.style.marginTop = '12px';
+
+  let resultKeyHandler = null;
+  const doConfirm = () => {
+    if (resultKeyHandler) {
+      window.removeEventListener('keydown', resultKeyHandler);
+      resultKeyHandler = null;
+    }
+    sound.click();
+    CP.resolve(0);
+    renderAll();
+  };
+  confirmBtn.onclick = doConfirm;
+  resultKeyHandler = (e) => {
+    if (e.key === 'Enter' || e.code === 'Space') {
+      e.preventDefault();
+      doConfirm();
+    }
+  };
+  window.addEventListener('keydown', resultKeyHandler);
+  body.appendChild(confirmBtn);
 
   m.appendChild(body);
 }
@@ -3374,6 +3614,8 @@ global.renderHongbaoModal = renderHongbaoModal;
 global.renderHongbaoResult = renderHongbaoResult;
 global.renderFaceDuelModal = renderFaceDuelModal;
 global.renderFaceDuelResult = renderFaceDuelResult;
+global.renderElectionModal = renderElectionModal;
+global.renderElectionResultModal = renderElectionResultModal;
 global.UI = {
   renderTop,
   renderPhaseTransition,
@@ -3383,6 +3625,8 @@ global.UI = {
   renderHongbaoResult,
   renderFaceDuelModal,
   renderFaceDuelResult,
+  renderElectionModal,
+  renderElectionResultModal,
   renderAll,
   openWishModal,
   openChangelogModal,

@@ -299,13 +299,24 @@ CP.state().pending.push({
 });
 
 const preInsight = CP.state().insight;
-// 派出身怀史诗特长【压轴题杀手】(Rank 3) 出战
-const showRes = CP.resolve({ talentId: 'jiazui' });
+// 派出身怀史诗理科特长【压轴题杀手】(Rank 3) 出战，并取得 Showtime Perfect
+const showRes = CP.resolve({ talentId: 'jiazui', showtimeGrade: 'perfect' });
 assert(CP.pending().length > 0 && CP.pending()[0].type === 'showr', '表演后应进入结算模态框');
 const showrModal = CP.pending()[0];
 assert(Array.isArray(showrModal.lights) && showrModal.lights.length === 3, '应包含三位评委亮灯数据');
 assert(Array.isArray(showrModal.judgeQuotes) && showrModal.judgeQuotes.length === 3, '应包含三位评委点评');
+assert.strictEqual(showrModal.showtimeGrade, 'perfect', '应正确记录 Showtime 操作评级');
 assert(showrModal.gi >= 40, '应获得选秀悟性奖励');
+
+// 验证张教授对理科特长的专属肯定
+if (showrModal.lights[0]) {
+  assert(showrModal.judgeQuotes[0].includes('理科') || showrModal.judgeQuotes[0].includes('大将之风') || showrModal.judgeQuotes[0].includes('出招沉稳'), '张教授应对理科或高阶特长给予高度肯定');
+}
+// 验证麦克老师对 Showtime 完美的起立欢呼
+if (showrModal.lights[1]) {
+  assert(showrModal.judgeQuotes[1].includes('完美Showtime') || showrModal.judgeQuotes[1].includes('节奏'), '麦克老师应对 Showtime Perfect 予以热烈反响');
+}
+
 console.log('选秀表现结算:', {
   win: showrModal.win,
   greenCount: showrModal.greenCount,
@@ -321,7 +332,29 @@ console.log('选秀表现结算:', {
 CP.resolve(0);
 assert.strictEqual(CP.pending().length, 0, '走下舞台后模态框已关闭');
 assert(CP.state().insight >= preInsight + 40, '悟性已成功发放');
-console.log('特长才艺选秀专属交互舞台与三评委亮灯验证完全通过！');
+
+// 深度测试 7.1: 濒临淘汰时的【绝活加演 (Encore)】逆转翻盘机制
+CP.state().pending.push({
+  type: 'show',
+  tier: 2,
+  title: '小学才艺大赛',
+  rival: {
+    name: '钢琴神童',
+    talent: { id: 'pianotop', n: '肖邦夜曲', r: 4, icon: '🎹', atk: 300 }
+  }
+});
+// 携带普通特长并开启加演返场
+CP.state().attrs.eq = 150;
+const encoreShowRes = CP.resolve({ talentId: 'danci', showtimeGrade: 'perfect', encore: true });
+const encoreModal = CP.pending()[0];
+assert(encoreModal, '加演后应进入结算界面');
+if (encoreModal.encoreTriggered) {
+  assert.strictEqual(encoreModal.encoreTriggered, true, '濒危状态下必须触发 Encore 绝活返场');
+  console.log('Encore 绝活加演触发成功，翻盘结果:', { encoreSuccess: encoreModal.encoreSuccess, lights: encoreModal.lights });
+}
+while (CP.pending().length) CP.resolve(0);
+
+console.log('特长才艺选秀 2.0 评委偏好、Showtime 节拍判定与绝活返场 (Encore) 验证完全通过！');
 
 console.log('\n--- 测试 8: 🗳️ 班干部三向竞选演说策略博弈台 ---');
 while (CP.pending().length) CP.resolve(0);
@@ -355,24 +388,35 @@ CP.resolve(0);
 const el1 = CP.state().election;
 assert(el1.myVotes > 0, '第1轮演说应斩获票数');
 assert(el1.rival.votes > 0, '对手也应拉到选票');
+assert(el1.blocs && el1.blocs.middle, '必须包含三大选民阵营实时大盘数据');
+assert(el1.blocs.middle.myVotes > 0 || el1.blocs.studious.myVotes > 0, '亲民路线应从中立或学霸圈斩获选票');
 assert.strictEqual(el1.round, 2, '应进入第2轮');
-console.log('第1轮拉票得票:', el1.myVotes, '对手:', el1.rival.votes);
+console.log('第1轮拉票得票:', el1.myVotes, '对手:', el1.rival.votes, '三大圈大盘:', {
+  studious: el1.blocs.studious.myVotes,
+  middle: el1.blocs.middle.myVotes,
+  rowdy: el1.blocs.rowdy.myVotes
+});
+
+// 第2轮演说: 出招零食许诺 (index 2)，测试后排活跃圈绝杀吸票
+const rowdyBefore = el1.blocs.rowdy.myVotes;
+CP.resolve(2);
+assert(CP.state().election.blocs.rowdy.myVotes > rowdyBefore, '零食许诺应对后排活跃圈具有强力收割效果');
 
 // 持续演说拉票直到决出胜负 (过半门槛或3轮结标)
 let safety = 0;
 while (!CP.state().election.finished && safety++ < 5) {
-  CP.resolve(1);
+  CP.resolve(3); // 严密施政
 }
 assert(CP.state().election.finished, '竞选演说必须决出胜负并结算完成');
-assert(CP.pending().length > 0 && CP.pending()[0].type === 'news', '应弹出竞选终局任命公报');
+assert(CP.pending().length > 0 && (CP.pending()[0].type === 'electionr' || CP.pending()[0].type === 'news'), '应弹出竞选终局任命聘书公报');
 const newsModal = CP.pending()[0];
 console.log('竞选终局得票: 我方 ' + CP.state().election.myVotes + ' vs 对手 ' + CP.state().election.rival.votes);
-console.log('竞选结果公报:', newsModal.title, newsModal.body.split('\n')[0]);
+console.log('竞选结果公报:', newsModal.title, (newsModal.body || '').split('\n')[0]);
 
 // 确认就任并关闭任命公报
 CP.resolve(0);
-assert.strictEqual(CP.pending().length, 0, '就任后任命公报应已关闭');
-console.log('班干部竞选演说多轮博弈与胜选任命验证全部通过！');
+assert.strictEqual(CP.pending().length, 0, '就任后任命聘书公报应已关闭');
+console.log('班干部竞选 2.0 三大选民阵营、策略克制与三道杠聘书战报验证完全通过！');
 
 console.log('\n--- 测试 9: 💘 终局浪漫求婚与长辈相亲角专属舞台 ---');
 while (CP.pending().length) CP.resolve(0);
@@ -1577,6 +1621,8 @@ console.log('\n--- 测试 27: 🎯 属性增长特效 Diff 引擎与钥匙二段
 CP.newGame('测试君', 'boy');
 CP.state().act = 100;
 const bg = CP.brain.grid();
+// 清除盘面预置随机钥匙，避免炸弹扩散波及到随机预置钥匙
+bg.forEach(c => { if (c.t === 'key') c.t = 'iq'; });
 // 构造炸弹位于格子 14，钥匙位于格子 15 (相邻波及)
 bg[14].t = 'bomb';
 bg[14].open = false;
