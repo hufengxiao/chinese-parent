@@ -687,8 +687,8 @@ store['cph_last_seen_ver'] = DATA.version;
 shouldNotice = store['cph_last_seen_ver'] !== DATA.version;
 assert.strictEqual(shouldNotice, false, '版本一致时不应重复弹出');
 
-// 场景 D: 开发者提交新代码修复或新玩法 (模拟升版至未来版本如 v2.4.0)
-const nextVersion = 'v2.4.0';
+// 场景 D: 开发者提交新代码修复或新玩法 (模拟升版至未来版本如 v2.5.0)
+const nextVersion = DATA.version.replace(/(\d+)$/, m => Number(m) + 1);
 shouldNotice = store['cph_last_seen_ver'] !== nextVersion;
 assert.strictEqual(shouldNotice, true, '开发者发布新版本后，用户刷新将再次自动弹出了解最新玩法');
 
@@ -905,7 +905,7 @@ if (unopenIdx >= 0) {
   assert(toasts.some(t => t.includes('行动力不足') && t.includes('需2⚡')), '拒止时必须向玩家输出包含操作建议的友善引导气泡');
 }
 
-// 4) 钥匙下潜与 HUD 状态重置断言
+// 4) 钥匙下潜与 HUD 状态重置断言 (两段式下潜机制: 先显示钥匙+锁定高亮，点击钥匙才下潜)
 CP.state().act = 60;
 // 人工制造或寻找一个钥匙格子翻开
 let keyIdx = CP.brain.grid().findIndex(cell => !cell.open && cell.t === 'key');
@@ -915,15 +915,29 @@ if (keyIdx === -1) {
   CP.brain.grid()[freeIdx].t = 'key';
   keyIdx = freeIdx;
 }
+// 第一阶段：翻开钥匙格子，显露钥匙，进入高亮待下潜状态，绝不立即刷新
 const keyRev = CP.brain.rev(keyIdx);
 assert(keyRev.includes('🗝️') || keyRev.includes('钥匙'), '翻开钥匙格子必须有钥匙标识');
 bStat = CP.brain.info();
-assert.strictEqual(bStat.layer, 2, '踩中钥匙后 HUD 层级必须立即平滑跃迁至第 2 层');
+assert.strictEqual(bStat.keyPending, true, '挖出钥匙后必须进入 keyPending 待决高亮状态');
+assert.strictEqual(bStat.layer, 1, '第一阶段尚未点击钥匙，层级必须保持在第 1 层');
+
+// 校验锁定保护：在此状态下尝试点击非钥匙格子，必须被安全拦截
+const otherIdx = (keyIdx + 1) % 36;
+const blockedRev = CP.brain.rev(otherIdx);
+assert.strictEqual(blockedRev, null, '钥匙待决状态下点击其他格子必须被安全拦截');
+
+// 第二阶段：玩家主动点击高亮钥匙格子（或调用 useKey()），正式激活跃迁
+const keyUse = CP.brain.rev(keyIdx);
+assert(keyUse.includes('钥匙') || keyUse.includes('下探'), '激活钥匙必须有下潜反馈');
+bStat = CP.brain.info();
+assert.strictEqual(bStat.layer, 2, '点击钥匙后 HUD 层级必须立即平滑跃迁至第 2 层');
+assert.strictEqual(bStat.keyPending, false, '跃迁到新层后钥匙锁定状态必须解除');
 assert.strictEqual(bStat.open, 0, '跃迁到新层后已探格子数必须重置为 0');
 assert.strictEqual(bStat.percent, 0, '跃迁到新层后进度条百分比必须重置为 0%');
 assert(CP.state().act >= 50, '踩中钥匙必须如期回复 50 点行动力');
 
-console.log('脑域层级探照、竹管流光进度条、低行动力智能锁止与下潜重置断言全部通过！');
+console.log('脑域层级探照、竹管流光进度条、低行动力智能锁止、钥匙两段式展示与下潜重置断言全部通过！');
 
 console.log('\n--- 测试 22: 🎵 原生 WebAudio 中国风五声 BGM 与三态音频系统 (Round 4) ---');
 // 创建具备 WebAudio Mock 的 UI 测试沙箱
@@ -1442,7 +1456,56 @@ assert(!brokenTreeDump.includes('undefined'), '树状卡片绝不包含未定义
 
 console.log('工程师之魂特长闭环、槽位0完全擦除、S=null防崩容错、成家立业月薪与约会优雅降级全部断言通过！');
 
-console.log('\n🎉 全部二十六项全系统核心机制、逻辑漏洞修复、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM、双向社交、树状家族画卷、成年期深度设计与边缘防御 100% 验证通过！');
+console.log('\n--- 测试 27: 🎯 属性增长特效 Diff 引擎与钥匙二段下潜完备性断言 ---');
+
+// 1) 验证炸弹波及震出钥匙时的 keyPending 保护机制
+CP.newGame('测试君', 'boy');
+CP.state().act = 100;
+const bg = CP.brain.grid();
+// 构造炸弹位于格子 14，钥匙位于格子 15 (相邻波及)
+bg[14].t = 'bomb';
+bg[14].open = false;
+bg[15].t = 'key';
+bg[15].open = false;
+
+const bombResWithKey = CP.brain.rev(14);
+assert(bombResWithKey.includes('炸出') && bombResWithKey.includes('钥匙'), '炸弹炸出钥匙必须有专属提示');
+const statAfterBomb = CP.brain.info();
+assert.strictEqual(statAfterBomb.keyPending, true, '炸弹震出钥匙后必须进入 keyPending 待决锁定状态');
+assert.strictEqual(statAfterBomb.keyIdx, 15, 'keyIdx 必须精确锁定钥匙所在位置');
+assert.strictEqual(statAfterBomb.layer, 1, '炸出钥匙但未确认前，层级绝不跳变');
+
+// 验证快捷 useKey() 方法
+const useKeyRes = CP.brain.useKey();
+assert(useKeyRes.includes('启用') || useKeyRes.includes('下探'), 'useKey 必须成功触发跃迁');
+assert.strictEqual(CP.brain.info().layer, 2, 'useKey 激活后跃迁至第 2 层');
+assert.strictEqual(CP.brain.info().keyPending, false, '跃迁后 keyPending 恢复为 false');
+
+// 2) 验证 4 层封顶时钥匙的处理
+CP.state().brain.layer = 4;
+CP.state().act = 20;
+const gLayer4 = CP.brain.grid();
+gLayer4[0].t = 'key';
+gLayer4[0].open = false;
+CP.brain.rev(0);
+assert.strictEqual(CP.brain.info().keyPending, true, '第4层挖出钥匙依然进入待决状态');
+const actBeforeUse = CP.state().act;
+const useKeyLayer4 = CP.brain.useKey();
+assert(useKeyLayer4.includes('最深处') || useKeyLayer4.includes('行动+50'), '封顶层激活钥匙应有封顶提示');
+assert.strictEqual(CP.brain.info().layer, 4, '封顶层激活钥匙不继续递增');
+assert.strictEqual(CP.state().act, actBeforeUse + 50, '封顶层激活钥匙依然如期奖励 50 行动力');
+
+// 3) 验证 SoundManager 包含新增的 statGain 与 keyUnlock 方法
+const testSndMgr = new sndSandboxCtx.SoundManager();
+assert(typeof testSndMgr.statGain === 'function', 'SoundManager 必须包含 statGain 增益音效');
+assert(typeof testSndMgr.keyUnlock === 'function', 'SoundManager 必须包含 keyUnlock 钥匙解锁音效');
+testSndMgr.statGain();
+testSndMgr.keyUnlock();
+testSndMgr.stopBGM();
+
+console.log('炸弹波及钥匙待决保护、useKey 快捷跃迁、4层封顶防御、属性音效与两段式机制全部通过！');
+
+console.log('\n🎉 全部二十七项全系统核心机制、逻辑漏洞修复、模态隔离、老存档迁移、参数鲁棒性、多存档、日程延续、脑洞HUD、原生BGM、双向社交、树状家族画卷、成年期深度设计、边缘防御与两段式钥匙动效 100% 验证通过！');
 
 
 

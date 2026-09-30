@@ -613,7 +613,11 @@ function resume() {
     }
     if (!S.tutorial) S.tutorial = { done: false, step: 0, claimed: false };
     if (!S.pending) S.pending = [];
-    if (!S.brain) S.brain = { layer: 1, g: bGen() };
+    if (!S.brain) S.brain = { layer: 1, g: bGen(), keyPending: false, keyIdx: -1 };
+    else {
+      if (S.brain.keyPending === undefined) S.brain.keyPending = false;
+      if (S.brain.keyIdx === undefined) S.brain.keyIdx = -1;
+    }
     if (S.fam) {
       if (!S.fam.history) S.fam.history = [];
       if (!S.fam.achievements) S.fam.achievements = [];
@@ -1290,7 +1294,7 @@ function endTurn() {
   S.turn++;
   const t = S.turn;
   // 每回合刷新全新脑洞 (6x6)
-  S.brain = { layer: 1, g: bGen() };
+  S.brain = { layer: 1, g: bGen(), keyPending: false, keyIdx: -1 };
   // 家族天赋：每回合自然全属性成长加成 (一代更比一代强！)
   if (S.fam && S.fam.talent > 0) {
     const famBonus = Math.max(1, Math.floor(S.fam.talent / 2));
@@ -2538,8 +2542,10 @@ function bGen() {
   return G;
 }
 function bOpen() {
-  if (!S) return { layer: 1, g: [] };
-  if (!S.brain) S.brain = { layer: 1, g: bGen() };
+  if (!S) return { layer: 1, g: [], keyPending: false, keyIdx: -1 };
+  if (!S.brain) S.brain = { layer: 1, g: bGen(), keyPending: false, keyIdx: -1 };
+  if (S.brain.keyPending === undefined) S.brain.keyPending = false;
+  if (S.brain.keyIdx === undefined) S.brain.keyIdx = -1;
   return S.brain;
 }
 function bGrid() { return bOpen().g; }
@@ -2563,6 +2569,33 @@ function bRev(i) {
   if (!S) return null;
   const b = bOpen();
   if (!b || !b.g) return null;
+
+  // 1. 若当前盘面已有钥匙等待激活 (二段确认状态)
+  if (b.keyPending) {
+    if (i === b.keyIdx || i === -1) {
+      let res = '';
+      if (b.layer < 4) {
+        b.layer++;
+        b.g = bGen();
+        S.act = clamp(S.act + 50, 0, 240);
+        b.keyPending = false;
+        b.keyIdx = -1;
+        res = '🗝️ 钥匙已启用！成功下探至第' + b.layer + '层 (行动+50)！';
+      } else {
+        S.act = clamp(S.act + 50, 0, 240);
+        b.keyPending = false;
+        b.keyIdx = -1;
+        res = '🗝️ 钥匙已启用！已探明脑洞最深处，行动+50！';
+      }
+      save();
+      return res;
+    } else {
+      toast('🗝️ 已探明通向下层的钥匙！请点击高亮的钥匙开启下潜通道~');
+      return null;
+    }
+  }
+
+  // 2. 正常探索挖掘逻辑
   const c = b.g[i];
   if (!c || c.open) return null;
   if (S.act < 2) {
@@ -2574,20 +2607,14 @@ function bRev(i) {
   let res = '';
 
   if (c.t === 'key') {
-    if (b.layer < 4) {
-      b.layer++;
-      b.g = bGen();
-      S.act = clamp(S.act + 50, 0, 240);
-      res = '🗝️ 钥匙! 下探第' + b.layer + '层(行动+50)';
-    } else {
-      S.act = clamp(S.act + 50, 0, 240);
-      res = '🗝️ 钥匙! 下方脑洞施工中，下回合再来探索吧(行动+50)';
-    }
+    b.keyPending = true;
+    b.keyIdx = i;
+    res = '🗝️ 发现了通往下一层的钥匙！点击高亮的钥匙开启下潜通道~';
   } else if (c.t === 'bomb') {
     const r0 = Math.floor(i / 6);
     const c0 = i % 6;
     const exploded = [];
-    let foundKey = false;
+    let foundKeyIdx = -1;
     for (let j = 0; j < b.g.length; j++) {
       if (j === i) continue;
       const rj = Math.floor(j / 6);
@@ -2596,23 +2623,17 @@ function bRev(i) {
         const g2 = b.g[j];
         g2.open = true;
         if (g2.t === 'key') {
-          foundKey = true;
+          foundKeyIdx = j;
         } else {
           const subEff = applyBrainCell(g2, b);
           if (subEff) exploded.push(subEff);
         }
       }
     }
-    if (foundKey) {
-      if (b.layer < 4) {
-        b.layer++;
-        b.g = bGen();
-        S.act = clamp(S.act + 50, 0, 240);
-        res = '💥 炸弹连锁炸出🗝️钥匙! 下探第' + b.layer + '层(行动+50)';
-      } else {
-        S.act = clamp(S.act + 50, 0, 240);
-        res = '💥 炸出🗝️钥匙! 下方脑洞施工中(行动+50)';
-      }
+    if (foundKeyIdx >= 0) {
+      b.keyPending = true;
+      b.keyIdx = foundKeyIdx;
+      res = '💥 炸弹连锁炸出🗝️钥匙！点击高亮的钥匙开启下潜通道~' + (exploded.length ? ' (连带翻开: ' + exploded.slice(0, 2).join(' ') + ')' : '');
     } else {
       res = '💥 连环爆破!' + (exploded.length ? ' 获得: ' + exploded.slice(0, 3).join(' ') + (exploded.length > 3 ? '等' : '') : '');
     }
@@ -2620,8 +2641,8 @@ function bRev(i) {
     res = applyBrainCell(c, b);
   }
 
-  // 保底：若当前层全部翻开，自动进入下一层或封顶提示
-  if (b.g.every(x => x.open)) {
+  // 保底：若当前层全部翻开，自动进入下一层或封顶提示 (非钥匙等待状态)
+  if (!b.keyPending && b.g.every(x => x.open)) {
     if (b.layer < 4) {
       b.layer++;
       b.g = bGen();
@@ -2637,7 +2658,7 @@ function bRev(i) {
 }
 function bInfo() {
   if (!S) {
-    return { layer: 1, open: 0, total: 36, remaining: 36, percent: 0, maxLayer: 4, bulbs: 0, bombs: 0, keys: 0, act: 0, maxExplores: 0, canExplore: false };
+    return { layer: 1, open: 0, total: 36, remaining: 36, percent: 0, maxLayer: 4, bulbs: 0, bombs: 0, keys: 0, act: 0, maxExplores: 0, canExplore: false, keyPending: false, keyIdx: -1 };
   }
   const b = bOpen();
   const openCount = b.g.filter(x => x.open).length;
@@ -2662,7 +2683,9 @@ function bInfo() {
     keys: keys,
     act: act,
     maxExplores: maxExplores,
-    canExplore: canExplore
+    canExplore: canExplore,
+    keyPending: !!b.keyPending,
+    keyIdx: b.keyIdx !== undefined ? b.keyIdx : -1
   };
 }
 
@@ -2705,7 +2728,7 @@ const API = {
   endTurn, pending: () => (S && S.pending) ? S.pending.slice() : [],
   resolve: resolvePend,
   examBuff: () => S.exambuff,
-  brain: { grid: bGrid, rev: bRev, info: bInfo },
+  brain: { grid: bGrid, rev: bRev, info: bInfo, useKey: () => bRev(bOpen().keyIdx) },
   social: socialList, chat, gift, giftItem: gift,
   shop: shopList, buy, bag: () => (S && S.bag) || {},
   atlas, fam: getFam,

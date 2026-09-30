@@ -203,6 +203,17 @@ class SoundManager {
     this.playTone(987, 0.08, 'sine', 0.1);
     setTimeout(() => this.playTone(1318, 0.12, 'sine', 0.1), 60);
   }
+  statGain() {
+    this.tryStartBGM();
+    this.playTone(740, 0.05, 'sine', 0.06);
+    setTimeout(() => this.playTone(1100, 0.08, 'sine', 0.08), 45);
+  }
+  keyUnlock() {
+    this.tryStartBGM();
+    [440, 554.37, 659.25, 880].forEach((freq, idx) => {
+      setTimeout(() => this.playTone(freq, 0.12, 'sine', 0.12), idx * 60);
+    });
+  }
   brain() {
     this.tryStartBGM();
     this.playTone(520, 0.06, 'sine', 0.1);
@@ -362,6 +373,32 @@ function showScreen(name) {
   });
 }
 
+let prevStatsCache = null;
+let prevGenCache = null;
+
+function triggerStatEffect(el, diff, isGold, isLoss) {
+  if (!el || typeof document === 'undefined') return;
+  // 1. 浮动数字标签
+  const floatTag = document.createElement('div');
+  floatTag.className = 'stat-gain-float' + (isGold ? ' gold' : '') + (isLoss ? ' loss' : '');
+  floatTag.textContent = (diff > 0 ? '+' : '') + diff;
+  el.appendChild(floatTag);
+  setTimeout(() => {
+    if (floatTag && floatTag.parentNode) floatTag.parentNode.removeChild(floatTag);
+  }, 1250);
+
+  // 2. 卡片脉冲发光
+  el.classList.remove('stat-bounce-glow', 'gold', 'loss');
+  void el.offsetWidth; // 触发 reflow 重置动画
+  el.classList.add('stat-bounce-glow');
+  if (isGold) el.classList.add('gold');
+  else if (isLoss) el.classList.add('loss');
+
+  setTimeout(() => {
+    if (el) el.classList.remove('stat-bounce-glow', 'gold', 'loss');
+  }, 700);
+}
+
 /* ---------- 顶栏 ---------- */
 function renderTop() {
   const i = CP.info();
@@ -406,10 +443,59 @@ function renderTop() {
   const shadowCls = i.shadow >= 60 ? 'shadow-high' : '';
 
   $('#status').innerHTML =
-    kv.map(k => '<div class="stat"><div class="ico">' + k[2] + '</div><div class="val">' + (a[k[0]] || 0) + '</div><div class="lbl">' + k[1] + '</div></div>').join('') +
+    kv.map(k => '<div class="stat" id="stat-' + k[0] + '" data-stat="' + k[0] + '"><div class="ico">' + k[2] + '</div><div class="val">' + (a[k[0]] || 0) + '</div><div class="lbl">' + k[1] + '</div></div>').join('') +
     '<div class="wall sat ' + satCls + '"><b>父母满意 ' + Math.min(100, Math.round(i.sat)) + '%</b><div class="bar"><i style="width:' + Math.min(100, Math.round(i.sat)) + '%"></i></div></div>' +
     '<div class="wall stress ' + stressCls + '"><b>压力值 ' + Math.min(100, Math.round(i.stress)) + '%</b><div class="bar"><i style="width:' + Math.min(100, Math.round(i.stress)) + '%"></i></div></div>' +
     '<div class="wall shadow ' + shadowCls + '"><b>心理阴影 ' + Math.min(100, Math.round(i.shadow)) + '%</b><div class="bar"><i style="width:' + Math.min(100, Math.round(i.shadow)) + '%"></i></div></div>';
+
+  // 属性与核心资源变动动效检测 (Diff Engine)
+  const currentSnap = {
+    iq: a.iq || 0,
+    eq: a.eq || 0,
+    mem: a.mem || 0,
+    img: a.img || 0,
+    phy: a.phy || 0,
+    cha: a.cha || 0,
+    face: i.face || 0,
+    act: i.act || 0,
+    money: i.money || 0,
+    insight: i.insight || 0
+  };
+
+  if (prevStatsCache && prevGenCache === i.gen) {
+    let hasGrown = false;
+    // 基础六维检测
+    ['iq', 'eq', 'mem', 'img', 'phy', 'cha'].forEach(k => {
+      const diff = currentSnap[k] - (prevStatsCache[k] || 0);
+      if (diff > 0) {
+        hasGrown = true;
+        const targetEl = $('#stat-' + k);
+        triggerStatEffect(targetEl, diff, diff >= 10, false);
+      }
+    });
+
+    // 核心资源检测
+    const resMap = [
+      { key: 'face', el: $('#res-face'), threshold: 20 },
+      { key: 'act', el: $('#res-act'), threshold: 30 },
+      { key: 'money', el: $('#res-money'), threshold: 50 },
+      { key: 'insight', el: $('#res-insight'), threshold: 20 }
+    ];
+    resMap.forEach(item => {
+      const diff = currentSnap[item.key] - (prevStatsCache[item.key] || 0);
+      if (diff > 0) {
+        hasGrown = true;
+        triggerStatEffect(item.el, diff, diff >= item.threshold, false);
+      }
+    });
+
+    if (hasGrown && typeof sound !== 'undefined' && sound && sound.statGain) {
+      sound.statGain();
+    }
+  }
+
+  prevStatsCache = currentSnap;
+  prevGenCache = i.gen;
 }
 
 /* ---------- tab 切换 ---------- */
@@ -708,6 +794,10 @@ function renderBrain() {
 
   wrap.appendChild(hud);
 
+  if (b.keyPending) {
+    wrap.appendChild(h('div', 'brain-key-alert', '🗝️ 发现了通往下一层的钥匙！请点击高亮的钥匙开启下潜通道~'));
+  }
+
   const grid = h('div', brainShaking ? 'brain-shake' : '');
   grid.id = 'brain-grid';
   if (brainShaking) {
@@ -720,43 +810,75 @@ function renderBrain() {
   }
   CP.brain.grid().forEach((c, i) => {
     let extraCls = '';
-    if (i === lastExplodedIdx) extraCls = ' bomb-burst';
-    else if (lastChainIndices.indexOf(i) >= 0) extraCls = ' chain-burst';
-    else if (!c.open && b.act < 2) extraCls = ' cell-exhausted';
+    if (b.keyPending) {
+      if (i === b.keyIdx || (c.open && c.t === 'key')) {
+        extraCls = ' key-pending';
+      } else {
+        extraCls = ' cell-blocked-by-key';
+      }
+    } else {
+      if (i === lastExplodedIdx) extraCls = ' bomb-burst';
+      else if (lastChainIndices.indexOf(i) >= 0) extraCls = ' chain-burst';
+      else if (!c.open && b.act < 2) extraCls = ' cell-exhausted';
+    }
 
     const cell = h('div', 'cell' + (c.open ? ' open' : '') + extraCls);
     cell.textContent = c.open ? ({ bulb: '💡', attr: '🔮', bolt: '⚡', bomb: '💥', skull: '💀', gold: '💰', key: '🗝️', duck: '🦆' })[c.t] : '?';
-    cell.onclick = () => {
-      if (!c.open && b.act < 2) {
-        sound.click();
-        cell.classList.remove('shake-exhausted');
-        void cell.offsetWidth;
-        cell.classList.add('shake-exhausted');
-        toast('⚡ 行动力不足 (需2⚡)！可在日程中安排娱乐/小憩，或在小卖部购买能量饮料补充体力~');
-        return;
+    
+    if (b.keyPending) {
+      if (i === b.keyIdx || (c.open && c.t === 'key')) {
+        cell.onclick = () => {
+          sound.keyUnlock();
+          const r = CP.brain.rev(i);
+          if (r != null) {
+            toast(r);
+            render();
+          }
+        };
+      } else {
+        cell.onclick = () => {
+          sound.click();
+          toast('🗝️ 已探明通向下层的钥匙！请点击高亮的钥匙开启下潜通道~');
+        };
       }
-      const wasBomb = !c.open && c.t === 'bomb';
-      const r = CP.brain.rev(i);
-      if (r != null) {
-        sound.brain();
-        toast(r);
-        if (wasBomb || (typeof r === 'string' && (r.indexOf('💥') >= 0 || r.indexOf('炸弹') >= 0))) {
-          if (sound.win) sound.win();
-          brainShaking = true;
-          lastExplodedIdx = i;
-          const r0 = Math.floor(i / 6), c0 = i % 6;
-          lastChainIndices = [];
-          for (let j = 0; j < 36; j++) {
-            if (j === i) continue;
-            const rj = Math.floor(j / 6), cj = j % 6;
-            if (Math.abs(rj - r0) <= 1 && Math.abs(cj - c0) <= 1) {
-              lastChainIndices.push(j);
+    } else {
+      cell.onclick = () => {
+        if (!c.open && b.act < 2) {
+          sound.click();
+          cell.classList.remove('shake-exhausted');
+          void cell.offsetWidth;
+          cell.classList.add('shake-exhausted');
+          toast('⚡ 行动力不足 (需2⚡)！可在日程中安排娱乐/小憩，或在小卖部购买能量饮料补充体力~');
+          return;
+        }
+        const wasBomb = !c.open && c.t === 'bomb';
+        const wasKey = !c.open && c.t === 'key';
+        const r = CP.brain.rev(i);
+        if (r != null) {
+          if (wasKey || (typeof r === 'string' && r.indexOf('钥匙') >= 0)) {
+            sound.win();
+          } else {
+            sound.brain();
+          }
+          toast(r);
+          if (wasBomb || (typeof r === 'string' && (r.indexOf('💥') >= 0 || r.indexOf('炸弹') >= 0))) {
+            if (sound.win) sound.win();
+            brainShaking = true;
+            lastExplodedIdx = i;
+            const r0 = Math.floor(i / 6), c0 = i % 6;
+            lastChainIndices = [];
+            for (let j = 0; j < 36; j++) {
+              if (j === i) continue;
+              const rj = Math.floor(j / 6), cj = j % 6;
+              if (Math.abs(rj - r0) <= 1 && Math.abs(cj - c0) <= 1) {
+                lastChainIndices.push(j);
+              }
             }
           }
         }
-      }
-      render();
-    };
+        render();
+      };
+    }
     grid.appendChild(cell);
   });
   wrap.appendChild(grid);

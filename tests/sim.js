@@ -90,7 +90,11 @@ for (let gen = 1; gen <= MAX_GENS; gen++) {
     const digTimes = ri(7) + 6;
     let digOpened = 0;
     for (let k = 0; k < digTimes; k++) {
-      if (CP.brain.rev(ri(36))) digOpened++;
+      if (CP.brain.info().keyPending) {
+        if (CP.brain.useKey()) digOpened++;
+      } else {
+        if (CP.brain.rev(ri(36))) digOpened++;
+      }
     }
 
     // 3) 尝试研习新技能 (消耗当回合挖出的悟性研习新课)

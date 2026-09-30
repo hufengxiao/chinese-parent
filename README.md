@@ -10,10 +10,10 @@
 
 <p align="center">
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/Live_Demo-chinese--parent.pages.dev-d33824?style=flat-square&logo=cloudflare" alt="Live Demo" /></a>
-  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v2.3.0-orange?style=flat-square" alt="Version" /></a>
+  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v2.4.0-orange?style=flat-square" alt="Version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /></a>
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/PWA-Supported-green?style=flat-square&logo=pwa" alt="PWA Ready" /></a>
-  <a href="./tests/"><img src="https://img.shields.io/badge/Tests-26%2F26%20Passed-brightgreen?style=flat-square" alt="Automated Tests" /></a>
+  <a href="./tests/"><img src="https://img.shields.io/badge/Tests-27%2F27%20Passed-brightgreen?style=flat-square" alt="Automated Tests" /></a>
 </p>
 
 ---
@@ -46,9 +46,10 @@
 - **6×6 灵感迷雾矩阵**：每回合重置 36 节点迷雾神经网；
 - **多元奇遇节点**：💡 悟性灯泡、🎨 单属性球、⚡ 行动力闪电、💀 脑内风暴（全五维提升）、💰 零花钱罐、🦆 呆萌鸭子；
 - **💥 九宫格连锁爆破与震屏**：挖出炸弹触发真实贝塞尔曲线物理震颤动效，瞬间连环翻开周边 8 格；
-- **🗝️ 钥匙下探跃迁**：寻找深层钥匙通向下层，单次最多下探 4 层，每层提供 $+50$ 点大额行动力补给与更丰厚的层级收益加成。
+- **🗝️ 钥匙现世聚焦与两段式下潜 (v2.4)**：挖出钥匙（直挖或炸弹波及）后盘面绝不立即跳变！钥匙格子保留显示并进入金色呼吸脉冲锁定状态，点击高亮钥匙才正式开启通道下潜（单次回顾 $+50$ 点大额体力补给与更丰硕收益加成），拒绝误触与跳闪！
 
-### 2. 📅 日程六槽位与知识树 (Schedule & Courses)
+### 2. 📅 顶部属性动态浮标与日程知识树 (Attributes & Schedule)
+- **✨ 顶部属性与资源增长动态浮标 (v2.4)**：引入属性变动 Diff 引擎，六维属性与四大核心资源增长时，卡片上方冒出翠绿/金色 `+N` 渐隐浮动徽章并伴随温和呼吸脉冲光效（`scale(1.08)`），成长一目了然！
 - **50+ 门全阶段课程**：涵盖语数英、物化生、政史地、音美体与编程奥数；
 - **德智体美劳五维属性**：智商（`iq`）、情商（`eq`）、记忆（`mem`）、想象（`img`）、体魄（`phy`）、魅力（`cha`）；
 - **动态心理生命线**：
@@ -224,12 +225,12 @@ python -m http.server 8080
 项目构建了严密的无头（Headless）自动化测试体系，覆盖核心数值闭环、参数越界防御、多代连续遗传仿真与 UI 边界断言：
 
 ```bash
-# 运行全量 4 大测试套件 (26 项全景测试 + 5代仿真 + 78组事件 + 算法优化)
+# 运行全量 4 大测试套件 (27 项全景测试 + 5代仿真 + 78组事件 + 算法优化)
 npm test
 ```
 
 ### 独立测试命令：
-- **`npm run test:gameplay`**：运行 [`tests/test_new_gameplay.js`](./tests/test_new_gameplay.js)，验证包含红包推拉、面子对决、特长选秀、班干部竞选、浪漫求婚、职场答辩、脑洞连环爆炸、老存档自愈、参数容错、**20 代全随机混沌策略生命周期压力测试**、新版本公告自愈弹窗、双层顶栏防遮挡、多存档槽位管理、一键延续日程、脑洞HUD看板、原生WebAudio五声BGM、同学双向羁绊与约会、百年家族树状族谱画卷、大学深造进阶、时代浪潮大抉择、**全系统逻辑漏洞扫描与边缘防御**等全部 **26 项核心机制**；
+- **`npm run test:gameplay`**：运行 [`tests/test_new_gameplay.js`](./tests/test_new_gameplay.js)，验证包含红包推拉、面子对决、特长选秀、班干部竞选、浪漫求婚、职场答辩、脑洞连环爆炸、老存档自愈、参数容错、**20 代全随机混沌策略生命周期压力测试**、新版本公告自愈弹窗、双层顶栏防遮挡、多存档槽位管理、一键延续日程、脑洞HUD看板、原生WebAudio五声BGM、同学双向羁绊与约会、百年家族树状族谱画卷、大学深造进阶、时代浪潮大抉择、全系统逻辑漏洞扫描与边缘防御、**属性增长 Diff 动效引擎与钥匙二段下潜完备性**等全部 **27 项核心机制**；
 - **`npm run test:sim`**：运行 [`tests/sim.js`](./tests/sim.js)，AI 玩家策略连续仿真打通 **5 代人生**（历经 35 次成长蜕变），验证代际遗传与考分标化区间；
 - **`npm run test:events`**：运行 [`tests/test_events.js`](./tests/test_events.js)，全量模拟触发 **78 组专属事件**每一个分支选项与数值容错；
 - **`npm run test:opts`**：运行 [`tests/test_optimizations.js`](./tests/test_optimizations.js)，验证日程自动排满多样性与 Toast 队列消费机制。
