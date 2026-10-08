@@ -3011,32 +3011,151 @@ button:active { transform: scale(0.96); }
   100% { transform: rotate(360deg) scale(1); }
 }
 
-/* 亲戚与老妈对峙台词气泡 */
+/* ---------- 💥 漫画式交锋喊话气泡与出招特写 3.0 ---------- */
 .fd-bubbles-wrap {
-  margin-top: 4px;
+  margin-top: 2px;
+  margin-bottom: 6px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 7px;
   position: relative;
   z-index: 10;
 }
 .fd-bubble {
-  border-radius: 9px;
-  padding: 6px 10px;
-  font-size: 11px;
-  line-height: 1.4;
+  border-radius: 12px;
+  padding: 8px 12px;
   text-align: left;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  transition: all 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  position: relative;
 }
 .fd-bubble.opp {
-  background: #ffebee;
-  border: 1px solid #ffcdd2;
-  color: #c62828;
+  background: #fff8f8;
+  border: 2px solid #ef9a9a;
+  border-left: 5px solid #d32f2f;
 }
 .fd-bubble.mom {
+  background: #f4fbf5;
+  border: 2px solid #a5d6a7;
+  border-left: 5px solid #2e7d32;
+}
+
+/* 气泡头部标题栏 */
+.fd-bubble-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.fd-speaker-tag {
+  font-size: 11px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.5px;
+}
+.fd-speaker-tag.mom {
+  color: #1b5e20;
+}
+.fd-speaker-tag.opp {
+  color: #b71c1c;
+}
+.fd-move-tag {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--ink-secondary);
+}
+
+/* 双方进攻台词醒目化 (14px 粗体大字) */
+.fd-bubble-quote {
+  font-size: 13.5px;
+  font-weight: 800;
+  line-height: 1.45;
+  letter-spacing: 0.2px;
+}
+.fd-bubble.mom .fd-bubble-quote {
+  color: #1b5e20;
+}
+.fd-bubble.opp .fd-bubble-quote {
+  color: #b71c1c;
+}
+
+/* 进攻出招高亮爆发与暗淡动画 */
+.fd-bubble.shouting {
+  transform: scale(1.025);
+  z-index: 15;
+}
+.fd-bubble.mom.shouting {
   background: #e8f5e9;
-  border: 1px solid #c8e6c9;
-  color: #2e7d32;
+  border-color: #2e7d32;
+  box-shadow: 0 0 18px rgba(46, 125, 50, 0.45), 0 4px 10px rgba(0,0,0,0.12);
+}
+.fd-bubble.opp.shouting {
+  background: #ffebee;
+  border-color: #c62828;
+  box-shadow: 0 0 18px rgba(198, 40, 40, 0.45), 0 4px 10px rgba(0,0,0,0.12);
+}
+.fd-bubble.dimmed {
+  opacity: 0.52;
+  filter: grayscale(0.2);
+  transform: scale(0.98);
+}
+
+/* 居中大字幕横幅特写 (Comic Shout Cut-in Banner) */
+.fd-cutin-banner {
+  position: absolute;
+  top: 36%;
+  left: 6%;
+  right: 6%;
+  z-index: 45;
+  pointer-events: none;
+  background: rgba(18, 18, 18, 0.94);
+  backdrop-filter: blur(4px);
+  border-radius: 12px;
+  padding: 9px 14px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  animation: fdCutinPop 0.55s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+.fd-cutin-banner.mine {
+  border: 2px solid #4caf50;
+  box-shadow: 0 0 18px rgba(76, 175, 80, 0.5), 0 8px 24px rgba(0,0,0,0.6);
+}
+.fd-cutin-banner.mine.crit {
+  border: 2px solid #ffd700;
+  box-shadow: 0 0 22px rgba(255, 215, 0, 0.7), 0 8px 24px rgba(0,0,0,0.7);
+}
+.fd-cutin-banner.opp {
+  border: 2px solid #ff5252;
+  box-shadow: 0 0 18px rgba(255, 82, 82, 0.5), 0 8px 24px rgba(0,0,0,0.6);
+}
+.fd-cutin-header {
+  font-size: 11px;
+  font-weight: 900;
+  color: #ffd54f;
+  letter-spacing: 1px;
+  margin-bottom: 3px;
+}
+.fd-cutin-banner.opp .fd-cutin-header {
+  color: #ff8a80;
+}
+.fd-cutin-body {
+  font-size: 14px;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1.4;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+}
+@keyframes fdCutinPop {
+  0% { transform: scale(0.65); opacity: 0; }
+  30% { transform: scale(1.05); opacity: 1; }
+  85% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0; }
 }
 
 /* 特长羁绊状态条 */

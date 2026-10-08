@@ -2156,16 +2156,32 @@ function renderFaceDuelModal(p, m) {
   stageFighters.appendChild(rightSpriteWrap);
   stageView.appendChild(stageFighters);
 
-  // 现场交锋对白气泡
+  // 现场交锋对白气泡层 (双向醒目气泡)
   const bubblesWrap = h('div', 'fd-bubbles-wrap');
   bubblesWrap.id = 'fd-bubbles-wrap';
-  const oppBubble = h('div', 'fd-bubble opp', '💬 <b>' + duel.opp.name + '</b>：“' + (duel.oppCurrentLine || '我家孩子很优秀！') + '”');
+
+  const momInitMove = (duel.lastAction && duel.lastAction.cardName) ? ('【' + duel.lastAction.cardName + '】') : '【从容应对】';
+  const momBubble = h('div', 'fd-bubble mom');
+  momBubble.id = 'fd-mom-bubble';
+  momBubble.innerHTML =
+    '<div class="fd-bubble-header">' +
+      '<span class="fd-speaker-tag mom">👩‍👦 老妈迎击</span>' +
+      '<span class="fd-move-tag" id="fd-mom-move-tag">' + momInitMove + '</span>' +
+    '</div>' +
+    '<div class="fd-bubble-quote" id="fd-mom-bubble-text">“' + (duel.momCurrentLine || '哪里哪里，小孩子平时就随便玩玩～') + '”</div>';
+  bubblesWrap.appendChild(momBubble);
+
+  const oppInitMove = '【' + (duel.opp.style || '凡尔赛挑衅') + '】';
+  const oppBubble = h('div', 'fd-bubble opp');
   oppBubble.id = 'fd-opp-bubble';
+  oppBubble.innerHTML =
+    '<div class="fd-bubble-header">' +
+      '<span class="fd-speaker-tag opp">💬 ' + duel.opp.name + '</span>' +
+      '<span class="fd-move-tag" id="fd-opp-move-tag">' + oppInitMove + '</span>' +
+    '</div>' +
+    '<div class="fd-bubble-quote" id="fd-opp-bubble-text">“' + (duel.oppCurrentLine || '我家孩子很优秀！') + '”</div>';
   bubblesWrap.appendChild(oppBubble);
 
-  const momBubble = h('div', 'fd-bubble mom', '🛡️ <b>老妈回敬</b>：' + (duel.momCurrentLine || '“哪里哪里，小孩子平时就随便玩玩～”'));
-  momBubble.id = 'fd-mom-bubble';
-  bubblesWrap.appendChild(momBubble);
   stageView.appendChild(bubblesWrap);
 
   body.appendChild(stageView);
@@ -2259,6 +2275,16 @@ function renderFaceDuelModal(p, m) {
     if (phasePill) phasePill.textContent = '我方出招！';
     if (leftSpr) leftSpr.classList.add('fd-lunge-forward');
 
+    // 激活我方喊话高亮爆发，暗淡对手气泡
+    if (mBubble) {
+      mBubble.classList.remove('dimmed');
+      mBubble.classList.add('shouting');
+    }
+    if (oBubble) {
+      oBubble.classList.remove('shouting');
+      oBubble.classList.add('dimmed');
+    }
+
     if (action.isMomUlt) {
       sound.faceUlt();
       if (arenaBody) arenaBody.classList.add('shake-crit');
@@ -2299,10 +2325,32 @@ function renderFaceDuelModal(p, m) {
       if (oppTiltFill) oppTiltFill.style.width = newTiltVal + '%';
       if (oppTiltText) oppTiltText.textContent = newTiltVal + '%';
 
-      // 更新台词气泡与战报
-      if (mBubble && duelAfter.momCurrentLine) {
-        mBubble.innerHTML = '🛡️ <b>老妈回敬</b>：' + duelAfter.momCurrentLine;
+      // 更新我方台词气泡、招式标签与战报
+      const momMoveTag = $('#fd-mom-move-tag');
+      const momQuoteText = $('#fd-mom-bubble-text');
+      let moveLabel = '【' + (action.cardName || '独门特长') + '】';
+      if (action.isMomUlt) moveLabel = '🔥【全家杀手锏·市级表彰】';
+      else if (action.isCrit) moveLabel = '💥【' + action.cardName + '·精彩暴击】';
+      else if (action.isPierce) moveLabel = '👑【' + action.cardName + '·降维打击】';
+      else if (action.isWeaken) moveLabel = '🌪️【' + action.cardName + '·气焰压制】';
+      else if (action.cardType === 'tactic' && action.cardName && action.cardName.includes('防反')) moveLabel = '🛡️【见招拆招·谦虚防反】';
+      else if (action.cardType === 'tactic' && action.cardName && action.cardName.includes('凡尔赛')) moveLabel = '😏【凡尔赛冷嘲·真伤穿透】';
+
+      if (momMoveTag) momMoveTag.textContent = moveLabel;
+      if (momQuoteText && duelAfter.momCurrentLine) {
+        momQuoteText.textContent = '“' + duelAfter.momCurrentLine + '”';
       }
+
+      // 居中大字幕横幅特写 (Dramatic Comic Shout Cut-in Banner)
+      if (stage) {
+        const cutinBanner = h('div', 'fd-cutin-banner mine' + (action.isCrit ? ' crit' : ''));
+        cutinBanner.innerHTML =
+          '<div class="fd-cutin-header">' + (action.isMomUlt ? '🔥 老妈拍案而起！' : ('🎴 ' + (action.cardName || '特长出鞘'))) + '</div>' +
+          '<div class="fd-cutin-body">“' + (duelAfter.momCurrentLine || '哪里哪里随便学学～') + '”</div>';
+        stage.appendChild(cutinBanner);
+        setTimeout(() => { if (cutinBanner.parentNode) cutinBanner.remove(); }, 620);
+      }
+
       if (cLogBox) {
         cLogBox.innerHTML = duelAfter.logs.slice(-4).map(l => '<div>' + l + '</div>').join('');
         cLogBox.scrollTop = cLogBox.scrollHeight;
@@ -2348,6 +2396,26 @@ function renderFaceDuelModal(p, m) {
       if (rightSpr) rightSpr.classList.add('fd-lunge-opp');
       sound.faceHit();
 
+      // 激活亲戚喊话高亮爆发，暗淡我方气泡
+      if (oBubble) {
+        oBubble.classList.remove('dimmed');
+        oBubble.classList.add('shouting');
+      }
+      if (mBubble) {
+        mBubble.classList.remove('shouting');
+        mBubble.classList.add('dimmed');
+      }
+
+      // 亲戚居中大字幕横幅特写 (Opponent Comic Shout Cut-in Banner)
+      if (stage) {
+        const oppCutin = h('div', 'fd-cutin-banner opp');
+        oppCutin.innerHTML =
+          '<div class="fd-cutin-header">💬 ' + duelAfter.opp.name + ' · 炫耀暴击！</div>' +
+          '<div class="fd-cutin-body">“' + (duelAfter.oppCurrentLine || '我家孩子很优秀！') + '”</div>';
+        stage.appendChild(oppCutin);
+        setTimeout(() => { if (oppCutin.parentNode) oppCutin.remove(); }, 620);
+      }
+
       setTimeout(() => {
         if (rightSpr) rightSpr.classList.remove('fd-lunge-opp');
         if (leftSpr) leftSpr.classList.add('fd-take-hit');
@@ -2372,10 +2440,14 @@ function renderFaceDuelModal(p, m) {
         }
         if (momRageText) momRageText.textContent = newRageVal + '%';
 
-        // 更新亲戚台词气泡
-        if (oBubble && duelAfter.oppCurrentLine) {
-          oBubble.innerHTML = '💬 <b>' + duelAfter.opp.name + '</b>：“' + duelAfter.oppCurrentLine + '”';
+        // 更新亲戚台词气泡与招式标签
+        const oppMoveTag = $('#fd-opp-move-tag');
+        const oppQuoteText = $('#fd-opp-bubble-text');
+        if (oppMoveTag) oppMoveTag.textContent = '💢【亲戚回击·凡尔赛炫耀】';
+        if (oppQuoteText && duelAfter.oppCurrentLine) {
+          oppQuoteText.textContent = '“' + duelAfter.oppCurrentLine + '”';
         }
+
         if (cLogBox) {
           cLogBox.innerHTML = duelAfter.logs.slice(-4).map(l => '<div>' + l + '</div>').join('');
           cLogBox.scrollTop = cLogBox.scrollHeight;
