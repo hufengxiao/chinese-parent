@@ -1,7 +1,7 @@
 /* ============================================================
  * 中国式家长 H5 — Service Worker (PWA Offline Cache)
  * ============================================================ */
-const CACHE_NAME = 'chinese-parent-v2.9.0';
+const CACHE_NAME = 'chinese-parent-v3.0.0';
 const PRECACHE_ASSETS = [
   './',
   './index.html',

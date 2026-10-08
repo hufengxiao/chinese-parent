@@ -2700,211 +2700,519 @@ function renderGaokaoApplyModal(p, m) {
 
 /* ---------- 🌟 特长才艺选秀大会舞台 ---------- */
 /* ---------- 🌟 特长才艺选秀大会舞台 2.0 (Showtime & 评委偏好) ---------- */
+/* ---------- 🌟 特长才艺选秀大会舞台 3.0 (The Talent Grand Show 3.0) ---------- */
 function renderTalentShowModal(p, m) {
   m = m || $('#modal');
   if (!m) return;
   m.classList.add('show');
   m.innerHTML = '';
-  const body = h('div', 'm-body ts-modal');
 
-  // 1) 舞台横幅与奖励提示
-  const head = h('div', 'ts-header');
-  const rewardInsight = (p.tier >= 3 ? 500 : 200);
-  const rewardFace = (p.tier >= 3 ? 150 : 60);
-  head.innerHTML =
-    '<div class="ts-badge">🎪 全国少儿才艺大奖赛 · 舞台争霸</div>' +
-    '<div class="ts-title">' + (p.title || '特长才艺选秀大会') + '</div>' +
-    '<div class="ts-reward-tag">🏆 夺冠重奖：+' + rewardInsight + ' 悟性 · +' + rewardFace + ' 面子 (大满贯额外+25%)</div>';
-  body.appendChild(head);
-
-  // 2) 登台对手卡片
-  const rival = p.rival || { name: '隔壁小明', talent: { n: '儿歌串烧', icon: '🎶', r: 1, atk: 7 } };
-  const rivalBox = h('div', 'ts-rival-card');
-  rivalBox.innerHTML =
-    '<div class="ts-rival-tag">🔥 登场对手</div>' +
-    '<div class="ts-rival-info">' +
-      '<div class="ts-rival-name">' + rival.name + '</div>' +
-      '<div class="ts-rival-talent">' + (rival.talent ? rival.talent.icon : '🎵') + ' 演出【' + (rival.talent ? rival.talent.n : '合唱') + '】</div>' +
-      '<div class="ts-rival-rank">' + '★'.repeat((rival.talent && rival.talent.r) || 1) + ' Rank ' + ((rival.talent && rival.talent.r) || 1) + ' (战力 ' + ((rival.talent && rival.talent.atk) || Math.pow(7, (rival.talent && rival.talent.r) || 1)) + ')</div>' +
-    '</div>';
-  body.appendChild(rivalBox);
-
-  // 3) 三位评委席与偏好公示
+  const tier = p.tier || 1;
+  const rival = p.rival || {
+    name: '中班圆圆',
+    quote: '“阿姨说唱得好就给我吃大白兔奶糖~”',
+    talent: { n: '儿歌串烧', icon: '🎶', r: 1, atk: 7, cat: 'art' }
+  };
   const judges = p.judges || [
-    { name: '张教授', icon: '🧐', title: '资深老学究', style: '偏定理/文学·重Rank', motto: '“基本功是骗不了人的！”' },
-    { name: '麦克老师', icon: '🕶️', title: '前卫潮人导师', style: '偏艺术/舞台·重Showtime', motto: '“Show me the passion!”' },
-    { name: '李主任', icon: '👩‍🏫', title: '少年宫主任', style: '偏生活体魄·亲和包容', motto: '“每个登台的孩子都是最棒的！”' },
+    { id: 'zhang', name: '张教授', icon: '🧐', title: '资深老学究', style: '偏定理/文学·重Rank', motto: '“基本功是骗不了人的！”' },
+    { id: 'mike', name: '麦克老师', icon: '🕶️', title: '前卫潮人导师', style: '偏艺术/舞台·重Showtime', motto: '“Show me the passion, baby!”' },
+    { id: 'li', name: '李主任', icon: '👩‍🏫', title: '少年宫主任', style: '偏生活体魄·亲和包容', motto: '“每个登台的孩子都是最棒的！”' },
   ];
-  const judgeRow = h('div', 'ts-judges-row');
-  judges.forEach(j => {
-    const jc = h('div', 'ts-judge-card');
-    jc.innerHTML =
-      '<div class="ts-judge-ico">' + j.icon + '</div>' +
-      '<div class="ts-judge-name">' + j.name + '</div>' +
-      '<div class="ts-judge-style">' + j.style + '</div>' +
-      '<div class="ts-judge-status">⚪ 待登台评分</div>';
-    judgeRow.appendChild(jc);
-  });
-  body.appendChild(judgeRow);
 
-  // 4) 玩家特长卡组检录
   const myTalents = CP.talentsList ? CP.talentsList() : [];
   const displayTalents = myTalents.length > 0 ? myTalents : [
     { id: 'voice_loud', n: '大嗓门', icon: '📢', r: 1, atk: 7, cat: 'art', src: '天生大嗓门' }
   ];
 
-  let selectedTalent = displayTalents[0];
-
-  const deckBox = h('div', 'ts-deck-section');
-  deckBox.innerHTML = '<div class="ts-deck-title">🎒 请检录并挑选你的登台特长：</div>';
-  const grid = h('div', 'ts-deck-grid');
-
-  const updateSelectionUI = () => {
-    grid.querySelectorAll('.ts-talent-card').forEach((el, idx) => {
-      if (displayTalents[idx] && displayTalents[idx].id === selectedTalent.id) el.classList.add('selected');
-      else el.classList.remove('selected');
-    });
-    btn.innerHTML = '🌟 携【' + selectedTalent.n + '】登台开启 Showtime 即兴演出！';
+  let stage = {
+    step: 'rival', // 'rival' -> 'select' -> 'perform' -> 'reveal' -> 'encore' -> 'award'
+    chosenTalent: displayTalents[0],
+    styleChoice: 'steady',
+    showtimeGrade: 'normal',
+    encoreChoice: null,
+    secondTalent: displayTalents[1] || displayTalents[0],
+    hype: 35,
+    result: null,
+    lightsRevealed: [false, false, false],
+    activeKeyHandler: null,
+    cleanupTimers: []
   };
 
-  displayTalents.forEach(t => {
-    const card = h('div', 'ts-talent-card' + (t.id === selectedTalent.id ? ' selected' : ''));
-    const rankStars = '★'.repeat(t.r || 1);
-    const atkVal = t.atk || Math.pow(7, t.r || 1);
-    const catLabel = (t.cat === 'stem' ? '⚡理科' : (t.cat === 'art' ? '📜文雅' : (t.cat === 'witty' ? '💡机灵' : '🏃健体')));
-    card.innerHTML =
-      '<div class="ts-card-top">' +
-        '<span class="ts-card-ico">' + t.icon + '</span>' +
-        '<span class="ts-card-rank r' + (t.r || 1) + '">' + rankStars + ' R' + (t.r || 1) + ' · ' + catLabel + '</span>' +
+  const clearTimers = () => {
+    stage.cleanupTimers.forEach(t => { clearInterval(t); clearTimeout(t); });
+    stage.cleanupTimers = [];
+    if (stage.activeKeyHandler) {
+      window.removeEventListener('keydown', stage.activeKeyHandler);
+      stage.activeKeyHandler = null;
+    }
+  };
+
+  registerModalCleanup(clearTimers);
+
+  const renderStage = () => {
+    clearTimers();
+    m.innerHTML = '';
+    const body = h('div', 'm-body ts-modal ts-theater-stage' + (stage.step === 'encore' ? ' encore-crisis' : ''));
+
+    // 1) 舞台常驻顶栏与观众席热度计
+    const head = h('div', 'ts-header');
+    const rewardInsight = (tier >= 3 ? 500 : 200);
+    const rewardFace = (tier >= 3 ? 150 : 60);
+    head.innerHTML =
+      '<div class="ts-badge">🎪 全国少儿才艺大奖赛 · 演播大厅 3.0</div>' +
+      '<div class="ts-title">' + (p.title || '特长才艺选秀大会') + '</div>' +
+      '<div class="ts-hype-wrap">' +
+        '<div class="ts-hype-label">🔥 全场观众席掌声热度: <b>' + stage.hype + '%</b></div>' +
+        '<div class="ts-hype-track"><div class="ts-hype-fill" style="width:' + stage.hype + '%"></div></div>' +
       '</div>' +
-      '<div class="ts-card-name">' + t.n + '</div>' +
-      '<div class="ts-card-atk">战力: ' + atkVal + '</div>' +
-      '<div class="ts-card-src">' + (t.src || '悟性研习') + '</div>';
-    card.onclick = () => {
-      sound.click();
-      selectedTalent = t;
-      updateSelectionUI();
-    };
-    grid.appendChild(card);
-  });
-  deckBox.appendChild(grid);
-  body.appendChild(deckBox);
-
-  // 5) 登台开启 Showtime 按钮
-  const btn = h('button', 'ts-perform-btn');
-  btn.innerHTML = '🌟 携【' + selectedTalent.n + '】登台开启 Showtime 即兴演出！';
-
-  // 启动 Showtime 舞台微操
-  btn.onclick = () => {
-    sound.win();
-    body.innerHTML = '';
-    
-    // 渲染 Showtime 节拍互动
-    const stWrap = h('div', 'ts-showtime-stage');
-    stWrap.innerHTML =
-      '<div class="ts-showtime-title">✨ Showtime 现场绝活点题微操！</div>' +
-      '<div class="ts-showtime-sub">正在表演【' + selectedTalent.n + '】！把握聚光灯节拍，在黄金区域释放绝活！</div>' +
-      '<div class="ts-beat-track">' +
-        '<div class="ts-beat-zone" style="left:65%; width:25%;"></div>' +
-        '<div class="ts-beat-pointer" id="tsBeatPointer" style="left:10%;"></div>' +
+      '<div class="ts-danmaku-lane">' +
+        '<span class="dm-chip">“前排小板凳坐好！”</span>' +
+        '<span class="dm-chip">“来看神仙打架！”</span>' +
+        '<span class="dm-chip">“看评委怎么打分！”</span>' +
       '</div>';
-    body.appendChild(stWrap);
+    body.appendChild(head);
 
-    const beatBtn = h('button', 'ts-beat-btn pulse', '🔥 把握节拍·秀出绝活！(支持空格/回车)');
-    body.appendChild(beatBtn);
+    // 2) 分步舞台渲染
+    if (stage.step === 'rival') {
+      // 阶段 1: 对手惊艳登台先行秀
+      const rivalSec = h('div', 'ts-rival-showcase');
+      rivalSec.innerHTML =
+        '<div class="ts-section-title">🔥 对手神童登台亮相</div>' +
+        '<div class="ts-rival-spotlight">' +
+          '<div class="ts-rival-avatar">🧒</div>' +
+          '<div class="ts-rival-speech-bubble"><b>' + rival.name + '</b>: “' + (rival.quote || '台下的掌声是我的！') + '”</div>' +
+        '</div>' +
+        '<div class="ts-rival-talent-card">' +
+          '<span class="ts-card-ico">' + ((rival.talent && rival.talent.icon) || '🎶') + '</span>' +
+          '<div class="ts-rival-t-detail">' +
+            '<div class="ts-rival-t-name">演出【' + ((rival.talent && rival.talent.n) || '儿歌串烧') + '】</div>' +
+            '<div class="ts-rival-t-meta">品阶 ★' + ((rival.talent && rival.talent.r) || 1) + ' · 战力 ' + ((rival.talent && rival.talent.atk) || 7) + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="ts-judges-preview-tip">🧐 3 位评委正在专注端详对手表现，台下掌声雷动！</div>';
+      body.appendChild(rivalSec);
 
-    let curPos = 10;
-    let dir = 1;
-    let finished = false;
-    let timer = null;
-    let keyHandler = null;
-
-    const pointerEl = $('#tsBeatPointer');
-
-    timer = setInterval(() => {
-      curPos += dir * 3.5;
-      if (curPos >= 92) { curPos = 92; dir = -1; }
-      else if (curPos <= 8) { curPos = 8; dir = 1; }
-      if (pointerEl) pointerEl.style.left = curPos + '%';
-    }, 33);
-
-    // 3.5秒超时自动判定
-    const timeoutTimer = setTimeout(() => {
-      triggerBeat('timeout');
-    }, 3500);
-
-    const triggerBeat = (mode) => {
-      if (finished) return;
-      finished = true;
-      clearInterval(timer);
-      clearTimeout(timeoutTimer);
-      if (keyHandler) window.removeEventListener('keydown', keyHandler);
-
-      let grade = 'normal';
-      if (mode !== 'timeout') {
-        if (curPos >= 65 && curPos <= 90) {
-          grade = 'perfect';
-          sound.win();
-          toast('🌟 PERFECT！卡点绝活引爆全场！评分+25%！');
-        } else {
-          grade = 'good';
-          sound.pop();
-          toast('✨ GOOD！发挥稳健，掌声雷动！评分+12%！');
+      const nextBtn = h('button', 'ts-perform-btn', '🎤 我方登台备战 · 挑选特长与演出风格 ➔ (按回车/空格)');
+      const goSelect = () => {
+        sound.click();
+        stage.hype = Math.min(100, stage.hype + 15);
+        stage.step = 'select';
+        renderStage();
+      };
+      nextBtn.onclick = goSelect;
+      stage.activeKeyHandler = (e) => {
+        if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
+          e.preventDefault();
+          goSelect();
         }
+      };
+      window.addEventListener('keydown', stage.activeKeyHandler);
+      body.appendChild(nextBtn);
+
+    } else if (stage.step === 'select') {
+      // 阶段 2: 我方选卡与三大表演风格抉择
+      const prepSec = h('div', 'ts-prep-section');
+      
+      // 特长检录卡牌池
+      prepSec.innerHTML = '<div class="ts-section-title">🎒 第一步：检录出战特长</div>';
+      const grid = h('div', 'ts-deck-grid');
+      displayTalents.forEach(t => {
+        const card = h('div', 'ts-talent-card' + (t.id === stage.chosenTalent.id ? ' selected' : ''));
+        const rankStars = '★'.repeat(t.r || 1);
+        const atkVal = t.atk || Math.pow(7, t.r || 1);
+        const catLabel = (t.cat === 'stem' ? '⚡理科' : (t.cat === 'art' ? '📜文雅' : (t.cat === 'witty' ? '💡机灵' : '🏃健体')));
+        card.innerHTML =
+          '<div class="ts-card-top">' +
+            '<span class="ts-card-ico">' + t.icon + '</span>' +
+            '<span class="ts-card-rank r' + (t.r || 1) + '">' + rankStars + ' R' + (t.r || 1) + ' · ' + catLabel + '</span>' +
+          '</div>' +
+          '<div class="ts-card-name">' + t.n + '</div>' +
+          '<div class="ts-card-atk">战力: ' + atkVal + '</div>';
+        card.onclick = () => {
+          sound.click();
+          stage.chosenTalent = t;
+          renderStage();
+        };
+        grid.appendChild(card);
+      });
+      prepSec.appendChild(grid);
+
+      // 三大表演风格单选卡片
+      const styleBox = h('div', 'ts-style-selector');
+      styleBox.innerHTML = '<div class="ts-section-title" style="margin-top:10px;">🎭 第二步：选择登台演出的核心风格</div>';
+      const styles = [
+        { id: 'steady', icon: '🎓', name: '深厚功底 · 专业压轴', desc: '扎实展现特长本源与严谨逻辑', bias: '张教授偏好 (+20% 亮灯率)' },
+        { id: 'showtime', icon: '🔥', name: '即兴炸场 · Showtime爆点', desc: '把握聚光灯节奏卡点引爆全场', bias: '麦克老师偏好 (+22% 亮灯率)' },
+        { id: 'witty', icon: '🎤', name: '互动圈粉 · 幽默抓梗', desc: '深情逗乐评委与观众打成一片', bias: '李主任偏好 + 观众热度暴涨' },
+      ];
+      styles.forEach(st => {
+        const sCard = h('div', 'ts-style-card' + (stage.styleChoice === st.id ? ' selected' : ''));
+        sCard.innerHTML =
+          '<div class="ts-style-hd"><span class="ts-style-ico">' + st.icon + '</span><b>' + st.name + '</b></div>' +
+          '<div class="ts-style-desc">' + st.desc + '</div>' +
+          '<div class="ts-style-bias">💡 ' + st.bias + '</div>';
+        sCard.onclick = () => {
+          sound.click();
+          stage.styleChoice = st.id;
+          renderStage();
+        };
+        styleBox.appendChild(sCard);
+      });
+      prepSec.appendChild(styleBox);
+      body.appendChild(prepSec);
+
+      const performBtn = h('button', 'ts-perform-btn', '🌟 携【' + stage.chosenTalent.n + '】登台演出！(按回车/空格继续)');
+      const goPerform = () => {
+        sound.win();
+        stage.step = 'perform';
+        renderStage();
+      };
+      performBtn.onclick = goPerform;
+      stage.activeKeyHandler = (e) => {
+        if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
+          e.preventDefault();
+          goPerform();
+        }
+      };
+      window.addEventListener('keydown', stage.activeKeyHandler);
+      body.appendChild(performBtn);
+
+    } else if (stage.step === 'perform') {
+      // 阶段 3: 登台演绎与 Showtime 互动
+      const liveSec = h('div', 'ts-live-stage');
+      liveSec.innerHTML =
+        '<div class="ts-spotlight-beam"></div>' +
+        '<div class="ts-live-title">🌟 舞台聚光灯就位！你正在演出【' + stage.chosenTalent.n + '】</div>';
+
+      if (stage.styleChoice === 'showtime') {
+        liveSec.innerHTML +=
+          '<div class="ts-showtime-sub">🔥 把握聚光灯卡点，在黄金区域释放绝活！</div>' +
+          '<div class="ts-beat-track">' +
+            '<div class="ts-beat-zone" style="left:65%; width:25%;"></div>' +
+            '<div class="ts-beat-pointer" id="tsBeatPointer" style="left:10%;"></div>' +
+          '</div>';
+        body.appendChild(liveSec);
+
+        const beatBtn = h('button', 'ts-beat-btn pulse', '🔥 把握节拍 · 秀出绝活！(支持空格/回车)');
+        body.appendChild(beatBtn);
+
+        let curPos = 10;
+        let dir = 1;
+        let finished = false;
+
+        const timer = setInterval(() => {
+          curPos += dir * 4.0;
+          if (curPos >= 92) { curPos = 92; dir = -1; }
+          else if (curPos <= 8) { curPos = 8; dir = 1; }
+          const pt = $('#tsBeatPointer');
+          if (pt) pt.style.left = curPos + '%';
+        }, 33);
+        stage.cleanupTimers.push(timer);
+
+        const triggerBeat = () => {
+          if (finished) return;
+          finished = true;
+          clearInterval(timer);
+          let grade = 'normal';
+          if (curPos >= 65 && curPos <= 90) {
+            grade = 'perfect';
+            sound.win();
+            stage.hype = Math.min(100, stage.hype + 35);
+            toast('🌟 PERFECT！卡点绝活引爆全场！');
+          } else {
+            grade = 'good';
+            sound.pop();
+            stage.hype = Math.min(100, stage.hype + 20);
+            toast('✨ GOOD！发挥稳健，掌声雷动！');
+          }
+          stage.showtimeGrade = grade;
+          stage.result = CP.talentShowPerform({
+            chosenTalentId: stage.chosenTalent.id,
+            styleChoice: stage.styleChoice,
+            showtimeGrade: stage.showtimeGrade,
+            encoreChoice: false
+          });
+          stage.step = 'reveal';
+          renderStage();
+        };
+
+        beatBtn.onclick = triggerBeat;
+        stage.activeKeyHandler = (e) => {
+          if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
+            e.preventDefault();
+            triggerBeat();
+          }
+        };
+        window.addEventListener('keydown', stage.activeKeyHandler);
+
       } else {
-        toast('平稳发挥完成演出～');
+        const perfDesc = stage.styleChoice === 'steady'
+          ? '“你深吸一口气，从容展示【' + stage.chosenTalent.n + '】的深厚底蕴！字正腔圆，大将之风，台下鸦雀无声而后掌声轰鸣！”'
+          : '“你幽默风趣地开场，生动诠释【' + stage.chosenTalent.n + '】，巧妙互动逗乐全场，李主任与观众席欢笑不断！”';
+        liveSec.innerHTML +=
+          '<div class="ts-live-quote">' + perfDesc + '</div>' +
+          '<div class="ts-live-cheer">👏 观众席掌声雷动，全场热度飙升！</div>';
+        body.appendChild(liveSec);
+
+        const finishPerfBtn = h('button', 'ts-perform-btn', '🔔 精彩收官 · 请三位评委打分！(按回车/空格)');
+        const goReveal = () => {
+          sound.win();
+          stage.hype = Math.min(100, stage.hype + (stage.styleChoice === 'steady' ? 22 : 28));
+          stage.result = CP.talentShowPerform({
+            chosenTalentId: stage.chosenTalent.id,
+            styleChoice: stage.styleChoice,
+            showtimeGrade: 'normal',
+            encoreChoice: false
+          });
+          stage.step = 'reveal';
+          renderStage();
+        };
+        finishPerfBtn.onclick = goReveal;
+        stage.activeKeyHandler = (e) => {
+          if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
+            e.preventDefault();
+            goReveal();
+          }
+        };
+        window.addEventListener('keydown', stage.activeKeyHandler);
+        body.appendChild(finishPerfBtn);
       }
 
-      const r = CP.resolve({ talentId: selectedTalent.id, showtimeGrade: grade });
-      if (r) toast(r);
-      renderAll();
-    };
+    } else if (stage.step === 'reveal') {
+      // 阶段 4: 三位评委悬念逐一揭晓亮灯
+      const revealSec = h('div', 'ts-reveal-section');
+      revealSec.innerHTML = '<div class="ts-section-title">⚖️ 评委席逐一亮灯揭晓</div>';
 
-    beatBtn.onclick = () => triggerBeat('click');
-    keyHandler = (e) => {
-      if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
-        e.preventDefault();
-        triggerBeat('key');
+      const judgeRow = h('div', 'ts-judges-row');
+      const res = stage.result || { lights: [true, true, true], judgeQuotes: [] };
+
+      judges.forEach((j, idx) => {
+        const isRevealed = stage.lightsRevealed[idx];
+        const isLit = res.lights ? res.lights[idx] : true;
+        const jc = h('div', 'ts-judge-card ' + (isRevealed ? (isLit ? 'lit' : 'unlit') : 'pending'));
+        jc.innerHTML =
+          '<div class="ts-judge-ico">' + j.icon + '</div>' +
+          '<div class="ts-judge-name">' + j.name + '</div>' +
+          '<div class="ts-lamp-badge ' + (isRevealed ? (isLit ? 'on' : 'off') : 'wait') + '">' +
+            (isRevealed ? (isLit ? '💡 亮灯通过' : '❌ 灭灯') : '⏳ 揭晓中…') +
+          '</div>' +
+          (isRevealed ? '<div class="ts-judge-quote">' + ((res.judgeQuotes && res.judgeQuotes[idx]) || '') + '</div>' : '');
+        judgeRow.appendChild(jc);
+      });
+      revealSec.appendChild(judgeRow);
+      body.appendChild(revealSec);
+
+      // 逐步揭晓动画定时器
+      if (!stage.lightsRevealed[0]) {
+        const t1 = setTimeout(() => {
+          stage.lightsRevealed[0] = true;
+          sound.click();
+          renderStage();
+        }, 500);
+        stage.cleanupTimers.push(t1);
+      } else if (!stage.lightsRevealed[1]) {
+        const t2 = setTimeout(() => {
+          stage.lightsRevealed[1] = true;
+          sound.click();
+          renderStage();
+        }, 600);
+        stage.cleanupTimers.push(t2);
+      } else if (!stage.lightsRevealed[2]) {
+        const t3 = setTimeout(() => {
+          stage.lightsRevealed[2] = true;
+          if (res.win) sound.talentWin(); else sound.fail();
+          renderStage();
+        }, 700);
+        stage.cleanupTimers.push(t3);
+      } else {
+        // 全部揭晓完毕
+        const greenCount = res.lights.filter(Boolean).length;
+        if (greenCount >= 2) {
+          const awardBtn = h('button', 'ts-perform-btn finish-btn', '🏆 战胜对手！前往盛大颁奖盛典 ➔ (按回车/空格)');
+          const goAward = () => {
+            sound.win();
+            stage.step = 'award';
+            renderStage();
+          };
+          awardBtn.onclick = goAward;
+          stage.activeKeyHandler = (e) => {
+            if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
+              e.preventDefault();
+              goAward();
+            }
+          };
+          window.addEventListener('keydown', stage.activeKeyHandler);
+          body.appendChild(awardBtn);
+        } else {
+          // 濒临出局危机！触发 Encore 绝活返场
+          const crisisBanner = h('div', 'ts-crisis-banner');
+          crisisBanner.innerHTML =
+            '<div class="ts-crisis-title">⚠️ 濒临出局！目前仅亮 ' + greenCount + '/3 盏灯！</div>' +
+            '<div class="ts-crisis-desc">主持人挥手高呼：“三位评委意见不一！现场启动【绝活返场 (Encore)】加试自救！”</div>';
+          body.appendChild(crisisBanner);
+
+          const encoreTriggerBtn = h('button', 'ts-perform-btn pulse', '🔥 开启绝活返场 · 绝地翻盘！(按回车/空格)');
+          const goEncore = () => {
+            sound.win();
+            stage.step = 'encore';
+            renderStage();
+          };
+          encoreTriggerBtn.onclick = goEncore;
+          stage.activeKeyHandler = (e) => {
+            if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
+              e.preventDefault();
+              goEncore();
+            }
+          };
+          window.addEventListener('keydown', stage.activeKeyHandler);
+          body.appendChild(encoreTriggerBtn);
+        }
       }
-    };
-    window.addEventListener('keydown', keyHandler);
-    registerModalCleanup(() => {
-      clearInterval(timer);
-      clearTimeout(timeoutTimer);
-      if (keyHandler) {
-        window.removeEventListener('keydown', keyHandler);
-        keyHandler = null;
-      }
-    });
+
+    } else if (stage.step === 'encore') {
+      // 阶段 5: 绝活返场 (Encore) 逆风翻盘
+      const encoreSec = h('div', 'ts-encore-stage');
+      encoreSec.innerHTML =
+        '<div class="ts-encore-title">🎤 决胜绝活返场 (Encore)</div>' +
+        '<div class="ts-encore-desc">聚光灯再次锁定你！请选择你的压轴翻盘策略：</div>';
+
+      const secTalent = displayTalents.find(t => t.id !== stage.chosenTalent.id) || displayTalents[0];
+
+      const btnSpeech = h('button', 'ts-encore-opt-btn', '💬 【真情流露 · 动人成长心路】(真挚情感打动评委 · 情商加成)');
+      btnSpeech.onclick = () => {
+        sound.win();
+        stage.result = CP.talentShowPerform({
+          chosenTalentId: stage.chosenTalent.id,
+          styleChoice: stage.styleChoice,
+          showtimeGrade: stage.showtimeGrade,
+          encoreChoice: 'speech'
+        });
+        if (stage.result.encoreSuccess) {
+          toast('🎉 绝活返场大获成功！评委拍案亮起翻盘绿灯！');
+          sound.talentWin();
+        } else {
+          toast('虽真诚诉说，惜未能打动更多评委～');
+          sound.fail();
+        }
+        stage.step = 'award';
+        renderStage();
+      };
+      encoreSec.appendChild(btnSpeech);
+
+      const btnTalent = h('button', 'ts-encore-opt-btn', '🎴 【压箱底加演 · 亮出第二特长】(加试【' + secTalent.n + '】以实力征服全场)');
+      btnTalent.onclick = () => {
+        sound.win();
+        stage.result = CP.talentShowPerform({
+          chosenTalentId: stage.chosenTalent.id,
+          styleChoice: stage.styleChoice,
+          showtimeGrade: stage.showtimeGrade,
+          encoreChoice: 'second_talent',
+          secondTalentId: secTalent.id
+        });
+        if (stage.result.encoreSuccess) {
+          toast('🎉 第二特长震撼全场！关键评委反转亮起绿灯！');
+          sound.talentWin();
+        } else {
+          toast('虽精彩加演，惜未能逆转胜负～');
+          sound.fail();
+        }
+        stage.step = 'award';
+        renderStage();
+      };
+      encoreSec.appendChild(btnTalent);
+      body.appendChild(encoreSec);
+
+    } else if (stage.step === 'award') {
+      // 阶段 6: 盛大颁奖盛典
+      const res = stage.result || { win: true, greenCount: 3, lights: [true,true,true], gi: 500, gf: 150 };
+      const isWin = res.win;
+      const greenCount = res.greenCount || res.lights.filter(Boolean).length;
+
+      const awardBox = h('div', 'ts-award-card ' + (isWin ? 'win' : 'lose'));
+      const badgeIcon = greenCount === 3 ? '👑' : (isWin ? '🏆' : '📜');
+      const badgeTitle = greenCount === 3 ? '全场大满贯 · 特等金奖！' : (isWin ? '荣获大赛总冠军！' : '获得大赛优秀纪念奖');
+
+      awardBox.innerHTML =
+        '<div class="ts-trophy-bounce">' + badgeIcon + '</div>' +
+        '<div class="ts-award-title">' + badgeTitle + '</div>' +
+        '<div class="ts-award-sub">出战特长：【' + ((stage.chosenTalent && stage.chosenTalent.n) || '特长表演') + '】  vs  对手：【' + ((rival.talent && rival.talent.n) || '对手') + '】</div>' +
+        (isWin ? '<div class="ts-legend-talent-badge">🏆 授予金色传说特长【才艺之星·舞台王者】！(可在面子对决出战威震全场)</div>' : '') +
+        '<div class="ts-rewards-row">' +
+          '<span class="ts-rw-item ins">💡 悟性 +' + (res.gi || (isWin ? 500 : 120)) + '</span>' +
+          '<span class="ts-rw-item face ' + (res.gf >= 0 ? 'pos' : 'neg') + '">🌟 面子 +' + (res.gf >= 0 ? res.gf : 30) + '</span>' +
+        '</div>';
+      body.appendChild(awardBox);
+
+      // 三位评委最终打分复盘
+      const judgeSummary = h('div', 'ts-judges-row');
+      judges.forEach((j, idx) => {
+        const isLit = res.lights ? res.lights[idx] : isWin;
+        const jc = h('div', 'ts-judge-card ' + (isLit ? 'lit' : 'unlit'));
+        jc.innerHTML =
+          '<div class="ts-judge-ico">' + j.icon + '</div>' +
+          '<div class="ts-judge-name">' + j.name + '</div>' +
+          '<div class="ts-lamp-badge ' + (isLit ? 'on' : 'off') + '">' + (isLit ? '💡 亮灯通过' : '❌ 灭灯') + '</div>' +
+          '<div class="ts-judge-quote">' + ((res.judgeQuotes && res.judgeQuotes[idx]) || '') + '</div>';
+        judgeSummary.appendChild(jc);
+      });
+      body.appendChild(judgeSummary);
+
+      const exitBtn = h('button', 'ts-perform-btn finish-btn', '🏆 携荣誉凯旋走下舞台 (按回车/空格确认)');
+      const doExit = () => {
+        clearTimers();
+        sound.click();
+        // 清理当前 showr 或 show 项
+        const topM = S && S.pending && S.pending[0];
+        if (topM && (topM.type === 'showr' || topM.type === 'show')) {
+          S.pending.shift();
+        }
+        m.classList.remove('show');
+        m.innerHTML = '';
+        renderAll();
+      };
+      exitBtn.onclick = doExit;
+      stage.activeKeyHandler = (e) => {
+        if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
+          e.preventDefault();
+          doExit();
+        }
+      };
+      window.addEventListener('keydown', stage.activeKeyHandler);
+      body.appendChild(exitBtn);
+    }
+
+    m.appendChild(body);
   };
-  body.appendChild(btn);
 
-  m.appendChild(body);
+  renderStage();
 }
 
-/* ---------- 🌟 选秀结算结果舞台 2.0 (Encore & 颁奖台) ---------- */
+/* ---------- 🌟 选秀结算结果舞台 (独立备用入口) ---------- */
 function renderTalentShowResultModal(p, m) {
   m = m || $('#modal');
   if (!m) return;
   m.classList.add('show');
   m.innerHTML = '';
+
   if (p.win) {
     sound.talentWin();
   } else {
     sound.fail();
   }
-  const body = h('div', 'm-body ts-modal ts-result-modal');
 
-  // 1) 顶部结果徽章
+  const body = h('div', 'm-body ts-modal ts-result-modal');
+  const isWin = p.win;
+  const greenCount = p.greenCount || (p.lights ? p.lights.filter(Boolean).length : (isWin ? 2 : 1));
+
   const head = h('div', 'ts-header');
-  const badgeClass = (p.greenCount === 3 ? 'ts-badge grandslam' : (p.win ? 'ts-badge win' : 'ts-badge lose'));
-  const badgeText = (p.greenCount === 3 ? '🌟 全场大满贯 · 天才神童' : (p.win ? '🎉 冠军诞生 · 技惊四座' : '📜 虽败犹荣 · 参与纪念'));
+  const badgeClass = (greenCount === 3 ? 'ts-badge grandslam' : (isWin ? 'ts-badge win' : 'ts-badge lose'));
+  const badgeText = (greenCount === 3 ? '🌟 全场大满贯 · 天才神童' : (isWin ? '🎉 冠军诞生 · 技惊四座' : '📜 虽败犹荣 · 参与纪念'));
   head.innerHTML =
     '<div class="' + badgeClass + '">' + badgeText + '</div>' +
-    '<div class="ts-title">' + (p.title || '特长才艺选秀') + '</div>';
+    '<div class="ts-title">' + (p.title || '特长才艺选秀大会') + '</div>';
   body.appendChild(head);
 
-  // 2) 三位评委亮灯与个性化点评
+  // 评委席
   const judges = [
     { name: '张教授', icon: '🧐' },
     { name: '麦克老师', icon: '🕶️' },
@@ -2912,7 +3220,7 @@ function renderTalentShowResultModal(p, m) {
   ];
   const judgeRow = h('div', 'ts-judges-row');
   judges.forEach((j, idx) => {
-    const isLit = p.lights ? p.lights[idx] : p.win;
+    const isLit = p.lights ? p.lights[idx] : isWin;
     const jc = h('div', 'ts-judge-card ' + (isLit ? 'lit' : 'unlit'));
     jc.innerHTML =
       '<div class="ts-judge-ico">' + j.icon + '</div>' +
@@ -2923,50 +3231,22 @@ function renderTalentShowResultModal(p, m) {
   });
   body.appendChild(judgeRow);
 
-  // 3) 若处于危急濒临出局状态，且尚未触发 Encore，展示加演翻盘机会
-  if (p.greenCount <= 1 && !p.encoreTriggered) {
-    const encoreBox = h('div', 'ts-encore-box');
-    encoreBox.innerHTML =
-      '<div class="ts-encore-title">🎤 濒临出局！李主任与麦克老师招手：</div>' +
-      '<div class="ts-encore-desc">“这位同学先别下台！如果还有加演一段绝活，可以再争取一次灭灯评委的重新亮灯！”</div>';
-    
-    const encoreBtn = h('button', 'ts-encore-btn pulse', '🔥 消耗25体力【绝活返场·奋力翻盘】');
-    encoreBtn.onclick = () => {
-      sound.win();
-      if (CP.state().act >= 25) CP.state().act -= 25;
-      const r = CP.resolve({ talentId: p.mine ? p.mine.id : null, showtimeGrade: p.showtimeGrade, encore: true });
-      if (r) toast(r);
-      renderAll();
-    };
-    encoreBox.appendChild(encoreBtn);
-    body.appendChild(encoreBox);
-  }
-
-  // 4) 现场弹幕反响
-  const danmakuBox = h('div', 'ts-danmaku-container');
-  const dList = p.danmaku || (p.win ? ['“太震撼了！”', '“全场起立鼓掌！”'] : ['“加油，下次一定能赢！”']);
-  danmakuBox.innerHTML =
-    '<div class="ts-danmaku-tag">📣 全场观众席沸腾声浪</div>' +
-    '<div class="ts-danmaku-stream">' + dList.map(txt => '<span class="dm-chip">' + txt + '</span>').join('') + '</div>';
-  body.appendChild(danmakuBox);
-
-  // 5) 核心大奖结算卡片
-  const prizeBox = h('div', 'ts-prize-card ' + (p.win ? 'win' : 'lose'));
-  const iconPrize = p.greenCount === 3 ? '👑' : (p.win ? '🏆' : '📜');
-  const titlePrize = p.greenCount === 3 ? '全场大满贯 · 斩获特等奖！' : (p.win ? '荣获大赛总冠军！' : '获得大赛优秀参与奖');
+  // 奖项面板
+  const prizeBox = h('div', 'ts-prize-card ' + (isWin ? 'win' : 'lose'));
+  const iconPrize = greenCount === 3 ? '👑' : (isWin ? '🏆' : '📜');
+  const titlePrize = greenCount === 3 ? '全场大满贯 · 斩获特等奖！' : (isWin ? '荣获大赛总冠军！' : '获得大赛优秀参与奖');
   prizeBox.innerHTML =
     '<div class="ts-prize-ico">' + iconPrize + '</div>' +
     '<div class="ts-prize-title">' + titlePrize + '</div>' +
-    '<div class="ts-prize-sub">登台特长：' + ((p.mine && p.mine.n) || '特长表演') + '  vs  对手：' + ((p.rival && p.rival.talent && p.rival.talent.n) || '对手') + '</div>' +
+    '<div class="ts-prize-sub">出战特长：' + ((p.mine && p.mine.n) || '特长表演') + '  vs  对手：' + ((p.rival && p.rival.talent && p.rival.talent.n) || '对手') + '</div>' +
+    (isWin ? '<div class="ts-legend-talent-badge">🏆 授予金色传说特长【才艺之星·舞台王者】！</div>' : '') +
     '<div class="ts-rewards-row">' +
-      '<span class="ts-rw-item ins">💡 悟性 +' + (p.gi || (p.win ? 500 : 40)) + '</span>' +
-      '<span class="ts-rw-item face ' + (p.gf >= 0 ? 'pos' : 'neg') + '">🌟 面子 ' + (p.gf >= 0 ? '+' + p.gf : p.gf) + '</span>' +
+      '<span class="ts-rw-item ins">💡 悟性 +' + (p.gi || (isWin ? 500 : 120)) + '</span>' +
+      '<span class="ts-rw-item face ' + (p.gf >= 0 ? 'pos' : 'neg') + '">🌟 面子 +' + (p.gf >= 0 ? p.gf : 30) + '</span>' +
     '</div>';
   body.appendChild(prizeBox);
 
-  // 6) 确认离开按钮 (支持 Space/Enter)
-  const btn = h('button', 'ts-perform-btn finish-btn');
-  btn.innerHTML = '收下荣誉，走下舞台 👏 (按回车/空格确认)';
+  const btn = h('button', 'ts-perform-btn finish-btn', '收下荣誉，走下舞台 👏 (按回车/空格确认)');
   let resultKeyHandler = null;
   const doConfirm = () => {
     if (resultKeyHandler) {

@@ -10,10 +10,10 @@
 
 <p align="center">
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/Live_Demo-chinese--parent.pages.dev-d33824?style=flat-square&logo=cloudflare" alt="Live Demo" /></a>
-  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v2.9.0-orange?style=flat-square" alt="Version" /></a>
+  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v3.0.0-orange?style=flat-square" alt="Version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /></a>
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/PWA-Supported-green?style=flat-square&logo=pwa" alt="PWA Ready" /></a>
-  <a href="./tests/"><img src="https://img.shields.io/badge/Tests-7%2F7%20Suites%20Passed-brightgreen?style=flat-square" alt="Automated Tests" /></a>
+  <a href="./tests/"><img src="https://img.shields.io/badge/Tests-8%2F8%20Suites%20Passed-brightgreen?style=flat-square" alt="Automated Tests" /></a>
 </p>
 
 ---
@@ -219,11 +219,12 @@ npm start
 项目构建了严密的无头（Headless）自动化测试体系，覆盖核心数值闭环、参数越界防御、多代连续遗传仿真与 UI 边界断言：
 
 ```bash
-# 运行全量 7 大测试套件
+# 运行全量 8 大测试套件
 npm test
 ```
 
 ### 独立测试命令：
+- **`npm run test:show`**：运行 [`tests/test_talent_show_faithful.js`](./tests/test_talent_show_faithful.js)，专门验证特长才艺选秀 3.0 四大学段阶梯大赛（圆圆/陈同学/文体委员/奥赛冠军）、对手神童先行亮相、三大表演风格与评委偏好修正、悬念逐一揭晓亮灯、绝活返场 (Encore) 翻盘与专属金色传说特长【才艺之星·舞台王者】；
 - **`npm run test:election`**：运行 [`tests/test_class_election_faithful.js`](./tests/test_class_election_faithful.js)，专门验证班委竞选 3.0 三大候选人同台模型、师生/群众/品德核心指标与长短板测定、5 回合策略攻防揭短、课桌同学动态漫画气泡、三档职位任命（三道杠/二道杠/一道杠）与专属特长赋予；
 - **`npm run test:duel`**：运行 [`tests/test_face_duel_faithful.js`](./tests/test_face_duel_faithful.js)，专门验证面子对决 3.0 街机格斗、五大亲戚对峙台词、特长单次消耗出战、品质暴击削弱真实伤害与老妈怒气必杀；
 - **`npm run test:v27`**：运行 [`tests/test_v27_features.js`](./tests/test_v27_features.js)，验证 v2.7.0 全部五大核心玩法（育儿流派被动、祖宅百宝阁双槽位、校友成人羁绊、脑洞2.0连锁BFS与倍率、大学四向分流与职业成就），并执行 **10 代全随机混沌策略无头沙箱压力测试**！

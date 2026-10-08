@@ -856,8 +856,8 @@ const swFileContent = fs.readFileSync(path.join(dir, '..', 'sw.js'), 'utf8');
 const indexHtmlContent = fs.readFileSync(path.join(dir, '..', 'index.html'), 'utf8');
 assert(swFileContent.includes(`CACHE_NAME = 'chinese-parent-${DATA.version}'`), `sw.js 离线缓存版本必须与 DATA.version (${DATA.version}) 严格同步`);
 assert(indexHtmlContent.includes(DATA.version), `index.html 必须包含最新版本号 ${DATA.version}`);
-assert.strictEqual(DATA.version, 'v2.9.0', '当前最新发版版本应为 v2.9.0');
-assert(DATA.changelog[0].title.includes('班委') || DATA.changelog[0].title.includes('竞选'), 'v2.9.0 首条更新必须包含班委竞选 3.0');
+assert.strictEqual(DATA.version, 'v3.0.0', '当前最新发版版本应为 v3.0.0');
+assert(DATA.changelog[0].title.includes('选秀') || DATA.changelog[0].title.includes('才艺'), 'v3.0.0 首条更新必须包含特长才艺选秀 3.0');
 
 console.log('版本更新公告数据结构、多版本滚动历史、刷新自动识别与开发者升版响应测试 100% 验证通过！');
 

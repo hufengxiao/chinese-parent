@@ -1957,43 +1957,70 @@ function pendGaokao() {
   });
 }
 
-/* ---------- 特长才艺选秀大会 (The Talent Grand Show) ---------- */
+/* ---------- 特长才艺选秀大会 3.0 (The Talent Grand Show 3.0) ---------- */
 function pendShow(tier, title) {
   if (!S || !S.pending) return;
+  tier = tier || 1;
   const judges = [
-    { name: '张教授', icon: '🧐', title: '资深老学究', style: '严苛治学', motto: '“基本功是骗不了人的！”' },
-    { name: '麦克老师', icon: '🕶️', title: '前卫潮人导师', style: '看重舞台张力', motto: '“Show me the passion, baby!”' },
-    { name: '李主任', icon: '👩‍🏫', title: '少年宫主任', style: '慈祥鼓励', motto: '“每个登台的孩子都是最棒的！”' },
+    { id: 'zhang', name: '张教授', icon: '🧐', title: '资深老学究', style: '偏定理/文学·重Rank', motto: '“基本功是骗不了人的！”' },
+    { id: 'mike', name: '麦克老师', icon: '🕶️', title: '前卫潮人导师', style: '偏艺术/舞台·重Showtime', motto: '“Show me the passion, baby!”' },
+    { id: 'li', name: '李主任', icon: '👩‍🏫', title: '少年宫主任', style: '偏生活体魄·亲和包容', motto: '“每个登台的孩子都是最棒的！”' },
   ];
-  // 随机对手及其特长
-  const rivalRank = Math.min(4, Math.max(1, tier <= 2 ? RI(1, tier + 1) : RI(2, Math.min(4, tier))));
-  const candidates = D.talentData.filter(t => t.r === rivalRank);
-  const rivalTalent = candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : { id: 'rival_t', n: '合唱领唱', r: rivalRank, icon: '🎵', atk: Math.pow(7, rivalRank) };
-  const rivalNames = tier === 1 ? ['中班王小明', '隔壁圆圆'] : tier === 2 ? ['三年二班陈同学', '少儿兴趣班班长'] : tier === 3 ? ['初三文体委员', '外校全能学霸'] : ['省实验高中尖子生', '全省奥赛冠军'];
-  const rivalName = rivalNames[Math.floor(Math.random() * rivalNames.length)];
+
+  // 四大学段阶梯劲敌设定
+  const rivalPresets = {
+    1: { name: '中班圆圆', quote: '“阿姨说唱得好就给我吃大白兔奶糖~”', defaultTalent: { id: 'erge', n: '儿歌串烧', r: 1, icon: '🎶', cat: 'art', atk: 7 } },
+    2: { name: '三年二班陈同学', quote: '“我每天要练两个小时字帖，从不间断！”', defaultTalent: { id: 'shufa', n: '少儿书法', r: 2, icon: '🖌️', cat: 'art', atk: 49 } },
+    3: { name: '初三文体委员', quote: '“台下的欢呼和尖叫就是我的主场！”', defaultTalent: { id: 'jita', n: '吉他弹唱', r: 3, icon: '🎸', cat: 'art', atk: 343 } },
+    4: { name: '全省奥赛冠军', quote: '“解题不仅是科学，更是纯粹的艺术。”', defaultTalent: { id: 'aoshu_champ', n: '压轴题速解', r: 4, icon: '⚡', cat: 'stem', atk: 2401 } }
+  };
+  const preset = rivalPresets[tier] || rivalPresets[1];
+
+  const rivalRank = Math.min(4, Math.max(1, tier));
+  const candidates = D.talentData.filter(t => t.r === rivalRank && t.id !== 'talent_king');
+  const rawRival = candidates.length ? pick(candidates) : preset.defaultTalent;
+  const rivalTalent = { ...rawRival, atk: rawRival.atk || Math.pow(7, rawRival.r || 1) };
+
+  const defaultTitles = {
+    1: '🧸 幼儿杯少儿萌娃才艺大赛',
+    2: '🎨 区少年宫新星才艺大奖赛',
+    3: '🎸 全市青少年才艺达人秀',
+    4: '🏆 全国青年特长风采争霸赛'
+  };
 
   S.pending.push({
     type: 'show',
     tier,
-    title: title || '特长才艺选秀大会',
+    title: title || defaultTitles[tier] || '特长才艺选秀大会',
     body: '舞台聚光灯亮起！全国少儿才艺大奖赛拉开帷幕，请检录你的出战特长！',
     lv: tier,
     judges,
     rival: {
-      name: rivalName,
+      name: preset.name,
+      quote: preset.quote,
       talent: rivalTalent
     },
     opts: ['🎤 登台一展风采']
   });
 }
 
-function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
+function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice, styleChoice, secondTalentId) {
   if (!S || !S.pending) return null;
-  const m = S.pending[0];
-  if (!m || m.type !== 'show') return null;
+  const m = S.pending.find(x => x && x.type === 'show') || S.pending[0];
+  if (!m || (m.type !== 'show' && m.type !== 'showr')) return null;
   const tier = m.tier || 1;
-  
-  // 查找出战特长
+
+  // 支持入参为单对象
+  if (typeof chosenTalentId === 'object' && chosenTalentId !== null) {
+    const opts = chosenTalentId;
+    chosenTalentId = opts.chosenTalentId || opts.talentId;
+    showtimeGrade = opts.showtimeGrade;
+    encoreChoice = opts.encoreChoice || opts.encore;
+    styleChoice = opts.styleChoice;
+    secondTalentId = opts.secondTalentId;
+  }
+
+  // 1) 检录我方出战特长
   let mine = null;
   if (chosenTalentId) {
     mine = D.talentData.find(x => x.id === chosenTalentId);
@@ -2001,7 +2028,6 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
   if (!mine) {
     mine = bestTalent();
   }
-  // 如果玩家没有任何特长，赋予保底【大嗓门】
   if (!mine) {
     mine = { id: 'voice_loud', n: '大嗓门', icon: '📢', r: 1, cat: 'art', atk: 7, src: '天生大嗓门' };
   }
@@ -2013,38 +2039,37 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
   };
   const rivalR = (rival.talent && rival.talent.r) || 1;
 
-  // 1) 基础胜率基准
+  // 2) 基础胜率基准
   let pBase = 0.50;
   if (mine.r >= rivalR) {
-    pBase = clamp(0.75 + (mine.r - rivalR) * 0.20, 0.08, 0.95);
+    pBase = clamp(0.72 + (mine.r - rivalR) * 0.18, 0.10, 0.92);
   } else {
-    pBase = clamp(0.25 - (rivalR - mine.r) * 0.10, 0.08, 0.95);
+    pBase = clamp(0.28 - (rivalR - mine.r) * 0.12, 0.10, 0.92);
   }
 
-  // 2) Showtime 演出操作加成
+  // 3) 三大表演风格修正
+  const sStyle = styleChoice || 'steady';
   const sGrade = showtimeGrade || 'normal';
-  let deltaShowtime = 0;
-  if (sGrade === 'perfect') deltaShowtime = 0.25;
-  else if (sGrade === 'good') deltaShowtime = 0.12;
 
-  // 3) 三位评委个性化偏好加权
   // 张教授 (严谨学术派)
-  let bZhang = (mine.cat === 'stem' ? 0.20 : 0) + (mine.r >= 3 ? 0.15 : 0) - (mine.cat === 'witty' ? 0.18 : 0);
-  const pZhang = clamp(pBase + deltaShowtime + bZhang, 0.05, 0.98);
+  let bZhang = (mine.cat === 'stem' ? 0.22 : 0) + (mine.r >= 3 ? 0.15 : 0) + (sStyle === 'steady' ? 0.20 : 0) - (mine.cat === 'witty' ? 0.16 : 0);
+  const pZhang = clamp(pBase + bZhang, 0.05, 0.98);
   const l1 = Math.random() < pZhang;
 
   // 麦克老师 (前卫舞台派)
-  let bMike = ((mine.cat === 'art' || mine.cat === 'witty' || mine.cat === 'phy') ? 0.22 : 0) + (sGrade === 'perfect' ? 0.15 : 0) - (mine.r <= 1 ? 0.10 : 0);
-  const pMike = clamp(pBase + deltaShowtime + bMike, 0.05, 0.98);
+  let deltaShowtime = (sGrade === 'perfect' ? 0.18 : (sGrade === 'good' ? 0.10 : 0));
+  let bMike = ((mine.cat === 'art' || mine.cat === 'phy') ? 0.20 : 0) + (sStyle === 'showtime' ? 0.22 : 0) + deltaShowtime - (mine.r <= 1 ? 0.10 : 0);
+  const pMike = clamp(pBase + bMike, 0.05, 0.98);
   const l2 = Math.random() < pMike;
 
   // 李主任 (德育亲和派)
-  let bLi = (mine.r === 1 ? 0.15 : 0) + (mine.cat === 'phy' ? 0.12 : 0) + 0.10;
-  const pLi = clamp(pBase + deltaShowtime + bLi, 0.05, 0.98);
+  const eqBonus = ((S.attrs && S.attrs.eq) ? (S.attrs.eq / 200) * 0.12 : 0);
+  let bLi = (sStyle === 'witty' ? 0.22 : 0) + eqBonus + (mine.r === 1 ? 0.15 : 0) + 0.10;
+  const pLi = clamp(pBase + bLi, 0.05, 0.98);
   const l3 = Math.random() < pLi;
 
   let lights = [l1, l2, l3];
-  if (hasRelic('relic_camera') && !lights[2]) {
+  if (typeof hasRelic === 'function' && hasRelic('relic_camera') && !lights[2]) {
     lights[2] = true;
   }
 
@@ -2053,7 +2078,14 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
   let encoreSuccess = false;
   if (encoreChoice && lights.filter(Boolean).length <= 1) {
     encoreTriggered = true;
-    const pEncore = clamp(0.55 + ((S.attrs && S.attrs.eq) ? S.attrs.eq / 250 : 0.05) + (sGrade === 'perfect' ? 0.15 : 0), 0.35, 0.88);
+    let pEncore = 0.65;
+    if (encoreChoice === 'second_talent' && secondTalentId) {
+      const secT = D.talentData.find(x => x.id === secondTalentId);
+      const secR = secT ? secT.r : 1;
+      pEncore = clamp(0.55 + secR * 0.10, 0.45, 0.95);
+    } else {
+      pEncore = clamp(0.60 + ((S.attrs && S.attrs.eq) ? S.attrs.eq / 300 : 0.05) + (sStyle === 'witty' ? 0.12 : 0), 0.40, 0.88);
+    }
     if (Math.random() < pEncore) {
       encoreSuccess = true;
       for (let k = 0; k < 3; k++) {
@@ -2067,9 +2099,16 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
 
   const greenCount = lights.filter(Boolean).length;
   const win = greenCount >= 2;
+
+  // 5) 结算奖励与专属特长
   if (win) {
     if (!S.flags) S.flags = {};
     S.flags.wonShow = 1;
+    // 授予金色传说特长：才艺之星·舞台王者
+    if (!S.talents) S.talents = [];
+    if (!S.talents.includes('talent_king')) {
+      S.talents.push('talent_king');
+    }
   } else {
     const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
     if (pStyle && pStyle.id === 'elite') {
@@ -2078,27 +2117,22 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
     }
   }
 
-  let gi = win ? (tier >= 3 ? 500 : 200) : 40;
-  let gf = win ? (tier >= 3 ? 150 : 60) : -5;
-  // 3 盏全绿大满贯额外加奖
+  let gi = win ? (tier >= 3 ? 500 : 200) : 120;
+  let gf = win ? (tier >= 3 ? 150 : 60) : 30;
   if (win && greenCount === 3) {
     gi = Math.round(gi * 1.25);
     gf += 30;
   }
-  S.insight += gi;
-  if (win) {
-    S.face += gf;
-  } else {
-    S.face = Math.max(0, S.face + gf);
-  }
+  S.insight = (S.insight || 0) + gi;
+  S.face = Math.max(0, (S.face || 0) + gf);
 
-  // 5) 评委个性化针对性点评
+  // 6) 评委个性化针对性点评
   const judgeQuotes = [
     lights[0]
       ? (mine.cat === 'stem' ? '张教授扶镜赞叹：“严谨求实，大将之风！理科底蕴非一日之功！”' : '张教授推了推眼镜：“出招沉稳，功底扎实，是个可塑之才！”')
       : (mine.cat === 'witty' ? '张教授严肃摇头：“花拳绣腿，不够庄重，回去多读经典戒骄戒躁。”' : '张教授严肃摇头：“技艺尚浅，回去仍需勤加苦练。”'),
     lights[1]
-      ? (sGrade === 'perfect' ? '麦克老师起立欢呼：“Oh My God！全场的节奏与尖叫都被你引爆了！完美Showtime！”' : '麦克老师兴奋击节：“太炸了！全场的节奏都在你的指尖！”')
+      ? (sStyle === 'showtime' && sGrade === 'perfect' ? '麦克老师起立欢呼：“Oh My God！全场的节奏与尖叫都被你引爆了！完美Showtime！”' : '麦克老师兴奋击节：“太炸了！全场的节奏都在你的指尖！”')
       : '麦克老师揉了揉太阳穴：“感觉还是少了一点舞台张力，缺了灵魂与律动。”',
     lights[2]
       ? '李主任慈祥鼓掌：“小小年纪敢于登台就非常值得鼓励，阿姨亮灯支持你！”'
@@ -2116,14 +2150,18 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
     '“下次一定能夺冠，加油！”'
   ];
 
-  S.pending.shift(); // 移除当前 'show'
+  // 移除旧 show 项
+  const showIdx = S.pending.findIndex(x => x && x.type === 'show');
+  if (showIdx >= 0) S.pending.splice(showIdx, 1);
+
   const resultModal = {
     type: 'showr',
     tier,
-    title: m.title,
+    title: m.title || '特长才艺选秀大会',
     win,
     greenCount,
     lights,
+    styleChoice: sStyle,
     showtimeGrade: sGrade,
     encoreTriggered,
     encoreSuccess,
@@ -2135,14 +2173,14 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
     gf,
     body: (win
       ? (greenCount === 3
-        ? `🌟 全场大满贯！凭借【${mine.n}】斩获 3/3 盏全绿灯，全场起立欢呼！(悟性+${gi}, 面子+${gf})`
-        : `🎉 技惊四座！凭借【${mine.n}】赢得 ${greenCount}/3 盏绿灯夺得冠军！(悟性+${gi}, 面子+${gf})`)
-      : `惜败……对手【${rival.talent.n}】稍胜一筹，斩获优秀奖。(悟性+${gi}, 面子${gf})`),
+        ? `🌟 全场大满贯！凭借【${mine.n}】斩获 3/3 盏全绿灯，全场起立欢呼！\n\n🏆 荣获金色传说特长【才艺之星·舞台王者】！(悟性+${gi}, 面子+${gf})`
+        : `🎉 技惊四座！凭借【${mine.n}】赢得 ${greenCount}/3 盏绿灯夺得冠军！\n\n🏆 荣获金色传说特长【才艺之星·舞台王者】！(悟性+${gi}, 面子+${gf})`)
+      : `惜败……对手【${rival.talent.n}】稍胜一筹，斩获优秀纪念奖。(悟性+${gi}, 面子+${gf})`),
     opts: ['收下奖项，走下舞台 🏆']
   };
   S.pending.unshift(resultModal);
 
-  log((win ? '🏆 才艺选秀夺冠！' : '才艺选秀参与奖：') + '凭【' + mine.n + '】获悟性+' + gi + ', 面子' + (gf >= 0 ? '+' : '') + gf);
+  log((win ? '🏆 才艺选秀夺冠！' : '才艺选秀参与奖：') + '凭【' + mine.n + '】获悟性+' + gi + ', 面子+' + gf);
   return resultModal;
 }
 
@@ -4063,6 +4101,7 @@ const API = {
   achievements: () => D.achievements || [],
   familyHistory: () => (S && S.fam && S.fam.history) || (loadFam() && loadFam().history) || [],
   talentShowPerform,
+  pendShow: (tier, title) => pendShow(tier, title),
   pendHongbao: () => pendHongbao(),
   pendFace: (n) => pendFace(n),
   talentsList: () => (S ? (S.talents || []).map(id => D.talentData.find(x => x.id === id)).filter(Boolean) : []),
@@ -4230,17 +4269,28 @@ function resolvePend(i) {
       let chosenId = null;
       let showtimeGrade = 'normal';
       let encoreChoice = false;
+      let styleChoice = 'steady';
+      let secondTalentId = null;
       if (typeof i === 'string') {
         chosenId = i;
       } else if (typeof i === 'object' && i) {
         if (i.talentId) chosenId = i.talentId;
+        if (i.chosenTalentId) chosenId = i.chosenTalentId;
         if (i.showtimeGrade) showtimeGrade = i.showtimeGrade;
-        if (i.encore) encoreChoice = true;
+        if (i.encore || i.encoreChoice) encoreChoice = i.encore || i.encoreChoice;
+        if (i.styleChoice) styleChoice = i.styleChoice;
+        if (i.secondTalentId) secondTalentId = i.secondTalentId;
       } else if (typeof i === 'number') {
         const tList = (S.talents || []).map(id => D.talentData.find(x => x.id === id)).filter(Boolean);
         if (tList[i]) chosenId = tList[i].id;
       }
-      const resModal = talentShowPerform(chosenId, showtimeGrade, encoreChoice);
+      const resModal = talentShowPerform({
+        chosenTalentId: chosenId,
+        showtimeGrade,
+        encoreChoice,
+        styleChoice,
+        secondTalentId
+      });
       res = resModal && resModal.win ? '🏆 才艺选秀夺冠！' : '才艺选秀登台';
       break;
     }

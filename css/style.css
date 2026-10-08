@@ -4252,6 +4252,311 @@ button:active { transform: scale(0.96); }
   color: #b91c1c;
 }
 
+/* ---------- 🌟 特长才艺选秀 3.0 (Talent Grand Show 3.0) 专属剧场与动效 ---------- */
+.ts-theater-stage {
+  border-top: 4px solid #f59e0b;
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+}
+.ts-theater-stage.encore-crisis {
+  border-top-color: #ef4444;
+  animation: borderSiren 1s infinite alternate;
+}
+@keyframes borderSiren {
+  0% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
+  100% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.6); }
+}
+
+.ts-hype-wrap {
+  margin: 6px 0;
+  text-align: left;
+}
+.ts-hype-label {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+.ts-hype-track {
+  width: 100%;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+.ts-hype-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.ts-danmaku-lane {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 4px 0;
+  margin-bottom: 6px;
+}
+
+.ts-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-primary);
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+/* 对手亮相卡片 */
+.ts-rival-showcase {
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.ts-rival-spotlight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.ts-rival-avatar {
+  font-size: 32px;
+  line-height: 1;
+}
+.ts-rival-speech-bubble {
+  background: #ffffff;
+  border: 1px solid #fdba74;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #9a3412;
+  flex: 1;
+  position: relative;
+}
+.ts-rival-speech-bubble::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 12px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 6px solid #fdba74;
+}
+.ts-rival-talent-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px dashed #fb923c;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.ts-rival-t-detail {
+  flex: 1;
+}
+.ts-rival-t-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-primary);
+}
+.ts-rival-t-meta {
+  font-size: 10px;
+  color: #ea580c;
+}
+.ts-judges-preview-tip {
+  font-size: 11px;
+  color: #78350f;
+  margin-top: 8px;
+}
+
+/* 三大风格单选卡片 */
+.ts-style-selector {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.ts-style-card {
+  background: #ffffff;
+  border: 1.5px solid var(--border-line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ts-style-card:hover {
+  border-color: #f59e0b;
+}
+.ts-style-card.selected {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
+}
+.ts-style-hd {
+  font-size: 12px;
+  color: var(--ink-primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ts-style-desc {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  margin-top: 2px;
+}
+.ts-style-bias {
+  font-size: 10px;
+  color: #b45309;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* 舞台现场表演卡片 */
+.ts-live-stage {
+  background: linear-gradient(135deg, #1e1b4b, #0f172a);
+  border-radius: 12px;
+  padding: 16px 12px;
+  color: #ffffff;
+  text-align: center;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.ts-spotlight-beam {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 140px;
+  height: 200px;
+  background: radial-gradient(ellipse at top, rgba(254, 240, 138, 0.35), transparent 70%);
+  pointer-events: none;
+}
+.ts-live-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fef08a;
+  margin-bottom: 8px;
+}
+.ts-live-quote {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e2e8f0;
+  margin-bottom: 8px;
+}
+.ts-live-cheer {
+  font-size: 11px;
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+/* 评委揭晓卡片状态 */
+.ts-judge-card.pending {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+.ts-lamp-badge.wait {
+  background: #94a3b8;
+  color: #ffffff;
+}
+
+/* 危机与返场横幅 */
+.ts-crisis-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+.ts-crisis-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #dc2626;
+}
+.ts-crisis-desc {
+  font-size: 11px;
+  color: #991b1b;
+  margin-top: 2px;
+}
+
+/* 绝活返场选项 */
+.ts-encore-stage {
+  background: #fdf2f8;
+  border: 1.5px solid #fbcfe8;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.ts-encore-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: #be185d;
+  margin-bottom: 4px;
+}
+.ts-encore-desc {
+  font-size: 11px;
+  color: #831843;
+  margin-bottom: 10px;
+}
+.ts-encore-opt-btn {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #ffffff;
+  border: 1.5px solid #f472b6;
+  border-radius: 10px;
+  color: #9d174d;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ts-encore-opt-btn:hover {
+  background: #fdf2f8;
+  border-color: #db2777;
+  transform: translateY(-1px);
+}
+
+/* 颁奖盛典卡片与特长勋章 */
+.ts-trophy-bounce {
+  font-size: 42px;
+  margin-bottom: 4px;
+  animation: bounceTrophy 1.2s infinite alternate;
+}
+.ts-award-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--ink-primary);
+}
+.ts-award-sub {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  margin-top: 3px;
+}
+.ts-legend-talent-badge {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #92400e;
+  margin: 8px 0;
+}
+
 /* ============================================================
  * 🗳️ 班干部三向竞选演说博弈台
  * ============================================================ */
