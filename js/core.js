@@ -48,12 +48,12 @@ function flushToasts() {
   return list;
 }
 function applyEff(e) {
-  if (!e) return;
-  ATTRS.forEach(k => { if (e[k]) S.attrs[k] += e[k]; });
-  ['insight', 'act', 'money', 'face'].forEach(k => { if (e[k]) S[k] = Math.max(0, S[k] + e[k]); });
-  if (e.stress) S.stress = clamp(S.stress + e.stress, 0, 200);
-  if (e.sat) S.sat = clamp(S.sat + e.sat, 0, 140);
-  if (e.shadow) S.shadow = Math.max(0, S.shadow + e.shadow);
+  if (!e || !S || !S.attrs) return;
+  ATTRS.forEach(k => { if (e[k]) S.attrs[k] = Math.max(0, (S.attrs[k] || 0) + e[k]); });
+  ['insight', 'act', 'money', 'face'].forEach(k => { if (e[k]) S[k] = Math.max(0, (S[k] || 0) + e[k]); });
+  if (e.stress) S.stress = clamp((S.stress || 0) + e.stress, 0, 200);
+  if (e.sat) S.sat = clamp((S.sat || 0) + e.sat, 0, 140);
+  if (e.shadow) S.shadow = Math.max(0, (S.shadow || 0) + e.shadow);
   if (e.exam) S.exambuff = clamp((S.exambuff || 0) + e.exam, 0, 200);
 }
 function phaseOf(t) {
@@ -147,7 +147,10 @@ function loadFam(slot) {
     const raw = (idx === 0)
       ? (LS.getItem('cph_fam') || LS.getItem('cph_fam_0'))
       : LS.getItem('cph_fam_' + idx);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const res = JSON.parse(raw);
+    if (res && !Array.isArray(res.heirlooms)) res.heirlooms = [];
+    return res;
   } catch (e) { return null; }
 }
 
@@ -155,6 +158,7 @@ function saveFam(f, slot) {
   if (!LS) return;
   const idx = (typeof slot === 'number' && slot >= 0 && slot <= 2) ? slot : activeSlot;
   try {
+    if (f && !Array.isArray(f.heirlooms)) f.heirlooms = [];
     const str = JSON.stringify(f);
     LS.setItem(slotFamKey(idx), str);
     if (idx === 0) {
@@ -490,7 +494,8 @@ function importSlot(rawInput, targetSlot) {
   };
 }
 function pendHongbao() {
-  const t = S ? S.turn : 7;
+  if (!S || !S.pending) return;
+  const t = S.turn;
   let diff = 1.0;
   if (t <= 14) diff = 0.8;
   else if (t <= 28) diff = 1.0;
@@ -593,9 +598,230 @@ function pendHongbao() {
   });
 }
 
+/* ---------- 育儿流派、传家宝与校友人脉核心逻辑 (v2.7) ---------- */
+function rollParentingStyle(fam) {
+  if (!fam || !fam.g) {
+    const list = (D.parentingStyles || []).map(x => x.id);
+    return list.length ? pick(list) : 'democratic';
+  }
+  // 上一代高压反弹
+  if ((fam.stress || 0) > 80 || (fam.shadow || 0) > 50) {
+    if (Math.random() < 0.6) return 'buddhist';
+  }
+  // 上一代名门/高评级
+  if ((fam.tier || 0) >= 4 || (fam.totalLifeScore || 0) >= 85) {
+    const r = Math.random();
+    if (r < 0.5) return 'elite';
+    if (r < 0.8) return 'tiger';
+    return 'democratic';
+  }
+  const pool = ['democratic', 'tiger', 'buddhist', 'elite'];
+  return pick(pool);
+}
+
+function applyRelicPerks() {
+  if (!S || !Array.isArray(S.equippedRelics)) return;
+  S.equippedRelics.forEach(id => {
+    const r = (D.relics || []).find(x => x.id === id);
+    if (!r || !r.perk) return;
+    if (r.perk.maxAct) S.act = clamp(S.act + r.perk.maxAct, 0, 240);
+    if (r.perk.seedMoney) S.money += r.perk.seedMoney;
+    if (r.perk.phy) S.attrs.phy += r.perk.phy;
+    if (r.perk.img) S.attrs.img += r.perk.img;
+    if (r.perk.cha) S.attrs.cha += r.perk.cha;
+    if (r.perk.eq) S.attrs.eq += r.perk.eq;
+    if (r.perk.face) S.face += r.perk.face;
+  });
+}
+
+function hasRelic(id) {
+  return !!(S && Array.isArray(S.equippedRelics) && S.equippedRelics.indexOf(id) >= 0);
+}
+
+function getHeirlooms() {
+  const fam = (S && S.fam) || loadFam() || {};
+  const unlockedIds = fam.heirlooms || [];
+  return (D.relics || []).map(r => ({
+    ...r,
+    unlocked: unlockedIds.indexOf(r.id) >= 0,
+    equipped: !!(S && Array.isArray(S.equippedRelics) && S.equippedRelics.indexOf(r.id) >= 0)
+  }));
+}
+
+function equipRelic(id) {
+  if (!S) return false;
+  if (!Array.isArray(S.equippedRelics)) S.equippedRelics = [];
+  const fam = S.fam || loadFam() || {};
+  if (!fam.heirlooms || fam.heirlooms.indexOf(id) < 0) {
+    toast('该传家宝尚未在家族宗祠解锁');
+    return false;
+  }
+  if (S.equippedRelics.indexOf(id) >= 0) return true;
+  if (S.equippedRelics.length >= 2) {
+    toast('每代最多只能同时佩戴 2 件传家宝');
+    return false;
+  }
+  S.equippedRelics.push(id);
+  const r = (D.relics || []).find(x => x.id === id);
+  if (r && r.perk) {
+    if (r.perk.phy) S.attrs.phy += r.perk.phy;
+    if (r.perk.img) S.attrs.img += r.perk.img;
+    if (r.perk.cha) S.attrs.cha += r.perk.cha;
+    if (r.perk.eq) S.attrs.eq += r.perk.eq;
+    if (r.perk.face) S.face += r.perk.face;
+  }
+  toast('已佩戴传家宝【' + (r ? r.n : id) + '】');
+  persist();
+  return true;
+}
+
+function unequipRelic(id) {
+  if (!S || !Array.isArray(S.equippedRelics)) return false;
+  const idx = S.equippedRelics.indexOf(id);
+  if (idx < 0) return false;
+  S.equippedRelics.splice(idx, 1);
+  const r = (D.relics || []).find(x => x.id === id);
+  if (r && r.perk) {
+    if (r.perk.phy) S.attrs.phy = Math.max(0, S.attrs.phy - r.perk.phy);
+    if (r.perk.img) S.attrs.img = Math.max(0, S.attrs.img - r.perk.img);
+    if (r.perk.cha) S.attrs.cha = Math.max(0, S.attrs.cha - r.perk.cha);
+    if (r.perk.eq) S.attrs.eq = Math.max(0, S.attrs.eq - r.perk.eq);
+    if (r.perk.face) S.face = Math.max(0, S.face - r.perk.face);
+  }
+  toast('已卸下传家宝【' + (r ? r.n : id) + '】');
+  persist();
+  return true;
+}
+
+function callAlumni(npcId) {
+  if (!S) return { success: false, msg: '游戏未开始' };
+  const ph = cls();
+  if (ph !== 'college' && ph !== 'work' && ph !== 'home') {
+    toast('高中毕业步入大学后方可呼叫校友援助');
+    return { success: false, msg: '阶段未到' };
+  }
+  if (!S.alumniCalls) S.alumniCalls = {};
+  if (S.alumniCalls[npcId]) {
+    toast('本回合已联络过该校友，下回合可再次呼叫');
+    return { success: false, msg: '本回合已使用' };
+  }
+  const perk = (D.alumniPerks || []).find(x => x.id === npcId);
+  if (!perk) return { success: false, msg: '未找到校友档案' };
+
+  if (perk.cost) {
+    if (perk.cost.insight && S.insight < perk.cost.insight) {
+      toast('悟性不足 (需' + perk.cost.insight + '💡)');
+      return { success: false, msg: '悟性不足' };
+    }
+    if (perk.cost.act && S.act < perk.cost.act) {
+      toast('行动力不足 (需' + perk.cost.act + '⚡)');
+      return { success: false, msg: '行动力不足' };
+    }
+    if (perk.cost.money && S.money < perk.cost.money) {
+      toast('零钱不足 (需' + perk.cost.money + '💰)');
+      return { success: false, msg: '零钱不足' };
+    }
+    if (perk.cost.insight) S.insight -= perk.cost.insight;
+    if (perk.cost.act) S.act -= perk.cost.act;
+    if (perk.cost.money) S.money -= perk.cost.money;
+  }
+
+  const rew = perk.reward || {};
+  if (rew.img) S.attrs.img += rew.img;
+  if (rew.face) S.face += rew.face;
+  if (rew.phy) S.attrs.phy += rew.phy;
+  if (rew.stress) S.stress = clamp(S.stress + rew.stress, 0, 200);
+  if (rew.stressClear) S.stress = 0;
+  if (rew.money) S.money += rew.money;
+  if (rew.iq) S.attrs.iq += rew.iq;
+  if (rew.mem) S.attrs.mem += rew.mem;
+  if (rew.eq) S.attrs.eq += rew.eq;
+  if (rew.cha) S.attrs.cha += rew.cha;
+  if (rew.salaryAdd) S.workSalary = (S.workSalary || 300) + rew.salaryAdd;
+  if (rew.promoBonus) S.flags.alumniPromoBonus = (S.flags.alumniPromoBonus || 0) + rew.promoBonus;
+
+  S.alumniCalls[npcId] = true;
+  const msg = '【' + perk.skillName + '】生效！' + perk.quote;
+  log('联络同窗校友「' + npcId + '」' + perk.adultTitle + '：' + msg);
+  toast('🤝 ' + msg);
+  persist();
+  return { success: true, perk, quote: perk.quote };
+}
+
+function getAlumniList() {
+  if (!S) return [];
+  const ph = cls();
+  const unlocked = (ph === 'college' || ph === 'work' || ph === 'home');
+  return (D.alumniPerks || []).map(p => {
+    const npc = (D.npcs || []).find(n => n.id === p.id) || {};
+    const aff = (S.npcAff && S.npcAff[p.id]) || 0;
+    const used = !!(S.alumniCalls && S.alumniCalls[p.id]);
+    return {
+      id: p.id,
+      name: npc.n || p.id,
+      icon: npc.icon || '🌸',
+      adultTitle: p.adultTitle,
+      company: p.company,
+      skillName: p.skillName,
+      skillDesc: p.skillDesc,
+      cost: p.cost,
+      reward: p.reward,
+      quote: p.quote,
+      aff: aff,
+      unlocked: unlocked,
+      usedThisTurn: used
+    };
+  });
+}
+
+function evalBrainCombos(g, centerIdx) {
+  const target = g[centerIdx];
+  if (!target || !target.t || target.t === 'bomb' || target.t === 'key') {
+    return { count: 1, cells: [centerIdx] };
+  }
+  const visited = new Set();
+  const queue = [centerIdx];
+  visited.add(centerIdx);
+
+  while (queue.length > 0) {
+    const cur = queue.shift();
+    const r = Math.floor(cur / 6), c = cur % 6;
+    const neighbors = [
+      r > 0 ? cur - 6 : -1,
+      r < 5 ? cur + 6 : -1,
+      c > 0 ? cur - 1 : -1,
+      c < 5 ? cur + 1 : -1
+    ];
+    for (const nb of neighbors) {
+      if (nb >= 0 && !visited.has(nb) && g[nb] && g[nb].open) {
+        if (g[nb].t === target.t) {
+          visited.add(nb);
+          queue.push(nb);
+        }
+      }
+    }
+  }
+  return { count: visited.size, cells: Array.from(visited) };
+}
+
+function pendCrossroad() {
+  if (!S || !S.pending) return;
+  const opts = (D.divergentPaths || []).map(p => ({
+    id: p.id,
+    label: p.name,
+    sub: p.desc
+  }));
+  S.pending.push({
+    type: 'crossroad',
+    title: '🎓 人生十字路口 · 四向赛道抉择',
+    body: '大三学年即将结束，面对扑面而来的时代浪潮与人生分水岭，你郑重做出关乎一生的核心赛道抉择：\n\n请确定你的未来主航道：',
+    opts: opts.length ? opts : ['🎓 硕博深造', '🏛️ 选调考公', '🚀 科技创业', '💼 行业领军']
+  });
+}
+
 /* ---------- 开局 ---------- */
 function newGame() {
-  const fam = loadFam() || { g: 0, talent: 0, tier: 0, attr: {}, atlas: [] };
+  const fam = loadFam() || { g: 0, talent: 0, tier: 0, attr: {}, atlas: [], heirlooms: [] };
   const seedMoney = fam.seedMoney || 0;
   S = {
     ver: 1, gen: fam.g + 1, fam,
@@ -615,7 +841,19 @@ function newGame() {
     wishPoints: 1,
     bag: {},
     major: null,
+    parentingStyle: rollParentingStyle(fam),
+    equippedRelics: (fam && Array.isArray(fam.heirlooms)) ? fam.heirlooms.slice(0, 2) : [],
+    alumniCalls: {},
+    careerBranch: null,
+    lastBrainCombo: null,
   };
+  const pStyle = (D.parentingStyles || []).find(x => x.id === S.parentingStyle);
+  if (pStyle) {
+    if (pStyle.initFace) S.face += pStyle.initFace;
+    if (pStyle.initMoney) S.money += pStyle.initMoney;
+    if (pStyle.maxActBonus) S.act = clamp(S.act + pStyle.maxActBonus, 0, 240);
+  }
+  applyRelicPerks();
   if (fam.g > 0) {
     // 父母 18% 属性遗传 + 伴侣基因增益 + 家族特长底蕴
     const inheritRatio = (fam.achievements && fam.achievements.indexOf('ach-gen-5') >= 0) ? 0.25 : 0.18;
@@ -653,6 +891,8 @@ function newGame() {
     ? `\n🧬 上一代【${fam.name}】的积累为你打下深厚底蕴：\n• 父母五维遗传与伴侣基因赋能已注入开局！\n• 继承家族压岁钱 +${seedMoney} 元，门第面子 +${(fam.tier || 0) * 25}\n• 家族图鉴已收录 ${fam.talent} 项特长，每回合五维成长 +${perTurnGrowth}！`
     : '\n白手起家，第一代开启你的逆袭人生！';
 
+  const pStyleNote = pStyle ? `\n👪 本代原生家庭育儿理念为【${pStyle.icon} ${pStyle.name}】：${pStyle.desc}` : '';
+
   // 🏆 名校光环 / 🌧️ 心态遗传 文案 (仅继承世代展示)
   let uniBonusStory = '';
   if (fam.g > 0) {
@@ -671,7 +911,7 @@ function newGame() {
   S.pending.push({
     type: 'intro',
     title: '第 ' + S.gen + ' 代 · 出生',
-    body: '你出生在一个中国普通家庭，爸妈起名「' + S.name + '」(' + (S.gender === 'girl' ? '女儿' : '儿子') + ')。\n\n每个回合: 挖脑洞攒悟性 → 研习新技能 → 自由安排 6 件事(学习/娱乐/打工/社交) → 考试、选秀、面子，一路卷到高考。' + inheritStory + uniBonusStory,
+    body: '你出生在一个中国普通家庭，爸妈起名「' + S.name + '」(' + (S.gender === 'girl' ? '女儿' : '儿子') + ')。\n\n每个回合: 挖脑洞攒悟性 → 研习新技能 → 自由安排 6 件事(学习/娱乐/打工/社交) → 考试、选秀、面子，一路卷到高考。' + inheritStory + pStyleNote + uniBonusStory,
     opts: ['开始成长 🚀']
   });
   captureTurnStart();
@@ -682,6 +922,18 @@ function resume() {
   if (s && s.ver) {
     S = s;
     S.toasts = [];
+    if (!S.name) S.name = '无名';
+    if (!S.gender) S.gender = 'boy';
+    if (typeof S.turn !== 'number' || isNaN(S.turn) || S.turn < 1) S.turn = 1;
+    if (typeof S.money !== 'number' || isNaN(S.money)) S.money = 0;
+    if (typeof S.act !== 'number' || isNaN(S.act)) S.act = 100;
+    if (typeof S.face !== 'number' || isNaN(S.face)) S.face = 15;
+    if (typeof S.sat !== 'number' || isNaN(S.sat)) S.sat = 60;
+    if (typeof S.stress !== 'number' || isNaN(S.stress)) S.stress = 0;
+    if (typeof S.shadow !== 'number' || isNaN(S.shadow)) S.shadow = 0;
+    if (!Array.isArray(S.slots)) S.slots = new Array(6).fill(null);
+    while (S.slots.length < 6) S.slots.push(null);
+    if (S.slots.length > 6) S.slots = S.slots.slice(0, 6);
     if (!S.attrs) S.attrs = { iq: 10, eq: 10, mem: 10, img: 10, phy: 10, cha: 10 };
     ATTRS.forEach(k => {
       if (typeof S.attrs[k] !== 'number' || isNaN(S.attrs[k])) {
@@ -695,6 +947,7 @@ function resume() {
     if (!S.used) S.used = {};
     if (!S.npcAff) S.npcAff = {};
     if (!S.log) S.log = [];
+    if (!S.skills) S.skills = {};
     if (!S.learnedCourses) {
       S.learnedCourses = Object.keys(S.skills || {}).length ? Object.keys(S.skills) : ['fanshen', 'wanju'];
     }
@@ -705,11 +958,16 @@ function resume() {
       if (S.brain.keyPending === undefined) S.brain.keyPending = false;
       if (S.brain.keyIdx === undefined) S.brain.keyIdx = -1;
     }
+    if (!S.fam) S.fam = loadFam() || { g: 0, talent: 0, tier: 0, attr: {}, atlas: [], heirlooms: [] };
     if (S.fam) {
       if (!S.fam.history) S.fam.history = [];
       if (!S.fam.achievements) S.fam.achievements = [];
       if (!S.fam.atlas) S.fam.atlas = [];
+      if (!Array.isArray(S.fam.heirlooms)) S.fam.heirlooms = [];
     }
+    if (!S.parentingStyle) S.parentingStyle = 'democratic';
+    if (!Array.isArray(S.equippedRelics)) S.equippedRelics = [];
+    if (!S.alumniCalls) S.alumniCalls = {};
     if (S.turn >= 60 && !S.pending.some(x => x.type === 'endgen')) {
       pendEndGen();
     }
@@ -722,7 +980,10 @@ function resetAll() {
   if (LS) {
     try {
       LS.removeItem(slotSaveKey(activeSlot));
-      if (activeSlot === 0) LS.removeItem('cph_save');
+      if (activeSlot === 0) {
+        LS.removeItem('cph_save');
+        LS.removeItem('cph_save_0');
+      }
     } catch(e) {}
   }
   S = null;
@@ -731,7 +992,10 @@ function restartLineage() {
   if (LS) {
     try {
       LS.removeItem(slotFamKey(activeSlot));
-      if (activeSlot === 0) LS.removeItem('cph_fam');
+      if (activeSlot === 0) {
+        LS.removeItem('cph_fam');
+        LS.removeItem('cph_fam_0');
+      }
     } catch(e) {}
   }
   resetAll();
@@ -1232,6 +1496,12 @@ function pool() {
     return false;
   };
 
+  const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
+  let learnActCost = 3;
+  if (pStyle && pStyle.actDiscountKinds && pStyle.actDiscountKinds.indexOf('learn') >= 0) {
+    learnActCost = Math.max(1, learnActCost - (pStyle.actDiscountVal || 1));
+  }
+
   allLearned.forEach(c => {
     if (!okCourse(c)) return;
     const lvl = S.skills[c.id] || 1;
@@ -1241,9 +1511,9 @@ function pool() {
       name: c.name,
       icon: c.icon,
       desc: effText(c.attr) + (c.stress ? ' 压+' + c.stress : ''),
-      act: 3,
+      act: learnActCost,
       extra: '熟练Lv' + lvl,
-      locked: S.act < 3 || (c.money && S.money < c.money),
+      locked: S.act < learnActCost || (c.money && S.money < c.money),
       money: c.money || 0,
       tone: 'course'
     });
@@ -1287,10 +1557,31 @@ function pool() {
     });
   });
 
+  // 3.5) 四大分流路线专属高阶日程 (college, work, home 阶段)
+  if ((ph === 'college' || ph === 'work' || ph === 'home') && S.careerBranch && Array.isArray(D.branchActions)) {
+    const bActs = D.branchActions.filter(ba => ba.branch === S.careerBranch);
+    bActs.forEach(ba => {
+      out.push({
+        kind: 'branch',
+        id: ba.id,
+        name: ba.name,
+        icon: ba.icon,
+        desc: effText(ba.attr) + (ba.stress ? ' 压+' + ba.stress : '') + (ba.money ? ' 赚+' + ba.money : ''),
+        act: ba.act || 3,
+        extra: ba.desc || '路线专精',
+        locked: S.act < (ba.act || 3),
+        money: 0,
+        tone: 'job'
+      });
+    });
+  }
+
   // 4) 索取
   if (ph !== 'baby') D.begs.forEach(b => {
     if (S.flags['beg_' + b.id]) return;
-    const reqFace = b.face || 0;
+    if (pStyle && pStyle.id === 'tiger' && b.kind === 'play') return; // 虎妈禁绝娱乐索取
+    let reqFace = b.face || 0;
+    if (pStyle && pStyle.begFaceThresholdAdd) reqFace += pStyle.begFaceThresholdAdd;
     const reqSat = b.sat || 0;
     const ok = S.face >= reqFace && S.sat >= reqSat;
     out.push({
@@ -1323,6 +1614,7 @@ function pool() {
   return out;
 }
 function addSlot(pi) {
+  if (!S || !S.slots || !pi) return false;
   const idx = S.slots.findIndex(x => !x);
   if (idx < 0) { toast('六件事排满了,过回合吧'); return false; }
   const actCost = pi.act || 0;
@@ -1360,10 +1652,27 @@ function applyAct(pi) {
     S.money += pj.money;
     ATTRS.forEach(k => { if (pj.attr && pj.attr[k]) S.attrs[k] += pj.attr[k]; });
     log('打工「' + pj.name + '」赚 ' + pj.money + ' 元');
+  } else if (pi.kind === 'branch') {
+    const ba = (D.branchActions || []).find(x => x.id === pi.id);
+    if (ba) {
+      ATTRS.forEach(k => { if (ba.attr && ba.attr[k]) S.attrs[k] = Math.max(0, S.attrs[k] + ba.attr[k]); });
+      if (ba.money) S.money += ba.money;
+      if (ba.insight) S.insight += ba.insight;
+      if (ba.face) S.face += ba.face;
+      if (ba.stress) S.stress = clamp(S.stress + ba.stress, 0, 200);
+      if (ba.sat) S.sat = clamp(S.sat + (ba.sat || 0), 0, 140);
+      log('执行赛道专精「' + ba.name + '」');
+    }
   } else if (pi.kind === 'beg') {
     const b = D.begs.find(x => x.id === pi.id);
     if (b) {
-      const ok = Math.random() <= b.w;
+      const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
+      let styleBonus = 0;
+      if (pStyle && pStyle.begFavor) {
+        if (b.kind === 'learn' && pStyle.begFavor.learn) styleBonus += pStyle.begFavor.learn;
+        if (b.kind === 'play' && pStyle.begFavor.play) styleBonus += pStyle.begFavor.play;
+      }
+      const ok = Math.random() <= clamp(b.w + styleBonus, 0.05, 0.95);
       if (ok) {
         S.flags['beg_' + b.id] = 1;
         if (b.eff) applyEff(b.eff);
@@ -1371,7 +1680,12 @@ function applyAct(pi) {
         log('爸妈爽快答应了要「' + b.n + '」!');
         toast('🎉 索取成功! 获得「' + b.n + '」');
       } else {
-        toast('爸妈和你对视三秒:"前几天不是才买过?"(索取未通过)');
+        if (pStyle && pStyle.id === 'democratic') {
+          toast('爸妈温和地和你商量：“这次先缓缓，下次满足你。”(民主家庭无失落惩罚)');
+        } else {
+          S.sat = Math.max(0, S.sat - 8);
+          toast('爸妈和你对视三秒:"前几天不是才买过?"(索取未通过)');
+        }
       }
     }
   } else if (pi.kind === 'rest') {
@@ -1395,7 +1709,7 @@ function rollTalent(id, p) {
 
 /* ---------- 回合结算 ---------- */
 function endTurn() {
-  if (S.slots.some(x => !x)) return false;
+  if (!S || !S.slots || S.slots.some(x => !x)) return false;
   // 记录本回合执行的六项日程安排 (Round 2)
   S.lastSlots = S.slots.map(s => (s ? { kind: s.kind, id: s.id, act: s.act, money: s.money } : null));
   // 执行日常安排的六件事
@@ -1409,13 +1723,48 @@ function endTurn() {
     const famBonus = Math.max(1, Math.floor(S.fam.talent / 2));
     ATTRS.forEach(k => { S.attrs[k] += famBonus; });
   }
-  if (cls() === 'work' || cls() === 'home') S.money += (S.workSalary || 100);
+
+  // 1) 育儿流派自然修正与保底
+  const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
+  if (pStyle) {
+    if (pStyle.turnStressMod) {
+      S.stress = clamp(S.stress + pStyle.turnStressMod, 0, 200);
+    }
+    if (pStyle.minSat && S.sat < pStyle.minSat) {
+      S.sat = pStyle.minSat;
+    }
+  }
+
+  // 2) 传家宝回合自然生效
+  if (hasRelic('relic_bike')) {
+    S.act = clamp(S.act + 10, 0, 240);
+  }
+  if (hasRelic('relic_teapot')) {
+    S.stress = clamp(S.stress - 10, 0, 200);
+  }
+
+  // 3) 清空校友本回合呼叫记录
+  S.alumniCalls = {};
+
+  if (cls() === 'work' || cls() === 'home') {
+    let salary = (S.workSalary || 100);
+    if (hasRelic('relic_stock')) salary = Math.round(salary * 1.4);
+    S.money += salary;
+  }
   const mp = moneyLet();
   if (mp > 0) { S.money += mp; log('零花钱 +' + mp); }
   const rests = S.slots.filter(x => x && x.kind === 'rest').length;
   S.act = clamp(S.act + 40 + rests * 10, 10, 240);
   if (S.stress <= 0) { S.act = clamp(S.act + 15, 0, 240); }
-  while (S.stress > 100) { S.stress -= 50; S.shadow += 10; toast('压力爆炸…阴影+10'); }
+  while (S.stress > 100) {
+    S.stress -= 50;
+    const shadowGain = hasRelic('relic_teapot') ? 5 : 10;
+    S.shadow += shadowGain;
+    toast('压力爆炸…阴影+' + shadowGain);
+  }
+  if (pStyle && pStyle.shadowCap && S.shadow > pStyle.shadowCap) {
+    S.shadow = pStyle.shadowCap;
+  }
   if (S.sat >= 100) { S.shadow = Math.max(0, S.shadow - 5); S.sat = 100; }
   if (S.sat < 15) { S.sat = 15; S.attrs.iq = Math.max(0, S.attrs.iq - 1); log('被爸妈念了一晚上,智商-1'); }
   if (S.shadow >= 100) {
@@ -1433,6 +1782,7 @@ function endTurn() {
   if (t === 32) pendZhongkao();
   if (t === 43) pendGraduationToken();
   if (t === 44) pendGaokao();
+  if (t === 46) pendCrossroad();
   if (t === 28) pendFace(0);
   if (t === 37) pendFace(1);
   if (t === 50) pendCareer();
@@ -1489,13 +1839,21 @@ function endTurn() {
   S.slots = new Array(6).fill(null);
   captureTurnStart();
   persist();
+  return;
 }
 function moneyLet() {
   const ph = cls();
-  if (ph === 'baby' || ph === 'kinder' || ph === 'home') return 0;
-  if (ph === 'college') return 120 + S.fam.tier * 40;
-  if (ph === 'work') return 0; // 走工资
-  return 30 + S.fam.tier * 55 + (ph === 'senior' ? 25 : 0);
+  let base = 0;
+  if (ph === 'baby' || ph === 'kinder' || ph === 'home') base = 0;
+  else if (ph === 'college') base = 120 + S.fam.tier * 40;
+  else if (ph === 'work') base = 0; // 走工资
+  else base = 30 + S.fam.tier * 55 + (ph === 'senior' ? 25 : 0);
+
+  const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
+  if (pStyle && pStyle.moneyRatio) {
+    base = Math.round(base * pStyle.moneyRatio);
+  }
+  return base;
 }
 
 /* ---------- 考试 ---------- */
@@ -1503,6 +1861,7 @@ function moneyLet() {
 const SUBJ_CAP = { cn: 55, ma: 60, en: 42, sc: 58, so: 34 };
 function subjPts() {
   const pts = { cn: 0, ma: 0, en: 0, sc: 0, so: 0 };
+  if (!S || !S.skills) return pts;
   Object.keys(S.skills).forEach(cid => {
     const c = D.courses.find(x => x.id === cid);
     if (!c || !c.ex) return;
@@ -1517,35 +1876,55 @@ function subjPts() {
 function cattr(keys, cap) {
   // 考试属性加成封顶, 防止多代遗传滚雪球后无限涨分
   let v = 0;
-  keys.forEach(k => v += Math.min((S.attrs[k] || 0), cap));
+  if (!S || !S.attrs) return v;
+  keys.forEach(k => v += Math.min(((S.attrs && S.attrs[k]) || 0), cap));
   return v;
 }
 function pendFinal() {
+  if (!S || !S.pending) return;
   const p = subjPts();
-  const tg = Math.round((p.cn + p.ma + p.en) * 60 + p.sc * 45 + p.so * 40 + cattr(['iq', 'mem'], 200) * 3 + Math.min(S.exambuff || 0, 60) * 2);
+  const relicBonus = hasRelic('relic_paper') ? 350 : 0;
+  const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
+  const styleBonus = (pStyle && pStyle.examBuffBonus) ? pStyle.examBuffBonus : 0;
+  const tg = Math.round((p.cn + p.ma + p.en) * 60 + p.sc * 45 + p.so * 40 + cattr(['iq', 'mem'], 200) * 3 + Math.min((S.exambuff || 0) + styleBonus, 60) * 2 + relicBonus);
   const rank = tg < 3500 ? '班级后段' : tg < 7000 ? '中游' : tg < 10500 ? '上游' : '名列前茅';
   const fd = { '班级后段': -10, 中游: 0, 上游: 10, '名列前茅': 20 }[rank];
   S.face = Math.max(0, S.face + fd);
+  if (pStyle && pStyle.id === 'elite' && (rank === '班级后段' || rank === '中游')) {
+    S.sat = Math.max(0, S.sat - 25);
+  }
   S.pending.push({ type: 'news', title: '期末考成绩单', body: '总分 ' + tg + ' · ' + rank + '\n面子 ' + (fd >= 0 ? '+' : '') + fd, opts: ['好'] });
 }
 function pendZhongkao() {
+  if (!S || !S.pending) return;
   const p = subjPts();
-  const tg = Math.round((p.cn * 55 + p.ma * 55 + p.en * 45 + p.sc * 50 + p.so * 40) + cattr(['iq', 'mem'], 200) * 4 + Math.min(S.exambuff || 0, 100) * 3);
+  const relicBonus = hasRelic('relic_paper') ? 350 : 0;
+  const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
+  const styleBonus = (pStyle && pStyle.examBuffBonus) ? pStyle.examBuffBonus : 0;
+  const tg = Math.round((p.cn * 55 + p.ma * 55 + p.en * 45 + p.sc * 50 + p.so * 40) + cattr(['iq', 'mem'], 200) * 4 + Math.min((S.exambuff || 0) + styleBonus, 100) * 3 + relicBonus);
   const lvl = tg < 5200 ? '职高' : tg < 8800 ? '普高' : '重点';
   const fb = { 职高: -8, 普高: 5, 重点: 20 }[lvl];
   const bu = { 职高: 150, 普高: 300, 重点: 500 }[lvl];
   S.face = Math.max(0, S.face + fb);
   S.exambuff = clamp((S.exambuff || 0) + bu, 0, 200);
   S.flags.zhongkao = lvl;
+  if (pStyle && pStyle.id === 'elite' && lvl !== '重点') {
+    S.sat = Math.max(0, S.sat - 25);
+  }
   S.pending.push({ type: 'news', title: '中考出分', body: '总分 ' + tg + '\n进了: ' + lvl + (lvl === '重点' ? ' 全家扬眉吐气!' : lvl === '普高' ? ' 爸妈沉默了一下午。' : ' ……没事,人生不止高考。') + '\n高中考分加成: ' + bu, opts: ['好'] });
 }
 function pendGaokao() {
+  if (!S || !S.pending) return;
   const p = subjPts();
+  const relicBonus = hasRelic('relic_paper') ? 350 : 0;
+  const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
+  const styleBonus = (pStyle && pStyle.examBuffBonus) ? pStyle.examBuffBonus : 0;
   const raw =
     (p.cn * 70 + p.ma * 70 + p.sc * 70 + p.en * 52 + p.so * 46) +
     cattr(['iq', 'mem'], 250) * 5 +
-    Math.min(S.exambuff || 0, 80) * 8 +
-    Math.min(S.attrs.img || 0, 200) * 2;
+    Math.min((S.exambuff || 0) + styleBonus, 80) * 8 +
+    Math.min(S.attrs.img || 0, 200) * 2 +
+    relicBonus;
   const tg = Math.min(20000, Math.round(raw));
   let band = D.gk[0]; let idx = 0;
   D.gk.forEach((g, i) => { if (tg >= g.min) { band = g; idx = i; } });
@@ -1553,6 +1932,9 @@ function pendGaokao() {
   const fd = [-15, -5, 5, 15, 25, 40][idx];
   S.face = Math.max(0, S.face + fd);
   if (tg >= 19000) rollTalent('gaokao', 1);
+  if (pStyle && pStyle.id === 'elite' && idx < 3) {
+    S.sat = Math.max(0, S.sat - 25);
+  }
 
   const majorOpts = (D.majors || []).map(m => ({
     label: m.icon + ' ' + m.n,
@@ -1574,6 +1956,7 @@ function pendGaokao() {
 
 /* ---------- 特长才艺选秀大会 (The Talent Grand Show) ---------- */
 function pendShow(tier, title) {
+  if (!S || !S.pending) return;
   const judges = [
     { name: '张教授', icon: '🧐', title: '资深老学究', style: '严苛治学', motto: '“基本功是骗不了人的！”' },
     { name: '麦克老师', icon: '🕶️', title: '前卫潮人导师', style: '看重舞台张力', motto: '“Show me the passion, baby!”' },
@@ -1602,6 +1985,7 @@ function pendShow(tier, title) {
 }
 
 function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
+  if (!S || !S.pending) return null;
   const m = S.pending[0];
   if (!m || m.type !== 'show') return null;
   const tier = m.tier || 1;
@@ -1657,6 +2041,9 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
   const l3 = Math.random() < pLi;
 
   let lights = [l1, l2, l3];
+  if (hasRelic('relic_camera') && !lights[2]) {
+    lights[2] = true;
+  }
 
   // 4) 危急时刻【绝活返场 (Encore)】判定
   let encoreTriggered = false;
@@ -1677,6 +2064,16 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
 
   const greenCount = lights.filter(Boolean).length;
   const win = greenCount >= 2;
+  if (win) {
+    if (!S.flags) S.flags = {};
+    S.flags.wonShow = 1;
+  } else {
+    const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
+    if (pStyle && pStyle.id === 'elite') {
+      S.sat = Math.max(0, S.sat - 25);
+      toast('卷王世家对未获第一感到极度失望，家庭满意度-25！');
+    }
+  }
 
   let gi = win ? (tier >= 3 ? 500 : 200) : 40;
   let gf = win ? (tier >= 3 ? 150 : 60) : -5;
@@ -1753,12 +2150,14 @@ function showResult(tier) {
 
 function bestTalent() {
   let b = null, br = 0;
+  if (!S || !S.talents) return null;
   (S.talents || []).forEach(id => { const t = D.talentData.find(x => x.id === id); if (t && t.r > br) { br = t.r; b = t; } });
   return b;
 }
 
 /* ---------- 面子对决 2.0 (手牌化/特长羁绊/对手破防槽/老妈必杀) ---------- */
 function pendFace(n) {
+  if (!S || !S.pending) return;
   const opp = D.rivals[n % 4] || pick(D.rivals);
   const oppMaxHp = opp.face || 300;
 
@@ -1885,7 +2284,7 @@ function pendFace(n) {
 }
 
 function faceDuelStep(actionIdx) {
-  const duel = S.faceDuel;
+  const duel = S ? S.faceDuel : null;
   if (!duel || duel.finished) return;
 
   // 兜底自愈与老存档兼容
@@ -1915,7 +2314,13 @@ function faceDuelStep(actionIdx) {
       duel.mvpTalent = '老妈必杀技';
     }
   } else {
-    const cIdx = typeof actionIdx === 'number' ? actionIdx : 0;
+    let cIdx = 0;
+    if (typeof actionIdx === 'number') {
+      cIdx = actionIdx;
+    } else if (typeof actionIdx === 'string') {
+      const found = duel.hand.findIndex(c => c.id === actionIdx);
+      if (found >= 0) cIdx = found;
+    }
     const card = duel.hand[cIdx] || duel.hand[0];
 
     if (card.type === 'talent') {
@@ -1968,6 +2373,10 @@ function faceDuelStep(actionIdx) {
   }
 
   // 扣减对手面子
+  const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
+  if (pStyle && pStyle.combatDamageRatio) {
+    myDmg = Math.round(myDmg * pStyle.combatDamageRatio);
+  }
   duel.opp.hp = Math.max(0, duel.opp.hp - myDmg);
   duel.totalDamageDealt = (duel.totalDamageDealt || 0) + myDmg;
 
@@ -1988,6 +2397,8 @@ function faceDuelStep(actionIdx) {
   if (duel.opp.hp <= 0) {
     duel.finished = true;
     duel.won = true;
+    if (!S.flags) S.flags = {};
+    S.flags.wonDuel = 1;
     const finQuote = (duel.opp.tiltLines && duel.opp.tiltLines.length)
       ? duel.opp.tiltLines[duel.opp.tiltLines.length - 1]
       : '面子彻底崩溃，借口灶上炖着汤悻悻离席！';
@@ -2003,7 +2414,14 @@ function faceDuelStep(actionIdx) {
     // 瘫痪跳过反击
   } else {
     let oppAtk = Math.round((duel.opp.atk || 35) * (0.8 + Math.random() * 0.4));
-    if (duel.defending) oppAtk = Math.round(oppAtk * 0.35);
+    if (duel.defending) {
+      oppAtk = Math.round(oppAtk * 0.35);
+      if (hasRelic('relic_racket')) {
+        const reflectDmg = Math.round(oppAtk * 0.4);
+        duel.opp.hp = Math.max(0, duel.opp.hp - reflectDmg);
+        duel.logs.push('🏓 传家宝【妈妈的双喜乒乓拍】强势反弹 ' + reflectDmg + ' 点面子伤害！');
+      }
+    }
     if (duel.oppWeaken) {
       oppAtk = Math.round(oppAtk * (1 - duel.oppWeaken));
       duel.oppWeaken = 0;
@@ -2032,6 +2450,8 @@ function faceDuelStep(actionIdx) {
     duel.finished = true;
     duel.won = duel.myHp >= duel.opp.hp;
     if (duel.won) {
+      if (!S.flags) S.flags = {};
+      S.flags.wonDuel = 1;
       duel.logs.push('🎉 4轮交锋结束，我方面子更胜一筹！全场称赞！');
       S.face += 120;
       S.sat = clamp(S.sat + 10, 0, 140);
@@ -2044,6 +2464,7 @@ function faceDuelStep(actionIdx) {
 
 /* ---------- 🗳️ 班干部竞选演说策略博弈 2.0 (Class Committee Election) ---------- */
 function pendElection() {
+  if (!S || !S.pending) return;
   const rivals = [
     { name: '王小明', title: '原班长·全科代表', icon: '🧑‍🏫', motto: '“带领全班考第一是我的责任！”', votes: 0, favBloc: 'studious' },
     { name: '李华', title: '文艺课代表', icon: '🎨', motto: '“让大家的校园生活更多姿多彩！”', votes: 0, favBloc: 'middle' },
@@ -2087,7 +2508,7 @@ function pendElection() {
 }
 
 function doElection(o) {
-  const el = S.election;
+  const el = S ? S.election : null;
   if (!el || el.finished) return 0;
 
   // 兜底自愈三大选民圈子
@@ -2142,7 +2563,12 @@ function doElection(o) {
   el.blocs.middle.remaining -= gMid;
   el.blocs.rowdy.myVotes += gRowdy;
   el.blocs.rowdy.remaining -= gRowdy;
-  const myGain = gStud + gMid + gRowdy;
+  let myGain = gStud + gMid + gRowdy;
+  if (hasRelic('relic_medal')) {
+    const extra = Math.max(1, Math.round(myGain * 0.3));
+    myGain += extra;
+    logText += ' 🎖️【三道杠大队长红臂章】威望彰显，额外斩获 ' + extra + ' 票！';
+  }
 
   // 2) 对手竞选拉票 (从优势圈与中立圈吸票)
   const favKey = (el.rival && el.rival.favBloc) || 'studious';
@@ -2182,6 +2608,8 @@ function electionFinish() {
   el.won = win;
 
   if (win) {
+    if (!S.flags) S.flags = {};
+    S.flags.wonElection = 1;
     S.face += 60;
     S.sat = clamp(S.sat + 15, 0, 140);
     Object.keys(S.npcAff || {}).forEach(k => {
@@ -2205,6 +2633,7 @@ function electionFinish() {
 
 /* ---------- 职业 / 婚姻 / 世代 ---------- */
 function pendCareer() {
+  if (!S || !S.pending) return;
   const list = D.jobs.map(j => {
     let sc = 0, n = 0;
     ATTRS.forEach(k => { if (j.req[k]) { n++; sc += clamp(S.attrs[k] / j.req[k], 0, 1.2); } });
@@ -2215,11 +2644,29 @@ function pendCareer() {
   const best = list[0];
   S.job = best.j;
   S.workSalary = 180 + best.j.t * 120;
+  if (S.careerBranch) {
+    const bInfo = (D.divergentPaths || []).find(p => p.id === S.careerBranch);
+    if (bInfo) {
+      best.j = {
+        id: 'branch_' + bInfo.id,
+        n: bInfo.jobTitle,
+        name: bInfo.jobTitle,
+        icon: bInfo.name.split(' ')[0] || '💼',
+        t: 5,
+        salary: bInfo.salaryBase,
+        d: bInfo.desc + '【' + bInfo.badge + '】',
+        req: {}
+      };
+      S.job = best.j;
+      S.workSalary = bInfo.salaryBase;
+    }
+  }
   S.pending.push({ type: 'news', title: '毕业,步入职场', body: '你拿到了属于自己的工牌——\n\n' + best.j.icon + ' ' + (best.j.n || best.j.name) + ' 月薪回到手: ' + S.workSalary + '\n\n' + (best.j.d || '新人阶段: 踩点上下班,偶尔加班。'), opts: ['好'] });
 }
 
 /* ---------- 💼 职场年中绩效考核与晋升答辩 (Promotion Assessment) ---------- */
 function pendPromotion() {
+  if (!S || !S.pending) return;
   const job = S.job || { n: '普通职员', icon: '💻', t: 1 };
   const curTier = job.t || 1;
   const salary = S.workSalary || 300;
@@ -2287,6 +2734,7 @@ function promotionResolve(i) {
   }
 }
 function pendMarry() {
+  if (!S || !S.pending) return;
   let cand = null, bestAff = 0;
   Object.keys(S.npcAff || {}).forEach(id => {
     if (S.npcAff[id] > bestAff) {
@@ -2391,7 +2839,7 @@ function marryResolve(i) {
     return '你收起简历，决定专注于拼搏事业。七大姑八大姨在群里叹息：“这孩子怎么就不知道急呢？”';
   }
   const target = (m.blindCandidates && m.blindCandidates[choiceIdx]) || { name: '相亲良缘', icon: '💑', tag: '相亲良缘', bonus: { iq: 15, eq: 15 } };
-  const ok = Math.random() <= (m.prob || 0.5);
+  const ok = hasRelic('relic_scarf') || (Math.random() <= (m.prob || 0.5));
   if (ok) {
     S.spouse = {
       name: target.name,
@@ -2407,10 +2855,12 @@ function marryResolve(i) {
 }
 
 function pendEndGen() {
+  if (!S || !S.pending) return;
   pushEndGen();
 }
 
 function pushEndGen() {
+  if (!S || !S.pending) return;
   const job = S.job || { n: '自由职业者', icon: '🛋️', t: 0 };
   const jobName = job.n || job.name || '自由职业';
   const prevAtlas = (S.fam && S.fam.atlas) || [];
@@ -2496,6 +2946,31 @@ function pushEndGen() {
   if ((S.fam ? S.fam.tier : 0) <= 1 && ((job.t || 0) >= 4 || S.uniTier >= 4)) addAch('ach-zero-break');
   if (totalLifeScore >= 90) addAch('ach-perfect-life');
 
+  // 4项新赛道成就检测 (v2.7)
+  if (S.careerBranch === 'academia' && ((job.t || 0) >= 5 || (jobName || '').indexOf('科学家') >= 0)) addAch('ach-academic-giant');
+  if (S.careerBranch === 'civil' && ((job.t || 0) >= 5 || (jobName || '').indexOf('市长') >= 0)) addAch('ach-statesman-pillar');
+  if (S.careerBranch === 'startup' && ((job.t || 0) >= 5 || (jobName || '').indexOf('独角兽') >= 0)) addAch('ach-unicorn-king');
+  if (S.careerBranch === 'corporate' && ((job.t || 0) >= 5 || (jobName || '').indexOf('总裁') >= 0)) addAch('ach-industry-leader');
+
+  // 传家宝百宝阁沉淀与解锁 (v2.7)
+  const prevHeirlooms = (S.fam && Array.isArray(S.fam.heirlooms)) ? S.fam.heirlooms : [];
+  const updatedHeirlooms = [...prevHeirlooms];
+  function addRelic(id) {
+    if (updatedHeirlooms.indexOf(id) < 0) {
+      updatedHeirlooms.push(id);
+      const rObj = (D.relics || []).find(x => x.id === id);
+      toast('🏆 家族百宝阁迎入新传家宝【' + (rObj ? rObj.n : id) + '】！');
+    }
+  }
+  if (S.gen >= 1) addRelic('relic_bike');
+  if ((S.gaokaoScore || 0) >= 16000 || updatedAchievements.indexOf('ach-gk-top') >= 0) addRelic('relic_paper');
+  if ((S.money || 0) >= 1000 || (job.t || 0) >= 5 || updatedAchievements.indexOf('ach-first-rich') >= 0) addRelic('relic_stock');
+  if (((S.attrs && S.attrs.phy) || 0) >= 200 || (S.flags && S.flags.wonDuel)) addRelic('relic_racket');
+  if ((S.flags && S.flags.wonShow) || talentScore >= 60) addRelic('relic_camera');
+  if (S.spouse || updatedAchievements.indexOf('ach-love-true') >= 0) addRelic('relic_scarf');
+  if (S.flags && S.flags.wonElection) addRelic('relic_medal');
+  if ((S.shadow || 0) <= 20 && totalLifeScore >= 70) addRelic('relic_teapot');
+
   const fam = {
     g: S.gen,
     name: S.name,
@@ -2506,6 +2981,7 @@ function pushEndGen() {
     atlas: mergedAtlas,
     history: updatedHistory,
     achievements: updatedAchievements,
+    heirlooms: updatedHeirlooms,
     lastJob: jobName,
     lastScore: S.gaokaoScore || 0,
     uniTier: S.uniTier || 0,
@@ -2799,9 +3275,11 @@ function socialList() {
 }
 
 function chat(id) {
-  if (S.act < 3) { toast('行动力不足(需3)'); return; }
+  if (!S) return 0;
+  if (S.act < 3) { toast('行动力不足(需3)'); return 0; }
   S.act -= 3;
   const g = RI(3, 8);
+  if (!S.npcAff) S.npcAff = {};
   const prevAff = S.npcAff[id] || 0;
   S.npcAff[id] = clamp(prevAff + g, 0, 150);
   const nm = (D.npcs.find(n => n.id === id) || {}).n || 'ta';
@@ -2815,10 +3293,12 @@ function chat(id) {
 }
 
 function gift(id, itemId) {
+  if (!S) return null;
   if (S.act < 3) { toast('行动力不足(需3)'); return null; }
   const npc = D.npcs.find(n => n.id === id);
   if (!npc) return null;
   if (!S.bag) S.bag = {};
+  if (!S.npcAff) S.npcAff = {};
 
   let giftItem = null;
   if (itemId && S.bag[itemId] > 0) {
@@ -2865,6 +3345,7 @@ function shopList() {
   return D.store.map(s => ({ ...s, can: money >= s.price, count: bag[s.id] || 0 }));
 }
 function buy(id) {
+  if (!S) return false;
   const it = D.store.find(s => s.id === id);
   if (!it) return false;
   if (S.money < it.price) { toast('零钱不够'); return false; }
@@ -2933,14 +3414,14 @@ function bOpen() {
 }
 function bGrid() { return bOpen().g; }
 
-function applyBrainCell(c, b) {
-  const db = 1 + (b.layer - 1) * 0.2;
+function applyBrainCell(c, b, mult = 1) {
+  const db = (1 + (b.layer - 1) * 0.2) * mult;
   switch (c.t) {
     case 'bulb': { const v = Math.round(RI(10, 20) * db); S.insight += v; return '💡 悟性+' + v; }
     case 'attr': { const k = pick(['iq', 'eq', 'mem', 'img', 'phy']); const v = Math.round((RI(2, 4) + Math.max(0, b.layer - 1)) * db); S.attrs[k] += v; return ANAME[k] + '+' + v; }
-    case 'bolt': { const v = RI(10, 25); S.act = clamp(S.act + v, 0, 240); return '⚡ 行动+' + v; }
-    case 'skull': { const v = RI(2, 4); ['iq', 'eq', 'mem', 'img', 'phy'].forEach(k => S.attrs[k] += v); return '💀 脑内风暴:五维+' + v; }
-    case 'gold': { const v = RI(8, 20); S.money += v; return '💰 零花+' + v; }
+    case 'bolt': { const v = Math.round(RI(10, 25) * mult); S.act = clamp(S.act + v, 0, 240); return '⚡ 行动+' + v; }
+    case 'skull': { const v = Math.round(RI(2, 4) * mult); ['iq', 'eq', 'mem', 'img', 'phy'].forEach(k => S.attrs[k] += v); return '💀 脑内风暴:五维+' + v; }
+    case 'gold': { const v = Math.round(RI(8, 20) * mult); S.money += v; return '💰 零花+' + v; }
     case 'duck': return '🦆 鸭子看了你一眼';
     case 'key': return '🗝️ 钥匙';
     case 'bomb': return '💥 炸弹';
@@ -3021,7 +3502,35 @@ function bRev(i) {
       res = '💥 连环爆破!' + (exploded.length ? ' 获得: ' + exploded.slice(0, 3).join(' ') + (exploded.length > 3 ? '等' : '') : '');
     }
   } else {
-    res = applyBrainCell(c, b);
+    // 突触 4 连通同色连击判定 (Synaptic Combo 2.0)
+    const combo = evalBrainCombos(b.g, i);
+    let mult = 1;
+    let comboMsg = '';
+    if (combo.count >= 2) {
+      if (combo.count === 2) {
+        mult = 1.25;
+        comboMsg = ' ⚡微光共振(×1.25)';
+      } else if (combo.count <= 4) {
+        mult = 1.6;
+        comboMsg = ' ⚡灵感回路(×1.6)';
+        const unopened = [];
+        b.g.forEach((cell, idx) => { if (!cell.open && cell.t !== 'key') unopened.push(idx); });
+        if (unopened.length) {
+          const luckyIdx = pick(unopened);
+          b.g[luckyIdx].open = true;
+          applyBrainCell(b.g[luckyIdx], b, 1);
+          comboMsg += ' +灵感外溢点亮迷雾!';
+        }
+      } else {
+        mult = 2.2;
+        comboMsg = ' ⚡全脑风暴(×2.2，返还2⚡)!';
+        S.act = clamp(S.act + 2, 0, 240);
+      }
+      S.lastBrainCombo = { count: combo.count, type: c.t, cells: combo.cells, mult };
+    } else {
+      S.lastBrainCombo = null;
+    }
+    res = applyBrainCell(c, b, mult) + comboMsg;
   }
 
   // 保底：若当前层全部翻开，自动进入下一层或封顶提示 (非钥匙等待状态)
@@ -3102,6 +3611,9 @@ const API = {
     face: S.face, sat: S.sat, stress: S.stress, shadow: S.shadow,
     exambuff: S.exambuff, talents: S.talents.length,
     job: S.job, spouse: S.spouse,
+    parentingStyle: S.parentingStyle,
+    careerBranch: S.careerBranch,
+    equippedRelics: S.equippedRelics,
   } : null,
   learnCourse, learnList,
   pool, addSlot, removeSlot, clearSlots, autoFillSlots,
@@ -3110,7 +3622,7 @@ const API = {
   toast, flushToasts,
   endTurn, pending: () => (S && S.pending) ? S.pending.slice() : [],
   resolve: resolvePend,
-  examBuff: () => S.exambuff,
+  examBuff: () => (S && S.exambuff) || 0,
   brain: { grid: bGrid, rev: bRev, info: bInfo, useKey: () => bRev(bOpen().keyIdx) },
   social: socialList, chat, gift, giftItem: gift,
   shop: shopList, buy, bag: () => (S && S.bag) || {},
@@ -3128,6 +3640,21 @@ const API = {
   pendFace: (n) => pendFace(n),
   talentsList: () => (S ? (S.talents || []).map(id => D.talentData.find(x => x.id === id)).filter(Boolean) : []),
   election: () => (S && S.election),
+  parentingStyle: () => (S && S.parentingStyle) || 'democratic',
+  parentingStyles: () => D.parentingStyles || [],
+  heirlooms: {
+    list: getHeirlooms,
+    equip: equipRelic,
+    unequip: unequipRelic,
+    equipped: () => (S && Array.isArray(S.equippedRelics)) ? S.equippedRelics.map(id => (D.relics || []).find(r => r.id === id)).filter(Boolean) : []
+  },
+  alumni: {
+    list: getAlumniList,
+    call: callAlumni
+  },
+  careerBranch: () => (S && S.careerBranch) || null,
+  divergentPaths: () => D.divergentPaths || [],
+  pendCrossroad: () => pendCrossroad(),
   saveManager: {
     getActiveSlot: () => activeSlot,
     setActiveSlot: (idx) => {
@@ -3244,7 +3771,15 @@ function resolvePend(i) {
       break;
     }
     case 'gaokao_apply': {
-      const mj = (D.majors && D.majors[i]) ? D.majors[i] : (D.majors ? D.majors[0] : null);
+      let mj = null;
+      if (typeof i === 'number') {
+        mj = (D.majors && D.majors[i]) ? D.majors[i] : null;
+      } else if (typeof i === 'string') {
+        mj = (D.majors && D.majors.find(x => x.id === i)) || null;
+      } else if (typeof i === 'object' && i && i.majorId) {
+        mj = (D.majors && D.majors.find(x => x.id === i.majorId)) || null;
+      }
+      if (!mj && D.majors && D.majors.length) mj = D.majors[0];
       if (mj) {
         S.major = mj.id;
         if (mj.bonus) applyEff(mj.bonus);
@@ -3291,8 +3826,10 @@ function resolvePend(i) {
       if (S.election && S.election.finished) {
         S.pending.shift();
         electionFinish();
-      } else if (S.pending[0]) {
+      } else if (S.pending[0] && S.election) {
         S.pending[0].body = '第 ' + (S.election.round - 1) + ' 轮演说斩获 ' + v + ' 票！请选择下一轮施政演说策略！';
+      } else {
+        S.pending.shift();
       }
       res = '竞选拉票斩获 ' + v + ' 票';
       break;
@@ -3343,10 +3880,34 @@ function resolvePend(i) {
       res = '珍藏毕业信物';
       break;
     }
+    case 'crossroad': {
+      let branchId = 'academia';
+      if (typeof i === 'number') {
+        const p = (D.divergentPaths || [])[i];
+        if (p) branchId = p.id;
+      } else if (typeof i === 'string') {
+        branchId = i;
+      } else if (typeof i === 'object' && i && i.branchId) {
+        branchId = i.branchId;
+      }
+      S.careerBranch = branchId;
+      const bObj = (D.divergentPaths || []).find(x => x.id === branchId);
+      const bName = bObj ? bObj.name : branchId;
+      log('在人生十字路口选定了主航道：' + bName);
+      toast('🎯 选定未来主航道【' + bName + '】！');
+      S.pending.shift();
+      res = '选定主航道: ' + bName;
+      break;
+    }
     case 'endgen': {
       S.pending.shift();
       nextGen();
       res = '生下下一代';
+      break;
+    }
+    default: {
+      S.pending.shift();
+      res = '继续';
       break;
     }
   }

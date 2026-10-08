@@ -404,12 +404,22 @@ function renderTop() {
   const i = CP.info();
   if (!i) return;
   const genderIcon = i.gender === 'girl' ? '👧' : '👦';
+  const pStyle = (CP.parentingStyles ? CP.parentingStyles() : []).find(x => x.id === i.parentingStyle);
+  let styleBadgeHtml = '';
+  if (pStyle) {
+    styleBadgeHtml = ' <span class="style-badge" title="' + pStyle.name + ': ' + pStyle.desc + '">' + pStyle.icon + ' ' + pStyle.name + '</span>';
+  }
   
   const elGen = $('#top-gen');
   if (elGen) {
-    elGen.textContent = '第' + i.gen + '代 ' + genderIcon + i.name;
+    elGen.innerHTML = '第' + i.gen + '代 ' + genderIcon + i.name + styleBadgeHtml;
     const elTurn = $('#top-turn');
-    if (elTurn) elTurn.textContent = '📅 回合' + i.turn + ' · ' + i.age + '岁 · ' + i.phase;
+    let branchBadge = '';
+    if (i.careerBranch) {
+      const bInfo = (CP.divergentPaths ? CP.divergentPaths() : []).find(x => x.id === i.careerBranch);
+      if (bInfo) branchBadge = ' · ' + bInfo.badge;
+    }
+    if (elTurn) elTurn.textContent = '📅 回合' + i.turn + ' · ' + i.age + '岁 · ' + i.phase + branchBadge;
     const elFace = $('#top-face');
     if (elFace) elFace.textContent = i.face;
     const elAct = $('#top-act');
@@ -423,7 +433,7 @@ function renderTop() {
     const topbar = $('#topbar');
     if (topbar) {
       topbar.innerHTML =
-        '<span class="gen-tag">第' + i.gen + '代 ' + genderIcon + i.name + '</span>' +
+        '<span class="gen-tag">第' + i.gen + '代 ' + genderIcon + i.name + styleBadgeHtml + '</span>' +
         '<span class="chip">📅 回合' + i.turn + ' · ' + i.age + '岁 · ' + i.phase + '</span>' +
         '<span class="chip" title="面子">⭐面子<b>' + i.face + '</b></span>' +
         '<span class="chip" title="行动力">⚡行动<b>' + i.act + '</b></span>' +
@@ -809,6 +819,12 @@ function renderBrain() {
     wrap.appendChild(h('div', 'brain-key-alert', '🗝️ 发现了通往下一层的钥匙！请点击高亮的钥匙开启下潜通道~'));
   }
 
+  const curState = CP.state();
+  if (curState && curState.lastBrainCombo && curState.lastBrainCombo.count >= 2) {
+    const lbc = curState.lastBrainCombo;
+    wrap.appendChild(h('div', 'brain-combo-alert', '⚡ 突触连锁共鸣！' + lbc.count + ' 连击达成 (收益 ×' + lbc.mult + ')！'));
+  }
+
   const grid = h('div', brainShaking ? 'brain-shake' : '');
   grid.id = 'brain-grid';
   if (brainShaking) {
@@ -831,6 +847,9 @@ function renderBrain() {
       if (i === lastExplodedIdx) extraCls = ' bomb-burst';
       else if (lastChainIndices.indexOf(i) >= 0) extraCls = ' chain-burst';
       else if (!c.open && b.act < 2) extraCls = ' cell-exhausted';
+      if (curState && curState.lastBrainCombo && curState.lastBrainCombo.cells && curState.lastBrainCombo.cells.indexOf(i) >= 0) {
+        extraCls += ' combo-active';
+      }
     }
 
     const cell = h('div', 'cell' + (c.open ? ' open' : '') + extraCls);
@@ -906,6 +925,52 @@ function renderSocial() {
   const st = $('#stage');
   st.innerHTML = '';
   const wrap = h('div');
+
+  const alumniList = (CP.alumni ? CP.alumni.list() : []).filter(al => al.unlocked);
+  if (alumniList.length) {
+    const alSec = h('div', 'alumni-section-card');
+    alSec.innerHTML = '<div class="alumni-sec-title">🤝 同窗校友圈 · 成人期人脉动态</div>' +
+      '<div class="alumni-sec-desc">曾经的高中同窗如今各奔前程，在各行各业崭露头角。每回合可向 1 位校友发起专属技能求助：</div>';
+    const alGrid = h('div', 'alumni-grid');
+    alumniList.forEach(al => {
+      const item = h('div', 'alumni-card' + (al.usedThisTurn ? ' used' : ''));
+      let costStr = '';
+      if (al.cost) {
+        if (al.cost.insight) costStr += al.cost.insight + '💡 ';
+        if (al.cost.act) costStr += al.cost.act + '⚡ ';
+        if (al.cost.money) costStr += al.cost.money + '💰 ';
+      }
+      item.innerHTML =
+        '<div class="al-top">' +
+          '<span class="al-icon">' + al.icon + '</span>' +
+          '<div class="al-meta">' +
+            '<div class="al-name">' + al.name + ' <span class="al-title">' + al.adultTitle + '</span></div>' +
+            '<div class="al-comp">' + al.company + ' · 羁绊 ' + al.aff + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="al-skill"><b>' + al.skillName + '</b>: ' + al.skillDesc + '</div>' +
+        '<div class="al-footer">' +
+          '<span class="al-cost">' + (costStr ? '消耗: ' + costStr : '无消耗') + '</span>' +
+          '<button class="al-btn"' + (al.usedThisTurn ? ' disabled' : '') + '>' +
+            (al.usedThisTurn ? '本回合已求助' : '求助') +
+          '</button>' +
+        '</div>';
+      const btn = item.querySelector('.al-btn');
+      if (btn && !al.usedThisTurn) {
+        btn.onclick = () => {
+          sound.click();
+          const res = CP.alumni.call(al.id);
+          if (res && res.success) {
+            render();
+          }
+        };
+      }
+      alGrid.appendChild(item);
+    });
+    alSec.appendChild(alGrid);
+    wrap.appendChild(alSec);
+  }
+
   wrap.appendChild(h('div', 'pool-cat', '👥 同学往来 (初中及以上开放深度互动)'));
   const list = CP.social();
   if (!list.length) {
@@ -1044,8 +1109,10 @@ function renderAtlas() {
 
   // 三大子选项卡
   const subTabs = h('div', 'atlas-subtabs');
+  const equippedRelics = CP.heirlooms ? CP.heirlooms.equipped() : [];
   const tabsConfig = [
     { id: 'talents', label: '🌟 家族特长 (' + a.total + ')' },
+    { id: 'heirlooms', label: '🏺 祖宅百宝阁 (' + equippedRelics.length + '/2)' },
     { id: 'tree', label: '🌳 百年世代谱系' },
     { id: 'achievements', label: '🏆 传家荣誉殿堂' }
   ];
@@ -1072,6 +1139,54 @@ function renderAtlas() {
       });
       wrap.appendChild(grid);
     }
+  } else if (atlasTab === 'heirlooms') {
+    const relicList = CP.heirlooms ? CP.heirlooms.list() : [];
+    const equipped = CP.heirlooms ? CP.heirlooms.equipped() : [];
+    const header = h('div', 'relic-header-card');
+    header.innerHTML = '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">🏺 祖宅百宝阁 · 传家珍宝</div>' +
+      '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">历代先祖传承沉淀的家族至宝，每代最多同时佩戴 <b>2 件</b>。当前已佩戴：<b>' + equipped.length + ' / 2</b> 件</div>';
+    wrap.appendChild(header);
+
+    const rGrid = h('div', 'relic-grid');
+    relicList.forEach(r => {
+      const card = h('div', 'relic-card' + (r.equipped ? ' equipped' : '') + (!r.unlocked ? ' locked' : ''));
+      const rCls = 'r-rar' + (r.r || 3);
+      card.innerHTML =
+        '<div class="r-top">' +
+          '<span class="r-icon">' + r.icon + '</span>' +
+          '<span class="r-name ' + rCls + '">' + r.n + '</span>' +
+          '<span class="r-rar-badge">R' + r.r + '</span>' +
+        '</div>' +
+        '<div class="r-desc">' + r.desc + '</div>' +
+        '<div class="r-status">' +
+          (r.unlocked
+            ? (r.equipped
+                ? '<button class="btn btn-sm btn-relic-unequip">卸下</button>'
+                : '<button class="btn btn-sm btn-relic-equip"' + (equipped.length >= 2 ? ' disabled' : '') + '>佩戴</button>')
+            : '<span class="r-locked-label">🔒 宗祠未解锁</span>') +
+        '</div>';
+
+      const equipBtn = card.querySelector('.btn-relic-equip');
+      if (equipBtn) {
+        equipBtn.onclick = () => {
+          sound.click();
+          if (CP.heirlooms.equip(r.id)) {
+            renderAtlas();
+          }
+        };
+      }
+      const unequipBtn = card.querySelector('.btn-relic-unequip');
+      if (unequipBtn) {
+        unequipBtn.onclick = () => {
+          sound.click();
+          if (CP.heirlooms.unequip(r.id)) {
+            renderAtlas();
+          }
+        };
+      }
+      rGrid.appendChild(card);
+    });
+    wrap.appendChild(rGrid);
   } else if (atlasTab === 'tree') {
     const history = CP.familyHistory();
     const curState = CP.state();
@@ -1264,9 +1379,24 @@ function niceEff(e) {
 /* ---------- 弹窗系统 ---------- */
 let hbTimer = null;
 let hbKeyHandler = null;
+const activeModalCleanups = [];
+
+function registerModalCleanup(fn) {
+  if (typeof fn === 'function') activeModalCleanups.push(fn);
+}
+
+function clearActiveModalListeners() {
+  if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+  if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
+  while (activeModalCleanups.length > 0) {
+    const fn = activeModalCleanups.pop();
+    try { fn(); } catch(e) {}
+  }
+}
 
 function renderModal() {
   const m = $('#modal');
+  clearActiveModalListeners();
   const pend = CP.pending();
   if (m.dataset.customModal) {
     if (!pend.length) return;
@@ -1275,8 +1405,6 @@ function renderModal() {
   // 系统模态框强制解绑点击遮罩关闭，防止误触导致重要系统交互（高考/竞选/选秀）中断卡死
   m.onclick = null;
   if (!CP.state() || !pend.length) {
-    if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
-    if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
     m.classList.remove('show');
     m.innerHTML = '';
     return;
@@ -1344,6 +1472,12 @@ function renderModal() {
   // 针对职场期年中绩效考核与晋升答辩
   if (p.type === 'promotion') {
     renderPromotionModal(p, m);
+    return;
+  }
+
+  // 针对大学人生十字路口四向分流抉择 (Turn 46)
+  if (p.type === 'crossroad') {
+    renderCrossroadModal(p, m);
     return;
   }
 
@@ -1813,7 +1947,6 @@ function renderHongbaoResult(p, m, posVal, isSkip, resText) {
   confirmBtn.onclick = doConfirm;
   body.appendChild(confirmBtn);
 
-  // 键盘快捷支持：按 Enter 或 Space 确认继续
   resultKeyHandler = (e) => {
     if (e.key === 'Enter' || e.code === 'Space') {
       e.preventDefault();
@@ -1821,6 +1954,12 @@ function renderHongbaoResult(p, m, posVal, isSkip, resText) {
     }
   };
   window.addEventListener('keydown', resultKeyHandler);
+  registerModalCleanup(() => {
+    if (resultKeyHandler) {
+      window.removeEventListener('keydown', resultKeyHandler);
+      resultKeyHandler = null;
+    }
+  });
 
   m.appendChild(body);
 }
@@ -2040,6 +2179,12 @@ function renderFaceDuelResult(duel, p, m) {
     }
   };
   window.addEventListener('keydown', resultKeyHandler);
+  registerModalCleanup(() => {
+    if (resultKeyHandler) {
+      window.removeEventListener('keydown', resultKeyHandler);
+      resultKeyHandler = null;
+    }
+  });
 
   m.appendChild(body);
 }
@@ -2246,6 +2391,14 @@ function renderTalentShowModal(p, m) {
       }
     };
     window.addEventListener('keydown', keyHandler);
+    registerModalCleanup(() => {
+      clearInterval(timer);
+      clearTimeout(timeoutTimer);
+      if (keyHandler) {
+        window.removeEventListener('keydown', keyHandler);
+        keyHandler = null;
+      }
+    });
   };
   body.appendChild(btn);
 
@@ -2355,6 +2508,12 @@ function renderTalentShowResultModal(p, m) {
     }
   };
   window.addEventListener('keydown', resultKeyHandler);
+  registerModalCleanup(() => {
+    if (resultKeyHandler) {
+      window.removeEventListener('keydown', resultKeyHandler);
+      resultKeyHandler = null;
+    }
+  });
   body.appendChild(btn);
 
   m.appendChild(body);
@@ -2565,6 +2724,12 @@ function renderElectionResultModal(p, m) {
     }
   };
   window.addEventListener('keydown', resultKeyHandler);
+  registerModalCleanup(() => {
+    if (resultKeyHandler) {
+      window.removeEventListener('keydown', resultKeyHandler);
+      resultKeyHandler = null;
+    }
+  });
   body.appendChild(confirmBtn);
 
   m.appendChild(body);
@@ -2731,6 +2896,41 @@ function renderPromotionModal(p, m) {
   optsBox.appendChild(grid);
   body.appendChild(optsBox);
 
+  m.appendChild(body);
+}
+
+/* ---------- 🎓 人生十字路口四向赛道分流 (Crossroad) ---------- */
+function renderCrossroadModal(p, m) {
+  m.classList.add('show');
+  m.innerHTML = '';
+  const body = h('div', 'm-body crossroad-modal');
+  body.appendChild(h('div', 'm-title', '🎓 人生十字路口 · 四向赛道分流抉择'));
+  body.appendChild(h('div', 'm-desc', '大三学年即将结束，面对扑面而来的时代浪潮与人生分水岭，请郑重选定你的未来人生主航道：<br><span style="font-size:12px;color:var(--text-dim)">不同赛道将解锁专属高阶日程、决定终局顶级职业走向与专属传家成就！</span>'));
+
+  const paths = CP.divergentPaths ? CP.divergentPaths() : [];
+  const grid = h('div', 'crossroad-grid');
+  paths.forEach((path, idx) => {
+    const card = h('div', 'crossroad-card');
+    card.innerHTML =
+      '<div class="cr-top">' +
+        '<span class="cr-name">' + path.name + '</span>' +
+        '<span class="cr-badge">' + path.badge + '</span>' +
+      '</div>' +
+      '<div class="cr-desc">' + path.desc + '</div>' +
+      '<div class="cr-meta">' +
+        '<div>🎯 核心属性: <b>' + (path.focusAttrs ? path.focusAttrs.map(k => ANAME[k] || k).join('、') : '') + '</b></div>' +
+        '<div>💼 顶级职业: <b>' + path.jobTitle + '</b> (起薪 ' + path.salaryBase + '元/回)</div>' +
+      '</div>' +
+      '<button class="btn btn-primary cr-select-btn">扬帆起航 🚀</button>';
+    card.querySelector('.cr-select-btn').onclick = () => {
+      sound.click();
+      const r = CP.resolve(idx);
+      if (r) toast(r);
+      renderAll();
+    };
+    grid.appendChild(card);
+  });
+  body.appendChild(grid);
   m.appendChild(body);
 }
 
@@ -3458,12 +3658,14 @@ function init() {
     if (existing) {
       if (confirm('检测到已有第 ' + existing.gen + ' 代的成长存档，开启新的一代将重置本代进度。确定开启吗？')) {
         localStorage.removeItem('cph_guide_done');
-        CP.restartLineage();
+        CP.resetAll();
+        CP.newGame();
         renderAll();
       }
     } else {
       localStorage.removeItem('cph_guide_done');
-      CP.restartLineage();
+      CP.resetAll();
+      CP.newGame();
       renderAll();
     }
   };

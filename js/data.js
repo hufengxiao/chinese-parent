@@ -795,6 +795,10 @@ achievements: [
   {id:'ach-gen-5',       n:'百年望族',   icon:'🏛️', desc:'家族火炬连续传承达 5 代以上', perk:'全属性先天遗传系数提升至 25%'},
   {id:'ach-zero-break',  n:'寒门逆袭',   icon:'🚀', desc:'以工薪阶层起步逆袭考入985或任高级职务', perk:'后代初始面子 +35'},
   {id:'ach-perfect-life',n:'完美人生',   icon:'💎', desc:'单代人生综合评分达到 90 分以上', perk:'下一代所有基础属性 +10'},
+  {id:'ach-academic-giant', n:'国士无双', icon:'🔭', desc:'完成学术深造路线并当选领军科学家', perk:'后代初始智商与记忆 +30'},
+  {id:'ach-statesman-pillar', n:'中流砥柱', icon:'🏛️', desc:'完成选调考公路线并官至市长主政', perk:'后代初始家庭面子 +50'},
+  {id:'ach-unicorn-king', n:'时代骄子', icon:'🦄', desc:'完成科技创业路线打造百亿独角兽', perk:'后代开局压岁钱额外 +200'},
+  {id:'ach-industry-leader', n:'商业航母', icon:'💼', desc:'完成行业领军路线成为集团总裁', perk:'后代成年每月工资额外 +30%'},
 ],
 
 /* 高考分数线档位 */
@@ -920,9 +924,228 @@ manual: [
   }
 ],
 
+/* ---------- 家庭育儿流派系统 (v2.7) ---------- */
+parentingStyles: [
+  {
+    id: 'tiger',
+    name: '严父虎妈',
+    icon: '📚',
+    motto: '“少壮不努力，老大徒伤悲！”',
+    desc: '学业日程行动点消耗-1，考试冲刺加成+25%，自然压力+5/回，禁绝娱乐索取。',
+    actDiscountKinds: ['learn'],
+    actDiscountVal: 1,
+    turnStressMod: 5,
+    examBuffBonus: 25,
+    begFavor: { learn: 0.35, play: -1.0 }
+  },
+  {
+    id: 'buddhist',
+    name: '佛系散养',
+    icon: '🍃',
+    motto: '“健康开心就好，平淡是福。”',
+    desc: '自然压力-8/回，阴影封顶60绝不崩溃，体魄成长+20%，每月零花钱-20%。',
+    turnStressMod: -8,
+    shadowCap: 60,
+    phyGrowthBonus: 0.2,
+    moneyRatio: 0.8,
+    begFavor: { play: 0.30 }
+  },
+  {
+    id: 'elite',
+    name: '卷王世家',
+    icon: '⭐',
+    motto: '“要么不做，要做就必须第一！”',
+    desc: '开局面子+50，开局零花钱+120，对决与选秀战力+25%，考试选秀非前列满意度-25。',
+    initFace: 50,
+    initMoney: 120,
+    combatDamageRatio: 1.25,
+    begFaceThresholdAdd: 25
+  },
+  {
+    id: 'democratic',
+    name: '民主知心',
+    icon: '🤝',
+    motto: '“我们永远是你最坚实的后盾。”',
+    desc: '行动力上限+20，情商魅力成长+15%，满意度保底50，索取失败无心理阴影。',
+    maxActBonus: 20,
+    socialGrowthBonus: 0.15,
+    minSat: 50
+  }
+],
+
+/* ---------- 传家宝典籍与祖宅百宝阁 (v2.7) ---------- */
+relics: [
+  { id: 'relic_bike', n: '先祖的二八大杠', icon: '🚲', r: 3, desc: '行动力上限+30，每回合行动力恢复+10', perk: { maxAct: 30, actRegen: 10 } },
+  { id: 'relic_paper', n: '黄冈状元手抄密卷', icon: '📜', r: 4, desc: '学习掌握度速度+25%，考分基础加成+350', perk: { learnSpeed: 0.25, examBase: 350 } },
+  { id: 'relic_stock', n: '首富的原始股凭单', icon: '📈', r: 4, desc: '成年工资与分红+40%，开局压岁钱+150', perk: { salaryRatio: 0.4, seedMoney: 150 } },
+  { id: 'relic_racket', n: '妈妈的双喜乒乓拍', icon: '🏓', r: 3, desc: '体魄+35，面子对决反弹伤害+40%', perk: { phy: 35, reflectRatio: 0.4 } },
+  { id: 'relic_camera', n: '老海鸥胶片单反', icon: '📷', r: 3, desc: '想象魅力+30，选秀默认保底赠送1盏绿灯', perk: { img: 30, cha: 30, freeShowLight: 1 } },
+  { id: 'relic_scarf', n: '青梅竹马手织围巾', icon: '🧣', r: 4, desc: '情商+35，全员初始好感+20，相亲求婚必成', perk: { eq: 35, initAff: 20, marryGuaranteed: true } },
+  { id: 'relic_medal', n: '三道杠大队长红臂章', icon: '🎖️', r: 3, desc: '家庭面子开局+50，竞选演说基础得票+30%', perk: { face: 50, electionVoteRatio: 0.3 } },
+  { id: 'relic_teapot', n: '祖传紫砂养生壶', icon: '🍵', r: 3, desc: '每回合压力自然消除+10，阴影恶化率-50%', perk: { stressRelief: 10, shadowMitigate: 0.5 } }
+],
+
+/* ---------- 同窗校友成年动态与人脉技能 (v2.7) ---------- */
+alumniPerks: [
+  {
+    id: 'summer',
+    adultTitle: '知名概念设计师',
+    company: '新锐数字艺术工作室',
+    skillName: '视觉概念赋能',
+    skillDesc: '消耗15悟性，想象力+40，面子+25',
+    cost: { insight: 15 },
+    reward: { img: 40, face: 25 },
+    quote: '“设计灵感就像捕风，和你聊完我又有新想法了！”'
+  },
+  {
+    id: 'shenhan',
+    adultTitle: '职业篮球运动员',
+    company: '省男子职业篮球队',
+    skillName: '体能强化特训',
+    skillDesc: '消耗20行动力，体魄+45，压力-30',
+    cost: { act: 20 },
+    reward: { phy: 45, stress: -30 },
+    quote: '“汗水从不骗人，走，上场跟我狠狠练一组折返跑！”'
+  },
+  {
+    id: 'xiaomei',
+    adultTitle: '百万MCN创始人',
+    company: '星火泛娱乐传媒',
+    skillName: '全网流量引爆',
+    skillDesc: '消耗50元零花，面子+60，职场答辩好评加持',
+    cost: { money: 50 },
+    reward: { face: 60, promoBonus: 10 },
+    quote: '“老同学的事就是我的头条！全网流量直接给你拉满！”'
+  },
+  {
+    id: 'kongde',
+    adultTitle: '国家实验室首席科学家',
+    company: '国家深空与量子研究院',
+    skillName: '顶尖前沿算力',
+    skillDesc: '消耗25悟性，智商+50，记忆+30',
+    cost: { insight: 25 },
+    reward: { iq: 50, mem: 30 },
+    quote: '“科学的尽头是浪漫，这套交叉算法模型你拿去参考。”'
+  },
+  {
+    id: 'yuanyuan',
+    adultTitle: '金牌猎头合伙人',
+    company: '光辉国际人才咨询',
+    skillName: '高阶职场内推',
+    skillDesc: '消耗15行动力，月薪永久+80元，晋升几率提升',
+    cost: { act: 15 },
+    reward: { salaryAdd: 80, eq: 20 },
+    quote: '“你的综合能力在市场上是稀缺标的，我亲自为你背书！”'
+  },
+  {
+    id: 'lizhen',
+    adultTitle: '硬核硬科技创投合伙人',
+    company: '同创伟业资本',
+    skillName: '创投资本跟投',
+    skillDesc: '消耗30行动力，本回合零钱暴增200元',
+    cost: { act: 30 },
+    reward: { money: 200, cha: 20 },
+    quote: '“认准你的方向，这笔天使跟投资金立即划拨到位！”'
+  },
+  {
+    id: 'qixue',
+    adultTitle: '全球电竞冠军队总教练',
+    company: 'EDG电子竞技俱乐部',
+    skillName: '通宵解压开黑',
+    skillDesc: '消耗10行动力+15元，压力全部清零，情商与想象+25',
+    cost: { act: 10, money: 15 },
+    reward: { stressClear: true, eq: 25, img: 25 },
+    quote: '“别把弦绷得太紧，今晚带你一命通关重温青春狂欢！”'
+  }
+],
+
+/* ---------- 大学四向深造分支与成人期高阶日程 (v2.7) ---------- */
+divergentPaths: [
+  {
+    id: 'academia',
+    name: '🎓 硕博深造 · 科学巨匠',
+    desc: '专精学术攻坚与前沿理论，通往两院院士与终身教授之巅。',
+    focusAttrs: ['iq', 'mem'],
+    badge: '国士无双',
+    salaryBase: 650,
+    jobTitle: '领军科学家'
+  },
+  {
+    id: 'civil',
+    name: '🏛️ 选调考公 · 经世济民',
+    desc: '投身基层选调与机关施政，情商魅力兼备，通往主政一方之枢。',
+    focusAttrs: ['eq', 'cha'],
+    badge: '中流砥柱',
+    salaryBase: 500,
+    jobTitle: '市长主政'
+  },
+  {
+    id: 'startup',
+    name: '🚀 科技创业 · 时代独角兽',
+    desc: '勇立时代潮头，经历天使融资洗礼，打造百亿估值硬核企业。',
+    focusAttrs: ['img', 'phy'],
+    badge: '时代骄子',
+    salaryBase: 900,
+    jobTitle: '独角兽之父'
+  },
+  {
+    id: 'corporate',
+    name: '💼 行业领军 · 大厂金领',
+    desc: '深耕行业龙头企业，掌舵核心战略业务，稳健年薪百万。',
+    focusAttrs: ['iq', 'eq'],
+    badge: '商业合伙人',
+    salaryBase: 800,
+    jobTitle: '集团总裁'
+  }
+],
+branchActions: [
+  { id: 'act_paper_top', name: '顶刊SCI攻坚', icon: '📑', branch: 'academia', act: 3, attr: { iq: 35, mem: 25 }, insight: 15, stress: 8, tone: 'learn', desc: '攻关权威核心学术期刊' },
+  { id: 'act_national_lab', name: '国家重大科研论证', icon: '🔬', branch: 'academia', act: 3, attr: { iq: 45 }, face: 20, stress: 10, tone: 'learn', desc: '参与国家级重大课题' },
+  { id: 'act_civil_exam', name: '申论策论研习', icon: '📜', branch: 'civil', act: 3, attr: { eq: 30, mem: 25 }, stress: 6, tone: 'learn', desc: '研习公共治理与策论公文' },
+  { id: 'act_grassroots', name: '基层民生走访调研', icon: '🚶‍♂️', branch: 'civil', act: 3, attr: { eq: 40, cha: 30 }, sat: 10, stress: 8, tone: 'learn', desc: '深入一线倾听民声' },
+  { id: 'act_pitch_deck', name: '商业计划书打磨', icon: '📊', branch: 'startup', act: 3, attr: { img: 35, iq: 20 }, stress: 8, tone: 'learn', desc: '打磨核心商业壁垒与盈利模型' },
+  { id: 'act_vc_roadshow', name: '顶级创投融资路演', icon: '🎙️', branch: 'startup', act: 3, attr: { cha: 40 }, money: 200, stress: 15, tone: 'job', desc: '面向顶级天使投资人脱稿路演' },
+  { id: 'act_corp_strategy', name: '跨国战略项目谈判', icon: '🤝', branch: 'corporate', act: 3, attr: { eq: 35, iq: 30 }, stress: 10, tone: 'learn', desc: '主导集团关键商业合作谈判' },
+  { id: 'act_tech_deliver', name: '核心系统架构重构', icon: '💻', branch: 'corporate', act: 3, attr: { iq: 25, phy: 20 }, money: 150, stress: 12, tone: 'job', desc: '带领技术团队攻坚大型分布式系统' }
+],
+
 /* ---------- 游戏版本与更新日志 ---------- */
-version: 'v2.6.1',
+version: 'v2.7.0',
 changelog: [
+  {
+    ver: 'v2.7.0',
+    date: '2026-10-08',
+    title: '重磅年度资料片 · 育儿流派/祖宅百宝阁/校友人脉/脑洞2.0连击/大学四向人生岔路',
+    tag: '年度资料片',
+    desc: '全面实装五大深度玩法体系！从四大育儿风格流派、世代传承祖宅百宝阁，到同窗成人期校友人脉羁绊、脑洞2.0神经突触连锁共鸣，以及大学期四向深造与成人期职业岔路，构筑多维度家族兴衰史诗！',
+    highlights: [
+      {
+        icon: '🏠',
+        title: '家庭育儿风格流派',
+        desc: '虎妈狼爸、佛系放养、精英鸡娃、民主伙伴四大特色育儿流派随机降临，赋予专属被动特权与真实家庭成长阻力！'
+      },
+      {
+        icon: '🏺',
+        title: '传家宝与祖宅百宝阁',
+        desc: '老式凤凰单车、首届高考准考证、原始股认购证等8大稀世传家宝，祖宅百宝阁陈列，双槽位装备世代永续加成！'
+      },
+      {
+        icon: '👥',
+        title: '同窗校友圈与成人人脉',
+        desc: '成年步入大学与职场后，昔日同窗好友转化为各领域行业精英，关键时刻提供学术引荐、融资背书、政务咨询与资源倾斜！'
+      },
+      {
+        icon: '🧠',
+        title: '脑洞 2.0 神经突触连击共鸣',
+        desc: '同色邻接连击倍率机制爆发！3+连锁触发潜意识蔓延，5+连锁激活高维顿悟并返还行动点，点亮特色脑域奇迹！'
+      },
+      {
+        icon: '🎓',
+        title: '大学四向深造与人生岔路',
+        desc: '高考后开启学术深造、政界公职、创业风投、名企骨干四向专业分支，解锁专属进阶行动与四大顶级人生终局成就！'
+      }
+    ]
+  },
   {
     ver: 'v2.6.1',
     date: '2026-09-30',

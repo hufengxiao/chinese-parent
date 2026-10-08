@@ -1,15 +1,16 @@
 {
   "name": "chinese-parent-h5",
-  "version": "2.6.1",
+  "version": "2.7.0",
   "description": "🎮 纯前端深度还原《中国式家长》H5自娱版：原生单页/PWA离线/脑洞日程/特长选秀/高考相亲/百年家族传承",
   "main": "index.html",
   "scripts": {
     "start": "npx serve .",
-    "test": "node tests/test_new_gameplay.js && node tests/sim.js && node tests/test_events.js && node tests/test_optimizations.js",
+    "test": "node tests/test_new_gameplay.js && node tests/sim.js && node tests/test_events.js && node tests/test_optimizations.js && node tests/test_v27_features.js",
     "test:gameplay": "node tests/test_new_gameplay.js",
     "test:sim": "node tests/sim.js",
     "test:events": "node tests/test_events.js",
-    "test:opts": "node tests/test_optimizations.js"
+    "test:opts": "node tests/test_optimizations.js",
+    "test:v27": "node tests/test_v27_features.js"
   },
   "keywords": [
     "chinese-parents",

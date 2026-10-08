@@ -82,4 +82,42 @@ assert.strictEqual(JSON.stringify(flushed1), JSON.stringify(['测试提示信息
 const flushed2 = Array.from(CP.flushToasts());
 assert.strictEqual(flushed2.length, 0, '第2次消费（无新消息时）必须返回空数组！');
 
+console.log('--- 测试 5: 漏洞修复与边界防御全面回归断言 ---');
+// 1. 槽位0完全重置
+store['cph_save_0'] = JSON.stringify({ gen: 99, turn: 50 });
+store['cph_fam_0'] = JSON.stringify({ g: 99 });
+CP.resetAll();
+assert.strictEqual(store['cph_save_0'], undefined, 'resetAll必须彻底清除槽位0的遗留存档');
+CP.restartLineage();
+assert.strictEqual(store['cph_fam_0'], undefined, 'restartLineage必须彻底清除槽位0的家族传承');
+
+// 2. resolvePend 未知类型安全跳过 (default fallback)
+CP.newGame();
+while (CP.pending().length) CP.resolve(0);
+CP.state().pending.push({ type: 'unknown_future_event_type', opts: ['关闭'] });
+assert.strictEqual(CP.pending().length, 1);
+const pendRes = CP.resolve(0);
+assert.strictEqual(pendRes, '继续', '未知pending类型应触发default保底优雅退出');
+assert.strictEqual(CP.pending().length, 0, '未知pending类型应被正常shift出队列，严禁死锁卡死');
+
+// 3. endTurn 必须返回 undefined (正常) 或 false (槽位未满)
+CP.clearSlots();
+assert.strictEqual(CP.endTurn(), false, '未满槽位应返回 false');
+CP.autoFillSlots();
+assert.strictEqual(CP.endTurn(), undefined, '排满槽位应正常执行且返回 undefined');
+
+// 4. S=null 防御
+CP.resetAll();
+assert.strictEqual(CP.state(), null);
+assert.doesNotThrow(() => {
+  CP.addSlot({ kind: 'rest', id: 'rest' });
+  CP.endTurn();
+  CP.chat('summer');
+  CP.gift('summer', 'perfume');
+  CP.buy('bg-huanggang');
+  CP.brain.rev(0);
+  CP.brain.info();
+}, 'S为null时各大核心API绝不可抛出未捕获TypeError异常');
+
 console.log('所有新逻辑单元测试全部通过！');
+
