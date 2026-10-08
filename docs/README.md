@@ -1,6 +1,6 @@
 # 《中国式家长》H5 版 — 详细游戏设计文档库 (GDD Index)
 
-> 游戏版本：v2.7.0 全量重塑版  
+> 游戏版本：v3.0.0 经典还原与深度强化版  
 > 线上体验地址：https://chinese-parent.pages.dev  
 > 源码仓库：https://github.com/hufengxiao/chinese-parent
 
@@ -49,6 +49,8 @@
 | **35** | [班委竞选 3.0 技术规范与架构设计](35_class_election_faithful_technical_spec.md) | v2.9 | 三候选人模型契约、指标得票方程、AI行为树、黑板课桌渲染与特长赋予 |
 | **36** | [特长才艺选秀 3.0 经典还原玩法策划](36_talent_show_faithful_gameplay.md) | v3.0 | 电视演播大厅舞台、对手先行亮相、三大表演风格、评委逐一悬念亮灯、绝活返场与金杯盛典 |
 | **37** | [特长才艺选秀 3.0 技术规范与算法规约](37_talent_show_faithful_technical_spec.md) | v3.0 | 评委偏好打分方程、Encore绝活返场模型、防插队状态机与专属特长闭环 |
+| **38** | [全系统自动化测试与代码优化规范](38_full_regression_and_code_optimization_spec.md) | v3.0 | 9大测试套件矩阵、30代无头混沌压力测试、模态防泄漏闭环与WebAudio内存管理 |
+| **39** | [系统深度优化与漏洞修复技术文档](39_deep_optimizations_and_bug_fixes.md) | v3.0 | 定时器跨模态覆盖修复、数值浮点防御、死循环安全守卫、老存档自愈与ESC快捷键 |
 | **汇总**| [完整游戏设计大典 (全集)](GAME-DESIGN-FULL.md) | 汇总版 | 包含早期核心章节详细内容的单篇聚合型设计百科全书，便于全文检索与打印查阅 |
 
 ---

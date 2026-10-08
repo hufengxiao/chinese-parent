@@ -49,12 +49,12 @@ function flushToasts() {
 }
 function applyEff(e) {
   if (!e || !S || !S.attrs) return;
-  ATTRS.forEach(k => { if (e[k]) S.attrs[k] = Math.max(0, (S.attrs[k] || 0) + e[k]); });
-  ['insight', 'act', 'money', 'face'].forEach(k => { if (e[k]) S[k] = Math.max(0, (S[k] || 0) + e[k]); });
-  if (e.stress) S.stress = clamp((S.stress || 0) + e.stress, 0, 200);
-  if (e.sat) S.sat = clamp((S.sat || 0) + e.sat, 0, 140);
-  if (e.shadow) S.shadow = Math.max(0, (S.shadow || 0) + e.shadow);
-  if (e.exam) S.exambuff = clamp((S.exambuff || 0) + e.exam, 0, 200);
+  ATTRS.forEach(k => { if (e[k]) S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + e[k]))); });
+  ['insight', 'act', 'money', 'face'].forEach(k => { if (e[k]) S[k] = Math.max(0, Math.round(((S[k] || 0) + e[k]))); });
+  if (e.stress) S.stress = Math.round(clamp((S.stress || 0) + e.stress, 0, 200));
+  if (e.sat) S.sat = Math.round(clamp((S.sat || 0) + e.sat, 0, 140));
+  if (e.shadow) S.shadow = Math.max(0, Math.round((S.shadow || 0) + e.shadow));
+  if (e.exam) S.exambuff = Math.round(clamp((S.exambuff || 0) + e.exam, 0, 200));
 }
 function phaseOf(t) {
   t = t || (S ? S.turn : 1);
@@ -919,8 +919,9 @@ function newGame() {
 }
 function resume() {
   const s = loadSave();
-  if (s && s.ver) {
+  if (s && (s.ver || (s.attrs && s.turn))) {
     S = s;
+    if (!S.ver) S.ver = 2;
     S.toasts = [];
     if (!S.name) S.name = '无名';
     if (!S.gender) S.gender = 'boy';
@@ -968,6 +969,7 @@ function resume() {
     if (!S.parentingStyle) S.parentingStyle = 'democratic';
     if (!Array.isArray(S.equippedRelics)) S.equippedRelics = [];
     if (!S.alumniCalls) S.alumniCalls = {};
+    if (!Array.isArray(S.talentShowRecords)) S.talentShowRecords = [];
     if (S.turn >= 60 && !S.pending.some(x => x.type === 'endgen')) {
       pendEndGen();
     }
@@ -1628,11 +1630,12 @@ function addSlot(pi) {
   return true;
 }
 function applyAct(pi) {
+  if (!pi) return;
   if (pi.kind === 'learn') {
     const c = D.courses.find(x => x.id === pi.id);
     if (!c) return;
     const lvl = S.skills[c.id] || 1;
-    ATTRS.forEach(k => { if (c.attr && c.attr[k]) S.attrs[k] = Math.max(0, S.attrs[k] + c.attr[k]); });
+    ATTRS.forEach(k => { if (c.attr && c.attr[k]) S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + c.attr[k]))); });
     S.sat = clamp(S.sat + (c.sat || 2), 0, 140);
     S.stress = clamp(S.stress + (c.stress || 4), 0, 200);
     S.skills[c.id] = lvl + 1;
@@ -1643,22 +1646,22 @@ function applyAct(pi) {
     if (!p) return;
     S.stress = clamp(S.stress + (p.stress || 0), 0, 200);
     S.sat = clamp(S.sat + (p.sat || 0), 0, 140);
-    ATTRS.forEach(k => { if (p.attr && p.attr[k]) S.attrs[k] += p.attr[k]; });
+    ATTRS.forEach(k => { if (p.attr && p.attr[k]) S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + p.attr[k]))); });
     if (p.tal && Math.random() < 0.08) rollTalent(p.tal.id, 1);
     log('玩了「' + p.name + '」');
   } else if (pi.kind === 'pay') {
     const pj = D.payjobs.find(x => x.id === pi.id);
     if (!pj) return;
-    S.money += pj.money;
-    ATTRS.forEach(k => { if (pj.attr && pj.attr[k]) S.attrs[k] += pj.attr[k]; });
+    S.money = Math.round(S.money + pj.money);
+    ATTRS.forEach(k => { if (pj.attr && pj.attr[k]) S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + pj.attr[k]))); });
     log('打工「' + pj.name + '」赚 ' + pj.money + ' 元');
   } else if (pi.kind === 'branch') {
     const ba = (D.branchActions || []).find(x => x.id === pi.id);
     if (ba) {
-      ATTRS.forEach(k => { if (ba.attr && ba.attr[k]) S.attrs[k] = Math.max(0, S.attrs[k] + ba.attr[k]); });
-      if (ba.money) S.money += ba.money;
-      if (ba.insight) S.insight += ba.insight;
-      if (ba.face) S.face += ba.face;
+      ATTRS.forEach(k => { if (ba.attr && ba.attr[k]) S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + ba.attr[k]))); });
+      if (ba.money) S.money = Math.round(S.money + ba.money);
+      if (ba.insight) S.insight = Math.round(S.insight + ba.insight);
+      if (ba.face) S.face = Math.round(S.face + ba.face);
       if (ba.stress) S.stress = clamp(S.stress + ba.stress, 0, 200);
       if (ba.sat) S.sat = clamp(S.sat + (ba.sat || 0), 0, 140);
       log('执行赛道专精「' + ba.name + '」');
@@ -1721,7 +1724,7 @@ function endTurn() {
   // 家族天赋：每回合自然全属性成长加成 (一代更比一代强！)
   if (S.fam && S.fam.talent > 0) {
     const famBonus = Math.max(1, Math.floor(S.fam.talent / 2));
-    ATTRS.forEach(k => { S.attrs[k] += famBonus; });
+    ATTRS.forEach(k => { S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + famBonus))); });
   }
 
   // 1) 育儿流派自然修正与保底
@@ -1756,12 +1759,14 @@ function endTurn() {
   const rests = S.slots.filter(x => x && x.kind === 'rest').length;
   S.act = clamp(S.act + 40 + rests * 10, 10, 240);
   if (S.stress <= 0) { S.act = clamp(S.act + 15, 0, 240); }
-  while (S.stress > 100) {
+  let stressLoopSafety = 0;
+  while (S.stress > 100 && stressLoopSafety++ < 20) {
     S.stress -= 50;
     const shadowGain = hasRelic('relic_teapot') ? 5 : 10;
     S.shadow += shadowGain;
     toast('压力爆炸…阴影+' + shadowGain);
   }
+  if (S.stress > 100) S.stress = 100;
   if (pStyle && pStyle.shadowCap && S.shadow > pStyle.shadowCap) {
     S.shadow = pStyle.shadowCap;
   }
@@ -3882,11 +3887,11 @@ function bGrid() { return bOpen().g; }
 function applyBrainCell(c, b, mult = 1) {
   const db = (1 + (b.layer - 1) * 0.2) * mult;
   switch (c.t) {
-    case 'bulb': { const v = Math.round(RI(10, 20) * db); S.insight += v; return '💡 悟性+' + v; }
-    case 'attr': { const k = pick(['iq', 'eq', 'mem', 'img', 'phy']); const v = Math.round((RI(2, 4) + Math.max(0, b.layer - 1)) * db); S.attrs[k] += v; return ANAME[k] + '+' + v; }
+    case 'bulb': { const v = Math.round(RI(10, 20) * db); S.insight = Math.max(0, Math.round((S.insight || 0) + v)); return '💡 悟性+' + v; }
+    case 'attr': { const k = pick(['iq', 'eq', 'mem', 'img', 'phy']); const v = Math.round((RI(2, 4) + Math.max(0, b.layer - 1)) * db); S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + v))); return ANAME[k] + '+' + v; }
     case 'bolt': { const v = Math.round(RI(10, 25) * mult); S.act = clamp(S.act + v, 0, 240); return '⚡ 行动+' + v; }
-    case 'skull': { const v = Math.round(RI(2, 4) * mult); ['iq', 'eq', 'mem', 'img', 'phy'].forEach(k => S.attrs[k] += v); return '💀 脑内风暴:五维+' + v; }
-    case 'gold': { const v = Math.round(RI(8, 20) * mult); S.money += v; return '💰 零花+' + v; }
+    case 'skull': { const v = Math.round(RI(2, 4) * mult); ['iq', 'eq', 'mem', 'img', 'phy'].forEach(k => { S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + v))); }); return '💀 脑内风暴:五维+' + v; }
+    case 'gold': { const v = Math.round(RI(8, 20) * mult); S.money = Math.max(0, Math.round((S.money || 0) + v)); return '💰 零花+' + v; }
     case 'duck': return '🦆 鸭子看了你一眼';
     case 'key': return '🗝️ 钥匙';
     case 'bomb': return '💥 炸弹';
@@ -4087,6 +4092,7 @@ const API = {
   toast, flushToasts,
   endTurn, pending: () => (S && S.pending) ? S.pending.slice() : [],
   resolve: resolvePend,
+  applyEff,
   examBuff: () => (S && S.exambuff) || 0,
   brain: { grid: bGrid, rev: bRev, info: bInfo, useKey: () => bRev(bOpen().keyIdx) },
   social: socialList, chat, gift, giftItem: gift,

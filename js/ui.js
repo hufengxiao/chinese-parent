@@ -108,6 +108,9 @@ class SoundManager {
       gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
       osc.connect(gain);
       gain.connect(ctx.destination);
+      osc.onended = () => {
+        try { osc.disconnect(); gain.disconnect(); } catch(e) {}
+      };
       osc.start();
       osc.stop(ctx.currentTime + duration);
     } catch(e) {}
@@ -151,6 +154,9 @@ class SoundManager {
           gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45);
           osc.connect(gain);
           gain.connect(ctx.destination);
+          osc.onended = () => {
+            try { osc.disconnect(); gain.disconnect(); } catch(e) {}
+          };
           osc.start();
           osc.stop(ctx.currentTime + 0.46);
         }
@@ -165,6 +171,9 @@ class SoundManager {
           bGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.8);
           bOsc.connect(bGain);
           bGain.connect(ctx.destination);
+          bOsc.onended = () => {
+            try { bOsc.disconnect(); bGain.disconnect(); } catch(e) {}
+          };
           bOsc.start();
           bOsc.stop(ctx.currentTime + 1.85);
         }
@@ -1708,6 +1717,10 @@ function renderHongbaoModal(p, m) {
   if (!m) return;
   if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
   if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
+  registerModalCleanup(() => {
+    if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+    if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
+  });
 
   m.classList.add('show');
   m.innerHTML = '';
@@ -2222,6 +2235,23 @@ function renderFaceDuelModal(p, m) {
     }
   });
 
+  const duelTimers = [];
+  const safeTimeout = (fn, delay) => {
+    const t = setTimeout(() => {
+      const curDuel = CP.faceDuel();
+      const topPend = CP.pending()[0];
+      if (!curDuel || !topPend || topPend.type !== 'face_duel') return;
+      try { fn(); } catch(e) {}
+    }, delay);
+    duelTimers.push(t);
+    return t;
+  };
+
+  registerModalCleanup(() => {
+    duelTimers.forEach(t => clearTimeout(t));
+    duelTimers.length = 0;
+  });
+
   let isCombatAnimating = false;
 
   // 核心格斗演播动作执行器
@@ -2268,7 +2298,7 @@ function renderFaceDuelModal(p, m) {
       if (!stage) return;
       const f = h('div', 'fd-float-num ' + side + (isCrit ? ' crit' : ''), text);
       stage.appendChild(f);
-      setTimeout(() => { if (f.parentNode) f.remove(); }, 850);
+      safeTimeout(() => { if (f.parentNode) f.remove(); }, 850);
     };
 
     // Phase 1: 我方突进打击 (0ms ~ 350ms)
@@ -2299,7 +2329,7 @@ function renderFaceDuelModal(p, m) {
       if (arenaBody) arenaBody.classList.add('shake');
     }
 
-    setTimeout(() => {
+    safeTimeout(() => {
       if (arenaBody) {
         arenaBody.classList.remove('shake');
         arenaBody.classList.remove('shake-crit');
@@ -2307,9 +2337,9 @@ function renderFaceDuelModal(p, m) {
     }, 450);
 
     // 140ms: 对手受创震颤闪红与伤害跳字
-    setTimeout(() => {
+    safeTimeout(() => {
       if (rightSpr) rightSpr.classList.add('fd-take-hit');
-      setTimeout(() => { if (rightSpr) rightSpr.classList.remove('fd-take-hit'); }, 340);
+      safeTimeout(() => { if (rightSpr) rightSpr.classList.remove('fd-take-hit'); }, 340);
 
       const dmgText = '-' + (action.myDmg || 0) + (action.isCrit ? ' 💥暴击!' : (action.isPierce ? ' 👑降维!' : ''));
       spawnFloat(dmgText, 'opp', action.isCrit || action.isPierce);
@@ -2318,7 +2348,7 @@ function renderFaceDuelModal(p, m) {
       const newOppPct = Math.max(0, Math.min(100, Math.round((action.newOppHp / duelAfter.opp.maxHp) * 100)));
       if (oppFill) oppFill.style.width = newOppPct + '%';
       if (oppHpText) oppHpText.textContent = '面子: ' + action.newOppHp + ' / ' + duelAfter.opp.maxHp;
-      setTimeout(() => { if (oppTrail) oppTrail.style.width = newOppPct + '%'; }, 220);
+      safeTimeout(() => { if (oppTrail) oppTrail.style.width = newOppPct + '%'; }, 220);
 
       // 更新对手破防槽
       const newTiltVal = Math.min(100, Math.max(0, action.newOppTilt || 0));
@@ -2348,7 +2378,7 @@ function renderFaceDuelModal(p, m) {
           '<div class="fd-cutin-header">' + (action.isMomUlt ? '🔥 老妈拍案而起！' : ('🎴 ' + (action.cardName || '特长出鞘'))) + '</div>' +
           '<div class="fd-cutin-body">“' + (duelAfter.momCurrentLine || '哪里哪里随便学学～') + '”</div>';
         stage.appendChild(cutinBanner);
-        setTimeout(() => { if (cutinBanner.parentNode) cutinBanner.remove(); }, 620);
+        safeTimeout(() => { if (cutinBanner.parentNode) cutinBanner.remove(); }, 620);
       }
 
       if (cLogBox) {
@@ -2358,7 +2388,7 @@ function renderFaceDuelModal(p, m) {
     }, 140);
 
     // Phase 2: 判定对手是否退场(KO) 或 破防石化(Stun)
-    setTimeout(() => {
+    safeTimeout(() => {
       if (leftSpr) leftSpr.classList.remove('fd-lunge-forward');
 
       // 胜负终结KO判定
@@ -2370,7 +2400,7 @@ function renderFaceDuelModal(p, m) {
           koBanner.innerHTML = '<div class="fd-ko-text">K.O. 💥 完胜！</div>';
           stage.appendChild(koBanner);
         }
-        setTimeout(() => {
+        safeTimeout(() => {
           renderFaceDuelResult(duelAfter, p, m);
         }, 1100);
         return;
@@ -2383,9 +2413,9 @@ function renderFaceDuelModal(p, m) {
         if (rightSpr) {
           const stars = h('div', 'fd-stun-stars', '💫💫💫');
           rightSpr.appendChild(stars);
-          setTimeout(() => { if (stars.parentNode) stars.remove(); }, 800);
+          safeTimeout(() => { if (stars.parentNode) stars.remove(); }, 800);
         }
-        setTimeout(() => {
+        safeTimeout(() => {
           renderFaceDuelModal(p, m);
         }, 650);
         return;
@@ -2413,13 +2443,13 @@ function renderFaceDuelModal(p, m) {
           '<div class="fd-cutin-header">💬 ' + duelAfter.opp.name + ' · 炫耀暴击！</div>' +
           '<div class="fd-cutin-body">“' + (duelAfter.oppCurrentLine || '我家孩子很优秀！') + '”</div>';
         stage.appendChild(oppCutin);
-        setTimeout(() => { if (oppCutin.parentNode) oppCutin.remove(); }, 620);
+        safeTimeout(() => { if (oppCutin.parentNode) oppCutin.remove(); }, 620);
       }
 
-      setTimeout(() => {
+      safeTimeout(() => {
         if (rightSpr) rightSpr.classList.remove('fd-lunge-opp');
         if (leftSpr) leftSpr.classList.add('fd-take-hit');
-        setTimeout(() => { if (leftSpr) leftSpr.classList.remove('fd-take-hit'); }, 340);
+        safeTimeout(() => { if (leftSpr) leftSpr.classList.remove('fd-take-hit'); }, 340);
 
         if (action.oppAtk > 0) {
           spawnFloat('-' + action.oppAtk, 'mine', false);
@@ -2429,7 +2459,7 @@ function renderFaceDuelModal(p, m) {
         const newMyPct = Math.max(0, Math.min(100, Math.round((action.newMyHp / duelAfter.maxMyHp) * 100)));
         if (myFill) myFill.style.width = newMyPct + '%';
         if (myHpText) myHpText.textContent = '面子: ' + action.newMyHp + ' / ' + duelAfter.maxMyHp;
-        setTimeout(() => { if (myTrail) myTrail.style.width = newMyPct + '%'; }, 220);
+        safeTimeout(() => { if (myTrail) myTrail.style.width = newMyPct + '%'; }, 220);
 
         // 更新老妈怒气槽
         const newRageVal = Math.min(100, Math.max(0, action.newMomRage || 0));
@@ -2462,14 +2492,14 @@ function renderFaceDuelModal(p, m) {
             koBanner.innerHTML = '<div class="fd-ko-text">DEFEAT 🌧️ 败退</div>';
             stage.appendChild(koBanner);
           }
-          setTimeout(() => {
+          safeTimeout(() => {
             renderFaceDuelResult(duelAfter, p, m);
           }, 1100);
           return;
         }
 
         // 重新渲染至下一轮指令状态
-        setTimeout(() => {
+        safeTimeout(() => {
           renderFaceDuelModal(p, m);
         }, 320);
 
@@ -3161,11 +3191,7 @@ function renderTalentShowModal(p, m) {
       const doExit = () => {
         clearTimers();
         sound.click();
-        // 清理当前 showr 或 show 项
-        const topM = S && S.pending && S.pending[0];
-        if (topM && (topM.type === 'showr' || topM.type === 'show')) {
-          S.pending.shift();
-        }
+        CP.resolve(0);
         m.classList.remove('show');
         m.innerHTML = '';
         renderAll();
@@ -4158,7 +4184,7 @@ function setStoredVer(v) {
 }
 
 function checkChangelogNotice() {
-  const curVer = (D && D.version) ? D.version : 'v2.8.5';
+  const curVer = (D && D.version) ? D.version : 'v3.0.0';
   const lastSeen = getStoredVer();
   const badges = document.querySelectorAll('#update-badge, #splash-update-badge');
   badges.forEach(badge => {
@@ -4190,7 +4216,7 @@ function openChangelogModal(isAuto = false) {
   m.hidden = false;
   m.classList.remove('hidden');
 
-  const curVer = (D && D.version) ? D.version : 'v2.8.5';
+  const curVer = (D && D.version) ? D.version : 'v3.0.0';
   const list = (D && D.changelog) ? D.changelog : [];
   const body = $('#changelog-body');
   if (!body) return;
@@ -4252,7 +4278,7 @@ function closeChangelogModal() {
     m.hidden = true;
     m.classList.add('hidden');
   }
-  const curVer = (D && D.version) ? D.version : 'v2.8.5';
+  const curVer = (D && D.version) ? D.version : 'v3.0.0';
   setStoredVer(curVer);
 
   const badges = document.querySelectorAll('#update-badge, #splash-update-badge');
@@ -4658,6 +4684,35 @@ function init() {
   // 检查新版本公告并自愈呈现
   checkChangelogNotice();
 
+  // 全局 Escape 快捷键关闭非阻塞辅助弹窗
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' || e.code === 'Escape') {
+      const changelogM = $('#changelog-modal');
+      if (changelogM && !changelogM.hidden) {
+        closeChangelogModal();
+        return;
+      }
+      const saveM = $('#save-modal');
+      if (saveM && !saveM.hidden) {
+        closeSaveModal();
+        return;
+      }
+      const manualM = $('#manual-modal');
+      if (manualM && !manualM.hidden) {
+        closeManualModal();
+        return;
+      }
+      const m = $('#modal');
+      if (m && m.dataset && m.dataset.customModal === 'wish') {
+        m.onclick = null;
+        delete m.dataset.customModal;
+        m.classList.remove('show');
+        m.innerHTML = '';
+        return;
+      }
+    }
+  });
+
   // 检查是否有存档可自动恢复
   if (CP.resume()) {
     renderAll();
@@ -4672,11 +4727,15 @@ global.renderFaceDuelModal = renderFaceDuelModal;
 global.renderFaceDuelResult = renderFaceDuelResult;
 global.renderElectionModal = renderElectionModal;
 global.renderElectionResultModal = renderElectionResultModal;
+global.clearActiveModalListeners = clearActiveModalListeners;
+global.registerModalCleanup = registerModalCleanup;
 global.UI = {
   renderTop,
   renderPhaseTransition,
   showReport,
   renderModal,
+  clearActiveModalListeners,
+  registerModalCleanup,
   renderHongbaoModal,
   renderHongbaoResult,
   renderFaceDuelModal,
