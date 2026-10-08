@@ -10,10 +10,10 @@
 
 <p align="center">
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/Live_Demo-chinese--parent.pages.dev-d33824?style=flat-square&logo=cloudflare" alt="Live Demo" /></a>
-  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v2.8.5-orange?style=flat-square" alt="Version" /></a>
+  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v2.9.0-orange?style=flat-square" alt="Version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /></a>
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/PWA-Supported-green?style=flat-square&logo=pwa" alt="PWA Ready" /></a>
-  <a href="./tests/"><img src="https://img.shields.io/badge/Tests-6%2F6%20Suites%20Passed-brightgreen?style=flat-square" alt="Automated Tests" /></a>
+  <a href="./tests/"><img src="https://img.shields.io/badge/Tests-7%2F7%20Suites%20Passed-brightgreen?style=flat-square" alt="Automated Tests" /></a>
 </p>
 
 ---
@@ -188,6 +188,10 @@ chinese-parent/
 | **29** | [班干部竞选 2.0 技术规范](./docs/29_class_election_technical_spec.md) | v2.6 | 选民摇摆动态算法、策略博弈矩阵、聘书生成系统 |
 | **30** | [v2.7.0 重磅系统玩法设计](./docs/30_v2.7_gameplay_design.md) | v2.7 | 育儿流派、传家宝百宝阁、校友人脉网络、脑洞2.0连锁、大学四向分流 |
 | **31** | [v2.7.0 系统技术规约与架构实现规范](./docs/31_v2.7_technical_spec.md) | v2.7 | BFS同色连锁算法、百宝阁双槽位状态机、校友援助系统、分支职业成就规范 |
+| **32** | [原版面子对决经典还原玩法策划](./docs/32_faithful_face_duel_gameplay.md) | v2.8 | 原版五大亲戚登门对决、特长单次消耗出战、暴击/削弱/降维 |
+| **33** | [原版面子对决经典还原技术规约](./docs/33_faithful_face_duel_technical_spec.md) | v2.8 | 战斗状态机契约、品质系数公式、索取飞轮与UI动效架构 |
+| **34** | [原版班干部竞选经典还原玩法设计](./docs/34_class_election_faithful_gameplay.md) | v2.9 | 三人同台博弈、三大核心指标与长短板、5回合攻防揭短、课桌弹幕 |
+| **35** | [原版班干部竞选经典还原技术规约](./docs/35_class_election_faithful_technical_spec.md) | v2.9 | 候选人数据模型、得票状态机、AI行为树与三档聘书结算架构 |
 | **汇总**| [完整游戏设计大典 (全集)](./docs/GAME-DESIGN-FULL.md) | 汇总版 | 包含早期核心章节详细内容的单篇聚合型设计百科全书 |
 
 ---
@@ -215,11 +219,13 @@ npm start
 项目构建了严密的无头（Headless）自动化测试体系，覆盖核心数值闭环、参数越界防御、多代连续遗传仿真与 UI 边界断言：
 
 ```bash
-# 运行全量 5 大测试套件
+# 运行全量 7 大测试套件
 npm test
 ```
 
 ### 独立测试命令：
+- **`npm run test:election`**：运行 [`tests/test_class_election_faithful.js`](./tests/test_class_election_faithful.js)，专门验证班委竞选 3.0 三大候选人同台模型、师生/群众/品德核心指标与长短板测定、5 回合策略攻防揭短、课桌同学动态漫画气泡、三档职位任命（三道杠/二道杠/一道杠）与专属特长赋予；
+- **`npm run test:duel`**：运行 [`tests/test_face_duel_faithful.js`](./tests/test_face_duel_faithful.js)，专门验证面子对决 3.0 街机格斗、五大亲戚对峙台词、特长单次消耗出战、品质暴击削弱真实伤害与老妈怒气必杀；
 - **`npm run test:v27`**：运行 [`tests/test_v27_features.js`](./tests/test_v27_features.js)，验证 v2.7.0 全部五大核心玩法（育儿流派被动、祖宅百宝阁双槽位、校友成人羁绊、脑洞2.0连锁BFS与倍率、大学四向分流与职业成就），并执行 **10 代全随机混沌策略无头沙箱压力测试**！
 - **`npm run test:gameplay`**：运行 [`tests/test_new_gameplay.js`](./tests/test_new_gameplay.js)，验证包含小游戏2.0重塑、红包推拉、面子对决手牌、选秀Showtime、班干部选民阵营、**20 代全随机混沌策略生命周期压力测试**、新版本公告自愈弹窗、双层顶栏防遮挡、多存档槽位管理等全部 **28 项核心机制**；
 - **`npm run test:sim`**：运行 [`tests/sim.js`](./tests/sim.js)，AI 玩家策略连续仿真打通 **5 代人生**（历经 35 次成长蜕变），验证代际遗传与考分标化区间；

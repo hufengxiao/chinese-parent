@@ -4291,32 +4291,92 @@ button:active { transform: scale(0.96); }
   background: #ffffff;
   border: 1px solid var(--border-line);
   border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 12px;
+  padding: 10px;
+  margin-bottom: 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+.el-arena.three-way {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 100%);
+  border: 1.5px solid #cbd5e1;
 }
 .el-cand {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 42%;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 4px;
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.el-cand.mine {
+  border-color: #3b82f6;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.12);
+}
+.el-cand.rival-a {
+  border-color: #8b5cf6;
+  background: linear-gradient(180deg, #f5f3ff 0%, #ffffff 100%);
+}
+.el-cand.rival-b {
+  border-color: #f97316;
+  background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+}
+.el-cand:hover {
+  transform: translateY(-2px);
 }
 .el-avatar {
-  font-size: 32px;
+  font-size: 28px;
+  line-height: 1;
   margin-bottom: 2px;
 }
 .el-cand-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--ink-primary);
   white-space: nowrap;
 }
+.el-cand-title {
+  font-size: 9px;
+  color: var(--ink-secondary);
+  white-space: nowrap;
+  transform: scale(0.9);
+}
+.el-cand-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 3px 0;
+  width: 100%;
+  align-items: center;
+}
+.el-metric-badge {
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.el-metric-badge.strength {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+.el-metric-badge.weakness {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
 .el-vote-badge {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
-  padding: 2px 8px;
-  border-radius: 10px;
-  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-top: 2px;
 }
 .el-vote-badge.mine {
   background: #dbeafe;
@@ -4326,13 +4386,17 @@ button:active { transform: scale(0.96); }
   background: #fee2e2;
   color: #991b1b;
 }
+.el-vote-badge.rival-b {
+  background: #ffedd5;
+  color: #c2410c;
+}
 .el-bar-wrap {
   width: 100%;
-  height: 6px;
+  height: 5px;
   background: #f1f5f9;
   border-radius: 3px;
   overflow: hidden;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 .el-bar {
   height: 100%;
@@ -4342,154 +4406,217 @@ button:active { transform: scale(0.96); }
 .el-bar.mine {
   background: linear-gradient(90deg, #3b82f6, #1d4ed8);
 }
-.el-bar.rival {
-  background: linear-gradient(90deg, #ef4444, #b91c1c);
+.el-bar.rival-a {
+  background: linear-gradient(90deg, #8b5cf6, #6d28d9);
 }
-.el-vs-box {
+.el-bar.rival-b {
+  background: linear-gradient(90deg, #f97316, #c2410c);
+}
+
+/* 教室课桌与动态弹幕气泡 */
+.el-classroom-box {
+  background: #fdfaf3;
+  border: 1px solid #e7dfcc;
+  border-radius: 10px;
+  padding: 8px;
+  margin-bottom: 10px;
+  position: relative;
+}
+.el-classroom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #78350f;
+  margin-bottom: 6px;
+  border-bottom: 1px dashed #d6cca9;
+  padding-bottom: 3px;
+}
+.el-desks-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.el-desk-item {
+  background: #f8f4e6;
+  border: 1px solid #e2d9bc;
+  border-radius: 6px;
+  padding: 4px 2px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  position: relative;
 }
-.el-vs-tag {
-  font-size: 14px;
-  font-weight: 900;
-  color: #94a3b8;
+.el-desk-avatar {
+  font-size: 16px;
+  line-height: 1;
 }
-.el-target-tag {
-  font-size: 9px;
-  font-weight: 700;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 1px 4px;
-  color: #64748b;
+.el-desk-name {
+  font-size: 8px;
+  color: #854d0e;
+  margin-top: 1px;
   white-space: nowrap;
 }
+.el-desk-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffffff;
+  border: 1px solid #b45309;
+  border-radius: 6px;
+  padding: 2px 5px;
+  font-size: 8px;
+  color: #78350f;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  animation: bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: none;
+  z-index: 10;
+}
+.el-desk-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 3px;
+  border-style: solid;
+  border-color: #b45309 transparent transparent transparent;
+}
+@keyframes bubblePop {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.6); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+/* 墨绿黑板与粉笔字板书 */
 .el-blackboard {
-  background: #1e293b;
+  background: #19382b;
   color: #f8fafc;
   border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 12px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
   text-align: left;
-  border: 2px solid #334155;
-  box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+  border: 3px solid #854d0e;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
 }
 .el-bb-title {
   font-size: 10px;
   font-weight: 800;
-  color: #94a3b8;
-  margin-bottom: 6px;
-  border-bottom: 1px dashed #475569;
-  padding-bottom: 4px;
+  color: #a7f3d0;
+  margin-bottom: 4px;
+  border-bottom: 1px dashed rgba(167, 243, 208, 0.3);
+  padding-bottom: 3px;
+  display: flex;
+  justify-content: space-between;
 }
 .el-bb-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 90px;
+  gap: 3px;
+  max-height: 80px;
   overflow-y: auto;
 }
 .el-bb-line {
-  font-size: 11px;
-  line-height: 1.4;
-  color: #e2e8f0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #f0fdf4;
 }
+
+/* 针对揭短目标选择器 */
+.el-target-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 6px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 9px;
+  color: #475569;
+}
+.el-target-pill {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.el-target-pill:hover, .el-target-pill.active {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+
 .el-tactics-box {
   text-align: left;
 }
 .el-tactics-title {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--ink-primary);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .el-tactics-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 6px;
 }
 .el-tactic-btn {
   background: #ffffff;
   border: 1px solid var(--border-line);
-  border-radius: 10px;
-  padding: 10px;
+  border-radius: 8px;
+  padding: 8px;
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 .el-tactic-btn:hover {
   border-color: #4f46e5;
   background: #fbfbfe;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+  box-shadow: 0 3px 10px rgba(79, 70, 229, 0.12);
 }
 .el-tactic-title {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--ink-primary);
 }
 .el-tactic-desc {
-  font-size: 10px;
-  color: var(--ink-secondary);
-  line-height: 1.3;
-}
-
-/* 三大选民阵营实时支持度波形卡 */
-.el-blocs-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  margin: 10px 0;
-}
-.el-bloc-card {
-  background: #f8fafc;
-  border: 1px solid var(--border-line);
-  border-radius: 8px;
-  padding: 6px 4px;
-  text-align: center;
-  font-size: 10px;
-}
-.el-bloc-name {
-  font-weight: 800;
-  color: var(--ink-primary);
-  margin-bottom: 3px;
-}
-.el-bloc-bar-wrap {
-  height: 6px;
-  background: #e2e8f0;
-  border-radius: 3px;
-  overflow: hidden;
-  display: flex;
-  margin: 4px 0;
-}
-.el-bloc-fill.mine {
-  background: #4f46e5;
-  height: 100%;
-}
-.el-bloc-fill.rival {
-  background: #ef4444;
-  height: 100%;
-}
-.el-bloc-stat {
   font-size: 9px;
   color: var(--ink-secondary);
+  line-height: 1.25;
 }
 
-/* 班干部正式任命聘书战报卡片 */
+/* 班干部正式任命聘书战报卡片 (三档) */
 .el-cert-card {
   background: #fffdf5;
   border: 2px solid #b45309;
-  border-radius: 14px;
-  padding: 16px;
-  margin: 12px 0;
+  border-radius: 12px;
+  padding: 14px;
+  margin: 10px 0;
   text-align: center;
   position: relative;
   box-shadow: 0 4px 18px rgba(180, 83, 9, 0.15);
+}
+.el-cert-card.rank-1 {
+  background: linear-gradient(135deg, #fffbf0 0%, #fef3c7 100%);
+  border-color: #b45309;
+}
+.el-cert-card.rank-2 {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-color: #0284c7;
+}
+.el-cert-card.rank-3 {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #16a34a;
 }
 .el-sleeve-badge {
   display: inline-flex;
@@ -4497,43 +4624,76 @@ button:active { transform: scale(0.96); }
   align-items: center;
   justify-content: center;
   gap: 3px;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   background: #dc2626;
   border: 2px solid #fef08a;
   border-radius: 8px;
   box-shadow: 0 3px 10px rgba(220, 38, 38, 0.35);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+}
+.el-sleeve-badge.rank-2 {
+  background: #2563eb;
+  border-color: #bae6fd;
+}
+.el-sleeve-badge.rank-3 {
+  background: #16a34a;
+  border-color: #bbf7d0;
 }
 .el-sleeve-bar {
-  width: 34px;
+  width: 32px;
   height: 4px;
   background: #ffffff;
   border-radius: 2px;
 }
 .el-cert-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 900;
   color: #92400e;
-  letter-spacing: 2px;
-  margin-bottom: 6px;
+  letter-spacing: 1.5px;
+  margin-bottom: 4px;
 }
 .el-cert-seal {
   position: absolute;
-  right: 18px;
-  bottom: 14px;
-  width: 58px;
-  height: 58px;
+  right: 14px;
+  bottom: 12px;
+  width: 54px;
+  height: 54px;
   border: 2px dashed #dc2626;
   border-radius: 50%;
   color: #dc2626;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
   transform: rotate(-15deg);
   opacity: 0.85;
+}
+.el-award-talent {
+  background: #ffffff;
+  border: 1px dashed #d97706;
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin: 8px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.el-award-talent-icon {
+  font-size: 20px;
+}
+.el-award-talent-info {
+  text-align: left;
+}
+.el-award-talent-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: #92400e;
+}
+.el-award-talent-desc {
+  font-size: 9px;
+  color: #78350f;
 }
 
 /* ============================================================

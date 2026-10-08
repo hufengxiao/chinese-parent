@@ -2634,18 +2634,95 @@ function faceDuelStep(actionIdx) {
   };
 }
 
-/* ---------- 🗳️ 班干部竞选演说策略博弈 2.0 (Class Committee Election) ---------- */
+/* ---------- 🗳️ 班干部竞选演说策略博弈 3.0 (Class Committee Election 3.0) ---------- */
 function pendElection() {
   if (!S || !S.pending) return;
-  const rivals = [
-    { name: '王小明', title: '原班长·全科代表', icon: '🧑‍🏫', motto: '“带领全班考第一是我的责任！”', votes: 0, favBloc: 'studious' },
-    { name: '李华', title: '文艺课代表', icon: '🎨', motto: '“让大家的校园生活更多姿多彩！”', votes: 0, favBloc: 'middle' },
-    { name: '赵小刚', title: '热血体育委员', icon: '🏀', motto: '“选我！以后体育课我带大家练球！”', votes: 0, favBloc: 'rowdy' }
-  ];
-  const rival = rivals[Math.floor(Math.random() * rivals.length)];
-  const totalVotes = 50;
-  const targetVotes = 26; // 过半当选门槛
 
+  // 1) 测定玩家三大核心指标初值与长短板
+  const eq = (S.attrs && S.attrs.eq) || 0;
+  const cha = (S.attrs && S.attrs.cha) || 0;
+  const iq = (S.attrs && S.attrs.iq) || 0;
+  const bestT = (typeof bestTalent === 'function') ? bestTalent() : null;
+  const talentBonus = bestT ? (bestT.r || 1) * 5 : 5;
+
+  const playerTeacher = clamp(25 + Math.floor(eq / 4), 15, 80);
+  const playerPeer = clamp(25 + Math.floor(cha / 4) + ((S.money || 0) >= 30 ? 10 : 0), 15, 80);
+  const playerMoral = clamp(25 + Math.floor(iq / 4) + talentBonus, 15, 85);
+
+  const pMetrics = { teacher: playerTeacher, peer: playerPeer, moral: playerMoral };
+  let pStrength = 'moral';
+  let pWeakness = 'peer';
+
+  if (pMetrics.peer >= pMetrics.teacher && pMetrics.peer >= pMetrics.moral) {
+    pStrength = 'peer';
+  } else if (pMetrics.teacher >= pMetrics.peer && pMetrics.teacher >= pMetrics.moral) {
+    pStrength = 'teacher';
+  } else {
+    pStrength = 'moral';
+  }
+
+  if (pMetrics.teacher <= pMetrics.peer && pMetrics.teacher <= pMetrics.moral) {
+    pWeakness = 'teacher';
+  } else if (pMetrics.peer <= pMetrics.teacher && pMetrics.peer <= pMetrics.moral) {
+    pWeakness = 'peer';
+  } else {
+    pWeakness = 'moral';
+  }
+
+  const genderIcon = (S.gender === 'girl') ? '👧' : '👦';
+  const playerCand = {
+    id: 'player',
+    name: S.name || '我',
+    title: '少先队员候选人',
+    icon: genderIcon,
+    isPlayer: true,
+    metrics: pMetrics,
+    strength: pStrength,
+    weakness: pWeakness,
+    votes: 0,
+    motto: '“全心全意为全班同学服务！”'
+  };
+
+  // 2) 经典双竞争对手 (原版三大流派：学霸尖子 vs 热血活跃)
+  const rivalA = {
+    id: 'rivalA',
+    name: '王小明',
+    title: '原班长·尖子代表',
+    icon: '🧑‍🏫',
+    isPlayer: false,
+    metrics: { teacher: 65, peer: 35, moral: 85 },
+    strength: 'moral',
+    weakness: 'peer',
+    votes: 0,
+    motto: '“带领全班期末考第一是我的责任！”'
+  };
+
+  const rivalB = {
+    id: 'rivalB',
+    name: '赵小刚',
+    title: '热血体委·后排代表',
+    icon: '🏀',
+    isPlayer: false,
+    metrics: { teacher: 30, peer: 85, moral: 45 },
+    strength: 'peer',
+    weakness: 'teacher',
+    votes: 0,
+    motto: '“选我！以后体育课我带大家练球吃冰棍！”'
+  };
+
+  // 3) 模拟教室 8 位代表同学课桌席位
+  const desks = [
+    { id: 1, name: '同桌小敏', icon: '👧', mood: 'neutral', bubble: '看大家演讲~' },
+    { id: 2, name: '后排大壮', icon: '👦', mood: 'neutral', bubble: '谁请客我投谁！' },
+    { id: 3, name: '学委小琳', icon: '👧', mood: 'neutral', bubble: '看学业方案。' },
+    { id: 4, name: '前排小刚', icon: '👦', mood: 'neutral', bubble: '吃瓜中……' },
+    { id: 5, name: '体委阿飞', icon: '👦', mood: 'neutral', bubble: '支持运动！' },
+    { id: 6, name: '文艺丹丹', icon: '👧', mood: 'neutral', bubble: '期待才艺秀~' },
+    { id: 7, name: '数学小刘', icon: '👦', mood: 'neutral', bubble: '算一算得票。' },
+    { id: 8, name: '走廊小胖', icon: '👦', mood: 'neutral', bubble: '想去小卖部。' }
+  ];
+
+  // 兼容老版三大阵营结构
   const blocs = {
     studious: { name: '学霸尖子圈', icon: '🎓', total: 15, myVotes: 0, rivalVotes: 0, remaining: 15 },
     middle: { name: '中立吃瓜圈', icon: '👥', total: 20, myVotes: 0, rivalVotes: 0, remaining: 20 },
@@ -2653,37 +2730,85 @@ function pendElection() {
   };
 
   S.election = {
+    version: '3.0',
     round: 1,
-    maxRound: 3,
+    maxRound: 5, // 原版经典 5 回合多轮博弈
+    totalVotes: 50,
+    targetVotes: 26,
+    candidates: [playerCand, rivalA, rivalB],
+    desks,
     myVotes: 0,
-    rival,
+    rival: rivalA, // 兼容老版字段
+    rival2: rivalB,
     blocs,
-    totalVotes,
-    targetVotes,
-    logs: ['班级黑板报下，全班 50 名少先队员的班干部竞选演说大会正式开幕！三大选民圈子屏息聆听！'],
+    logs: ['班级绿板粉笔板书写就，全班 50 名少先队员瞩目！三人同台竞选正式拉开帷幕！'],
     finished: false,
-    won: false
+    won: false,
+    rank: 1,
+    awardedTitle: ''
   };
 
   S.pending.push({
     type: 'election',
-    title: '🗳️ 班干部三向竞选演说大会',
-    body: '登上讲台，向全班同学发表施政演说！争夺班级中队长/班长席位！',
+    title: '🗳️ 班干部三人同台竞选演说大会 3.0',
+    body: '登上讲台，直面王小明与赵小刚！争夺全班 50 票支持率与光荣三道杠中队长席位！',
     election: S.election,
     opts: [
-      { label: '🤝 亲民路线·倾听心声', sub: '基于情商，重点拉拢中立吃瓜群众(20票)' },
-      { label: '🌟 才艺展示·硬核特长', sub: '亮出最高特长才华，吸引中立与后排同学' },
-      { label: '🍭 零食许诺·请客公关', sub: '花费 20 元买零食，绝杀收割后排圈(15票)' },
-      { label: '📜 严密施政·学业互助', sub: '基于智商，强力斩获学霸尖子圈(15票)' }
+      { label: '📢 自我宣传·发挥优势', sub: '大力宣扬自身长处（加成+40%），稳扎稳打拉票' },
+      { label: '👩‍🏫 亲近老师·主动担当', sub: '帮老师抱作业整理讲台，强力提升【师生关系】支持度' },
+      { label: '🍭 亲近群众·零食福利', sub: '许诺辣条冰棍或幽默逗乐，强力收割【群众基础】好感' },
+      { label: '⚡ 针对揭短·曝光短板', sub: '曝光对手弱项（死板/纪律），分化对手票仓！' }
     ]
   });
 }
 
-function doElection(o) {
+function doElection(o, targetId) {
   const el = S ? S.election : null;
   if (!el || el.finished) return 0;
 
-  // 兜底自愈三大选民圈子
+  // 1) 兜底自愈候选人列表与三大阵营大盘
+  if (!el.candidates || el.candidates.length < 3) {
+    const genderIcon = (S && S.gender === 'girl') ? '👧' : '👦';
+    const playerCand = {
+      id: 'player',
+      name: (S && S.name) || '我',
+      title: '少先队员候选人',
+      icon: genderIcon,
+      isPlayer: true,
+      metrics: { teacher: 50, peer: 50, moral: 50 },
+      strength: 'moral',
+      weakness: 'peer',
+      votes: el.myVotes || 0,
+      motto: '“全心全意为全班同学服务！”'
+    };
+    const rA = el.rival || { name: '王小明', title: '原班长', icon: '🧑‍🏫', votes: 0 };
+    const rivalA = {
+      id: 'rivalA',
+      name: rA.name || '王小明',
+      title: rA.title || '原班长·尖子代表',
+      icon: rA.icon || '🧑‍🏫',
+      isPlayer: false,
+      metrics: { teacher: 65, peer: 35, moral: 85 },
+      strength: 'moral',
+      weakness: 'peer',
+      votes: rA.votes || 0,
+      motto: rA.motto || '“带领全班期末考第一是我的责任！”'
+    };
+    const rivalB = {
+      id: 'rivalB',
+      name: '赵小刚',
+      title: '热血体委·后排代表',
+      icon: '🏀',
+      isPlayer: false,
+      metrics: { teacher: 30, peer: 85, moral: 45 },
+      strength: 'peer',
+      weakness: 'teacher',
+      votes: (el.rival2 && el.rival2.votes) || 0,
+      motto: '“选我！以后体育课我带大家练球吃冰棍！”'
+    };
+    el.candidates = [playerCand, rivalA, rivalB];
+  }
+
   if (!el.blocs) {
     el.blocs = {
       studious: { name: '学霸尖子圈', icon: '🎓', total: 15, myVotes: 0, rivalVotes: 0, remaining: 15 },
@@ -2692,114 +2817,244 @@ function doElection(o) {
     };
   }
 
-  let gStud = 0, gMid = 0, gRowdy = 0;
-  let logText = '';
+  const player = el.candidates.find(c => c.isPlayer) || el.candidates[0];
+  const rivals = el.candidates.filter(c => !c.isPlayer);
+  const rivalA = rivals[0];
+  const rivalB = rivals[1];
 
-  // 1) 玩家演讲拉票策略结算 (针对三大选民群体)
-  if (o === 0) {
-    // 亲民路线: 重点吸纳中立圈，兼顾学霸
-    const eqBonus = Math.min(5, Math.floor(((S.attrs && S.attrs.eq) || 0) / 35));
-    gMid = clamp(RI(5, 8) + eqBonus, 0, el.blocs.middle.remaining);
-    gStud = clamp(RI(2, 4), 0, el.blocs.studious.remaining);
-    gRowdy = clamp(RI(1, 3), 0, el.blocs.rowdy.remaining);
-    S.sat = clamp(S.sat + 3, 0, 140);
-    logText = '第' + el.round + '轮: 🤝 你真挚倾听同学心声并承诺减负互助，深得中立吃瓜同学共鸣，获得 ' + (gStud + gMid + gRowdy) + ' 票！';
-  } else if (o === 1) {
-    // 才艺特长: 吸引中立与后排圈
-    const t = bestTalent();
-    const rBonus = t ? Math.min(4, t.r * 2) : 1;
-    gMid = clamp(RI(4, 7) + rBonus, 0, el.blocs.middle.remaining);
-    gRowdy = clamp(RI(2, 5) + (t && t.cat === 'witty' ? 2 : 0), 0, el.blocs.rowdy.remaining);
-    gStud = clamp(RI(1, 3), 0, el.blocs.studious.remaining);
-    logText = '第' + el.round + '轮: 🌟 你当众亮出绝活【' + (t ? t.n : '大嗓门') + '】，技惊四座，赢得 ' + (gStud + gMid + gRowdy) + ' 票！';
-  } else if (o === 2) {
-    // 零食公关: 消耗金钱，绝杀后排圈
-    S.money = Math.max(0, S.money - 20);
-    S.sat = clamp(S.sat - 2, 0, 140);
-    gRowdy = clamp(RI(8, 12), 0, el.blocs.rowdy.remaining);
-    gMid = clamp(RI(2, 4), 0, el.blocs.middle.remaining);
-    gStud = clamp(RI(0, 1), 0, el.blocs.studious.remaining);
-    logText = '第' + el.round + '轮: 🍭 你许诺考后请大家吃雪糕辣条，后排同学欢声雷动当场反水！怒揽 ' + (gStud + gMid + gRowdy) + ' 票！(零花钱-20)';
+  let rawIdx = (typeof o === 'object' && o && o.tactic != null) ? o.tactic : (typeof o === 'number' ? o : 0);
+  rawIdx = clamp(rawIdx, 0, 3);
+  const chosenTarget = (typeof o === 'object' && o && o.target) ? o.target : targetId;
+
+  let myGain = 0;
+  let logText = '';
+  const metricNames = { teacher: '师生关系', peer: '群众基础', moral: '品德表率' };
+
+  // 2) 玩家策略结算与阵营得票
+  let bStudGain = 0, bMidGain = 0, bRowdyGain = 0;
+
+  if (rawIdx === 0) {
+    // 📢 自我宣传 / 亲民路线: 重点吸纳中立圈与自身长板
+    const strMetric = player.strength || 'moral';
+    const base = RI(4, 7);
+    const boost = Math.round(base * 1.4);
+    myGain = boost;
+    player.metrics[strMetric] = clamp(player.metrics[strMetric] + 12, 10, 100);
+    bMidGain = Math.min(el.blocs.middle.remaining, RI(3, 5));
+    bStudGain = Math.min(el.blocs.studious.remaining, Math.max(1, myGain - bMidGain));
+    logText = '第' + el.round + '轮: 📢 你重点突出自己在【' + metricNames[strMetric] + '】上的过硬长处，真挚倾听心声，全班掌声雷动！斩获 ' + myGain + ' 票！';
+    S.sat = clamp((S.sat || 50) + 2, 0, 140);
+  } else if (rawIdx === 1) {
+    // 👩‍🏫 亲近老师·主动担当
+    const eqBonus = Math.floor(((S.attrs && S.attrs.eq) || 0) / 40);
+    player.metrics.teacher = clamp(player.metrics.teacher + 18, 10, 100);
+    myGain = clamp(RI(4, 7) + eqBonus, 2, 11);
+    bStudGain = Math.min(el.blocs.studious.remaining, RI(3, 5));
+    bMidGain = Math.min(el.blocs.middle.remaining, Math.max(1, myGain - bStudGain));
+    logText = '第' + el.round + '轮: 👩‍🏫 你主动擦拭黑板并承诺分担班主任班级考勤，老师欣慰点头！斩获 ' + myGain + ' 票！';
+  } else if (rawIdx === 2) {
+    // 🍭 亲近群众·零食福利: 绝杀后排圈
+    if ((S.money || 0) >= 20) {
+      S.money = Math.max(0, S.money - 20);
+      player.metrics.peer = clamp(player.metrics.peer + 24, 10, 100);
+      myGain = RI(7, 10);
+      bRowdyGain = Math.min(el.blocs.rowdy.remaining, RI(5, 7));
+      bMidGain = Math.min(el.blocs.middle.remaining, Math.max(1, myGain - bRowdyGain));
+      logText = '第' + el.round + '轮: 🍭 你许诺考后在校门口小卖部请大家吃雪糕辣条，后排同学欢声雷动！怒揽 ' + myGain + ' 票！(零花钱-20)';
+    } else {
+      player.metrics.peer = clamp(player.metrics.peer + 14, 10, 100);
+      myGain = RI(4, 7);
+      bRowdyGain = Math.min(el.blocs.rowdy.remaining, RI(2, 4));
+      bMidGain = Math.min(el.blocs.middle.remaining, Math.max(1, myGain - bRowdyGain));
+      logText = '第' + el.round + '轮: 🤝 你声情并茂倾听全班心声，幽默风趣化解学习压力，深得吃瓜群众认可！获得 ' + myGain + ' 票！';
+    }
   } else {
-    // 严密施政: 重点收割学霸尖子圈
-    const iqBonus = Math.min(5, Math.floor(((S.attrs && S.attrs.iq) || 0) / 35));
-    gStud = clamp(RI(6, 9) + iqBonus, 0, el.blocs.studious.remaining);
-    gMid = clamp(RI(2, 4), 0, el.blocs.middle.remaining);
-    gRowdy = clamp(RI(0, 1), 0, el.blocs.rowdy.remaining);
-    logText = '第' + el.round + '轮: 📜 你有条不紊阐述期末复习与学业提分互助方案，学霸尖子圈纷纷举手表决！斩获 ' + (gStud + gMid + gRowdy) + ' 票！';
+    // ⚡ 针对揭短·曝光短板 / 严密施政
+    let targetRival = chosenTarget ? el.candidates.find(c => c.id === chosenTarget) : null;
+    if (!targetRival || targetRival.isPlayer) {
+      targetRival = (rivalA.votes >= rivalB.votes) ? rivalA : rivalB;
+    }
+    const tWeak = targetRival.weakness || 'peer';
+    const success = Math.random() < 0.85;
+    if (success) {
+      const lost = Math.min(targetRival.votes, RI(3, 5));
+      targetRival.votes = Math.max(0, targetRival.votes - lost);
+      targetRival.metrics[tWeak] = Math.max(10, targetRival.metrics[tWeak] - 20);
+      myGain = RI(4, 7) + Math.floor(lost / 2);
+      bStudGain = Math.min(el.blocs.studious.remaining, RI(3, 4));
+      bMidGain = Math.min(el.blocs.middle.remaining, Math.max(1, myGain - bStudGain));
+      logText = '第' + el.round + '轮: ⚡ 你当众指出【' + targetRival.name + '】在【' + metricNames[tWeak] + '】上的短板，' + targetRival.name + ' 哑口无言，票数大跌 -' + lost + '！你分流斩获 ' + myGain + ' 票！';
+    } else {
+      myGain = RI(2, 4);
+      bStudGain = Math.min(el.blocs.studious.remaining, 1);
+      logText = '第' + el.round + '轮: ⚠️ 你严密阐述学业互助方案，但被班主任提醒不要苛求他人，获得 ' + myGain + ' 票。';
+    }
   }
 
-  el.blocs.studious.myVotes += gStud;
-  el.blocs.studious.remaining -= gStud;
-  el.blocs.middle.myVotes += gMid;
-  el.blocs.middle.remaining -= gMid;
-  el.blocs.rowdy.myVotes += gRowdy;
-  el.blocs.rowdy.remaining -= gRowdy;
-  let myGain = gStud + gMid + gRowdy;
-  if (hasRelic('relic_medal')) {
+  // 传家宝加成
+  if (typeof hasRelic === 'function' && hasRelic('relic_medal')) {
     const extra = Math.max(1, Math.round(myGain * 0.3));
     myGain += extra;
-    logText += ' 🎖️【三道杠大队长红臂章】威望彰显，额外斩获 ' + extra + ' 票！';
+    logText += ' 🎖️【三道杠大队长红臂章】威望赫赫，额外吸纳 ' + extra + ' 票！';
   }
 
-  // 2) 对手竞选拉票 (从优势圈与中立圈吸票)
-  const favKey = (el.rival && el.rival.favBloc) || 'studious';
-  const rFav = clamp(RI(4, 7), 0, el.blocs[favKey] ? el.blocs[favKey].remaining : 5);
-  if (el.blocs[favKey]) {
-    el.blocs[favKey].rivalVotes += rFav;
-    el.blocs[favKey].remaining -= rFav;
+  player.votes += myGain;
+  el.myVotes = player.votes;
+
+  el.blocs.studious.myVotes += bStudGain;
+  el.blocs.studious.remaining = Math.max(0, el.blocs.studious.remaining - bStudGain);
+  el.blocs.middle.myVotes += bMidGain;
+  el.blocs.middle.remaining = Math.max(0, el.blocs.middle.remaining - bMidGain);
+  el.blocs.rowdy.myVotes += bRowdyGain;
+  el.blocs.rowdy.remaining = Math.max(0, el.blocs.rowdy.remaining - bRowdyGain);
+
+  // 3) AI 对手行动 (王小明与赵小刚行为树)
+  rivals.forEach(r => {
+    const isLeading = r.votes > player.votes;
+    let rGain = 0;
+    let rLog = '';
+
+    if (isLeading) {
+      rGain = RI(3, 6);
+      r.votes += rGain;
+      rLog = '【' + r.name + '】针对其擅长的【' + metricNames[r.strength] + '】慷慨陈词，获得 ' + rGain + ' 票！';
+    } else {
+      const counter = Math.random() < 0.35;
+      if (counter && player.votes > 4) {
+        const steal = Math.min(player.votes, RI(1, 2));
+        player.votes = Math.max(0, player.votes - steal);
+        el.myVotes = player.votes;
+        rGain = steal + RI(2, 4);
+        r.votes += rGain;
+        rLog = '【' + r.name + '】质疑你在【' + metricNames[player.weakness] + '】上的不足，拉走了 ' + steal + ' 票，共得 ' + rGain + ' 票！';
+      } else {
+        rGain = RI(3, 5);
+        r.votes += rGain;
+        rLog = '【' + r.name + '】向全班同学深情拉票，斩获 ' + rGain + ' 票！';
+      }
+    }
+    el.logs.push(rLog);
+  });
+
+  el.logs.unshift(logText);
+  if (el.logs.length > 8) el.logs.length = 8;
+
+  // 4) 触发 2~3 个课桌同学弹幕更新
+  if (el.desks && el.desks.length) {
+    const bubbles = [
+      '“说的太好了，投了！”',
+      '“真的假的啊？有点怀疑……”',
+      '“雪糕辣条！我要吃辣条！”',
+      '“别吵了老师在后面巡视呢！”',
+      '“王小明确实有点死板……”',
+      '“赵小刚讲义气，我支持！”',
+      '“三道杠！必须选靠谱的！”',
+      '“哇这局势太刺激了！”'
+    ];
+    const shuffleDesks = [...el.desks].sort(() => 0.5 - Math.random()).slice(0, 3);
+    shuffleDesks.forEach(d => {
+      d.bubble = bubbles[Math.floor(Math.random() * bubbles.length)];
+      d.mood = Math.random() > 0.3 ? 'clap' : 'doubt';
+    });
   }
-  const rMid = clamp(RI(2, 4), 0, el.blocs.middle.remaining);
-  el.blocs.middle.rivalVotes += rMid;
-  el.blocs.middle.remaining -= rMid;
-  const rivalGain = rFav + rMid;
-  el.rival.votes += rivalGain;
 
-  const rivalLog = '对手【' + el.rival.name + '】' + el.rival.motto + '，拉走了 ' + rivalGain + ' 票！';
+  // 5) 更新老版字段映射保障
+  el.rival = rivalA;
+  el.rival.votes = rivalA.votes;
 
-  el.myVotes += myGain;
-  el.logs.push(logText);
-  el.logs.push(rivalLog);
   el.round++;
 
-  // 3) 判定是否达成过半或轮次用尽
-  if (el.round > el.maxRound || el.myVotes >= el.targetVotes || el.rival.votes >= el.targetVotes) {
+  // 6) 判定过半或轮次用尽
+  const anyWin = el.candidates.some(c => c.votes >= el.targetVotes);
+  if (el.round > el.maxRound || anyWin) {
     el.finished = true;
-    el.won = el.myVotes >= el.rival.votes;
+    const sorted = [...el.candidates].sort((a, b) => b.votes - a.votes);
+    const pRank = sorted.findIndex(c => c.isPlayer) + 1;
+    el.rank = pRank;
+    el.won = (pRank === 1);
   }
 
-  log('班干部竞选拉票: 我方得票+' + myGain + ', 对手+' + rivalGain + ' (当前 ' + el.myVotes + ' vs ' + el.rival.votes + ')');
+  log('班委竞选 3.0: 我方得票+' + myGain + ' (当前票数: ' + player.votes + ', 王小明: ' + rivalA.votes + ', 赵小刚: ' + rivalB.votes + ')');
   return myGain;
 }
 
 function electionFinish() {
   const el = S.election;
   if (!el) return;
-  const win = el.myVotes >= el.rival.votes;
   el.finished = true;
-  el.won = win;
 
-  if (win) {
+  // 排序得出最终排名
+  const cands = el.candidates ? [...el.candidates] : [
+    { isPlayer: true, votes: el.myVotes || 0 },
+    { isPlayer: false, name: '王小明', votes: (el.rival ? el.rival.votes : 0) },
+    { isPlayer: false, name: '赵小刚', votes: (el.rival2 ? el.rival2.votes : 0) }
+  ];
+  cands.sort((a, b) => b.votes - a.votes);
+  const pRank = cands.findIndex(c => c.isPlayer) + 1;
+  el.rank = pRank;
+  const isWon = (pRank === 1);
+  el.won = isWon;
+
+  let titleName = '';
+  let talentId = '';
+  let reportBody = '';
+
+  if (pRank === 1) {
+    // 🥇 第一名：班长 / 中队长
+    titleName = '班级中队长 / 班长';
+    talentId = 'el_leader';
     if (!S.flags) S.flags = {};
     S.flags.wonElection = 1;
-    S.face += 60;
-    S.sat = clamp(S.sat + 15, 0, 140);
+    S.face += 100;
+    S.sat = clamp(S.sat + 25, 0, 140);
+    S.insight = (S.insight || 0) + 300;
     Object.keys(S.npcAff || {}).forEach(k => {
-      S.npcAff[k] = (S.npcAff[k] || 0) + 8;
+      S.npcAff[k] = (S.npcAff[k] || 0) + 12;
     });
+    reportBody = '🎉 经过五轮跌宕起伏的激烈竞选演说，你以 ' + el.myVotes + ' 票拔得头筹，力压对手！\n\n班主任在全班雷动掌声中，庄严为你佩戴上光荣的【三道杠】中队长红臂章！并授予特长【威风凛凛一班之长】！\n(家庭面子+100, 悟性+300, 父母满意+25, 全员好感+12)';
+  } else if (pRank === 2) {
+    // 🥈 第二名：副班长 / 宣传委员
+    titleName = '班级副班长 / 宣传委员';
+    talentId = 'el_deputy';
+    S.face += 50;
+    S.sat = clamp(S.sat + 15, 0, 140);
+    S.insight = (S.insight || 0) + 180;
+    Object.keys(S.npcAff || {}).forEach(k => {
+      S.npcAff[k] = (S.npcAff[k] || 0) + 6;
+    });
+    reportBody = '🥈 你斩获 ' + el.myVotes + ' 票位列第二！虽以微弱差距惜败，但全班同学深为你的人格魅力所折服！\n\n班主任委任你为【副班长 / 宣传委员】，佩戴【二道杠】臂章，并授予特长【班级得力臂膀】！\n(家庭面子+50, 悟性+180, 父母满意+15, 全员好感+6)';
   } else {
-    S.face = Math.max(0, S.face - 10);
+    // 🥉 第三名：劳动委员 / 保洁专员
+    titleName = '班级劳动委员 / 保洁专员';
+    talentId = 'el_labor';
+    S.face += 20;
+    S.attrs = S.attrs || {};
+    S.attrs.phy = (S.attrs.phy || 0) + 20;
+    S.insight = (S.insight || 0) + 80;
+    Object.keys(S.npcAff || {}).forEach(k => {
+      S.npcAff[k] = (S.npcAff[k] || 0) + 3;
+    });
+    reportBody = '🧹 你斩获 ' + el.myVotes + ' 票位列第三！班主任走下讲台紧紧握住你的手：“班级包干区的卫生安全，就交给你这位实干家了！”\n\n你受任为【劳动委员】，佩戴【一道杠】袖标，并领悟搞笑特长【包干区总管】！\n(体魄+20, 悟性+80, 家庭面子+20, 全员好感+3)';
+  }
+
+  el.awardedTitle = titleName;
+
+  // 获得对应称号特长并收入特长图鉴
+  if (talentId) {
+    if (!S.talents) S.talents = [];
+    if (!S.talents.includes(talentId)) {
+      S.talents.push(talentId);
+    }
   }
 
   S.pending.unshift({
     type: 'electionr',
-    title: win ? '🏆 班干部正式任命聘书' : '📜 班干部竞选公报',
+    title: isWon ? '🏆 班干部正式任命聘书' : (pRank === 2 ? '🥈 班干部光荣委任状' : '📜 劳动委员委任公报'),
     election: el,
-    win,
-    body: win
-      ? '🎉 经过三轮激烈的竞选演说，你以 ' + el.myVotes + ' 票力压对手【' + el.rival.name + '】(' + el.rival.votes + '票)！\n\n班主任郑重为你佩戴上光荣的“三道杠”中队长臂章！全班掌声雷动！\n(家庭面子+60, 父母满意+15, 同学全员好感+8)'
-      : '最终得票 ' + el.myVotes + ' 票 vs ' + el.rival.votes + ' 票，对手【' + el.rival.name + '】胜选。\n\n班主任走下讲台拍拍你：“表现非常出色！老师特委任你为劳动委员，继续发光发热！”\n(面子-10, 演说技巧大获提升)',
-    opts: [win ? '光荣就任 🎖️' : '欣然受任 🧹']
+    win: isWon,
+    rank: pRank,
+    body: reportBody,
+    opts: [isWon ? '佩戴三道杠就任 🎖️' : (pRank === 2 ? '佩戴二道杠受任 🎗️' : '欣然佩戴一道杠 🧹')]
   });
 }
 
@@ -3812,6 +4067,9 @@ const API = {
   pendFace: (n) => pendFace(n),
   talentsList: () => (S ? (S.talents || []).map(id => D.talentData.find(x => x.id === id)).filter(Boolean) : []),
   election: () => (S && S.election),
+  pendElection: () => pendElection(),
+  doElection: (o, target) => doElection(o, target),
+  electionFinish: () => electionFinish(),
   parentingStyle: () => (S && S.parentingStyle) || 'democratic',
   parentingStyles: () => D.parentingStyles || [],
   heirlooms: {
@@ -3994,7 +4252,8 @@ function resolvePend(i) {
     case 'election': {
       const rawIdx = (typeof i === 'object' && i && i.tactic != null) ? i.tactic : (typeof i === 'number' ? i : 0);
       const tacticIdx = clamp(rawIdx, 0, 3);
-      const v = doElection(tacticIdx);
+      const targetId = (typeof i === 'object' && i) ? i.target : undefined;
+      const v = doElection(tacticIdx, targetId);
       if (S.election && S.election.finished) {
         S.pending.shift();
         electionFinish();

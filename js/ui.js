@@ -3004,89 +3004,109 @@ function renderElectionModal(p, m) {
   m.innerHTML = '';
   const body = h('div', 'm-body el-modal');
   const el = (CP.election ? CP.election() : null) || p.election || {
-    round: 1, maxRound: 3, myVotes: 0,
-    rival: { name: '王小明', title: '原班长', icon: '🧑‍🏫', votes: 0 },
+    round: 1, maxRound: 5, myVotes: 0,
     targetVotes: 26, totalVotes: 50, logs: []
   };
 
-  // 兜底三大选民阵营数据
-  const blocs = el.blocs || {
-    studious: { name: '学霸尖子圈', icon: '🎓', total: 15, myVotes: 0, rivalVotes: 0, remaining: 15 },
-    middle: { name: '中立吃瓜圈', icon: '👥', total: 20, myVotes: 0, rivalVotes: 0, remaining: 20 },
-    rowdy: { name: '后排活跃圈', icon: '🏀', total: 15, myVotes: 0, rivalVotes: 0, remaining: 15 }
-  };
+  const metricNames = { teacher: '师生关系', peer: '群众基础', moral: '品德表率' };
 
-  // 1) 竞选讲台横幅
+  // 1) 竞选黑板横幅
   const head = h('div', 'el-header');
   head.innerHTML =
-    '<div class="el-badge">🗳️ 班干部三向竞选演说大会 2.0</div>' +
-    '<div class="el-title">第 ' + (el.round || 1) + ' / ' + (el.maxRound || 3) + ' 轮演说 · 争夺班级中队长</div>' +
-    '<div class="el-sub">全班 50 名少先队员三大圈子无记名投票，过半 (26票) 即告当选！</div>';
+    '<div class="el-badge">🗳️ 班干部三人同台竞选演说大会 3.0</div>' +
+    '<div class="el-title">第 ' + (el.round || 1) + ' / ' + (el.maxRound || 5) + ' 轮演说 · 角逐班级中队长</div>' +
+    '<div class="el-sub">全班 50 名少先队员瞩目！三大指标实力博弈，过半 (26票) 提前加冕！</div>';
   body.appendChild(head);
 
-  // 2) 双方得票与候选人PK看台
-  const arena = h('div', 'el-arena');
+  // 2) 三候选人同台赛马看板 (Three-way Arena)
+  const arena = h('div', 'el-arena three-way');
   const genderIcon = (CP.state && CP.state().gender === 'girl') ? '👧' : '👦';
-  const myPct = Math.min(100, Math.round(((el.myVotes || 0) / (el.targetVotes || 26)) * 100));
-  const rivalPct = Math.min(100, Math.round(((el.rival.votes || 0) / (el.targetVotes || 26)) * 100));
 
-  arena.innerHTML =
-    '<div class="el-cand left">' +
-      '<div class="el-avatar">' + genderIcon + '</div>' +
-      '<div class="el-cand-name">我 (候选人)</div>' +
-      '<div class="el-vote-badge mine">' + (el.myVotes || 0) + ' 票</div>' +
-      '<div class="el-bar-wrap"><div class="el-bar mine" style="width:' + myPct + '%"></div></div>' +
-    '</div>' +
-    '<div class="el-vs-box">' +
-      '<span class="el-vs-tag">VS</span>' +
-      '<span class="el-target-tag">当选门槛: ' + (el.targetVotes || 26) + ' 票</span>' +
-    '</div>' +
-    '<div class="el-cand right">' +
-      '<div class="el-avatar">' + (el.rival.icon || '🧑‍🏫') + '</div>' +
-      '<div class="el-cand-name">' + el.rival.name + '</div>' +
-      '<div class="el-vote-badge rival">' + (el.rival.votes || 0) + ' 票</div>' +
-      '<div class="el-bar-wrap"><div class="el-bar rival" style="width:' + rivalPct + '%"></div></div>' +
-    '</div>';
+  const defaultCandidates = [
+    { id: 'player', name: (CP.state && CP.state().name) || '我', title: '少先队员候选人', icon: genderIcon, isPlayer: true, strength: 'moral', weakness: 'peer', votes: el.myVotes || 0 },
+    { id: 'rivalA', name: (el.rival && el.rival.name) || '王小明', title: '尖子代表', icon: '🧑‍🏫', isPlayer: false, strength: 'moral', weakness: 'peer', votes: (el.rival ? el.rival.votes : 0) },
+    { id: 'rivalB', name: (el.rival2 && el.rival2.name) || '赵小刚', title: '后排体委', icon: '🏀', isPlayer: false, strength: 'peer', weakness: 'teacher', votes: (el.rival2 ? el.rival2.votes : 0) }
+  ];
+  const candidates = (el.candidates && el.candidates.length >= 3) ? el.candidates : defaultCandidates;
+
+  candidates.forEach(cand => {
+    const isPlayer = cand.isPlayer;
+    const cardClass = isPlayer ? 'el-cand mine' : (cand.id === 'rivalA' ? 'el-cand rival-a' : 'el-cand rival-b');
+    const badgeClass = isPlayer ? 'el-vote-badge mine' : (cand.id === 'rivalA' ? 'el-vote-badge rival' : 'el-vote-badge rival-b');
+    const barClass = isPlayer ? 'el-bar mine' : (cand.id === 'rivalA' ? 'el-bar rival-a' : 'el-bar rival-b');
+    const pct = Math.min(100, Math.round(((cand.votes || 0) / (el.targetVotes || 26)) * 100));
+
+    const candDiv = h('div', cardClass);
+    candDiv.innerHTML =
+      '<div class="el-avatar">' + (cand.icon || '🧑') + '</div>' +
+      '<div class="el-cand-name">' + cand.name + '</div>' +
+      '<div class="el-cand-title">' + (cand.title || '候选人') + '</div>' +
+      '<div class="el-cand-badges">' +
+        '<span class="el-metric-badge strength" title="擅长长板">⭐ ' + (metricNames[cand.strength] || '品德') + '</span>' +
+        '<span class="el-metric-badge weakness" title="薄弱短板">⚠️ ' + (metricNames[cand.weakness] || '群众') + '</span>' +
+      '</div>' +
+      '<div class="' + badgeClass + '">' + (cand.votes || 0) + ' 票</div>' +
+      '<div class="el-bar-wrap"><div class="' + barClass + '" style="width:' + pct + '%"></div></div>';
+    arena.appendChild(candDiv);
+  });
   body.appendChild(arena);
 
-  // 3) 三大选民阵营实时支持度波形卡
-  const blocsRow = h('div', 'el-blocs-row');
-  Object.keys(blocs).forEach(k => {
-    const b = blocs[k];
-    const myW = Math.round((b.myVotes / b.total) * 100);
-    const rivalW = Math.round((b.rivalVotes / b.total) * 100);
-    const card = h('div', 'el-bloc-card');
-    card.innerHTML =
-      '<div class="el-bloc-name">' + b.icon + ' ' + b.name + '</div>' +
-      '<div class="el-bloc-bar-wrap">' +
-        '<div class="el-bloc-fill mine" style="width:' + myW + '%"></div>' +
-        '<div class="el-bloc-fill rival" style="width:' + rivalW + '%"></div>' +
-      '</div>' +
-      '<div class="el-bloc-stat">我 ' + b.myVotes + ' vs 敌 ' + b.rivalVotes + ' (剩 ' + b.remaining + ')</div>';
-    blocsRow.appendChild(card);
+  // 3) 教室课桌席位与动态弹幕 (Classroom Desks)
+  const classroomBox = h('div', 'el-classroom-box');
+  classroomBox.innerHTML =
+    '<div class="el-classroom-header">' +
+      '<span>🏫 讲台下方同班课桌席位 (8位同学代表)</span>' +
+      '<span>💬 实时微观民意动态</span>' +
+    '</div>';
+  const desksGrid = h('div', 'el-desks-grid');
+  const desks = el.desks || [
+    { id: 1, name: '小敏', icon: '👧', bubble: '看大家演讲~' },
+    { id: 2, name: '大壮', icon: '👦', bubble: '谁请客投谁！' },
+    { id: 3, name: '小琳', icon: '👧' },
+    { id: 4, name: '小刚', icon: '👦', bubble: '吃瓜中……' },
+    { id: 5, name: '阿飞', icon: '👦' },
+    { id: 6, name: '丹丹', icon: '👧', bubble: '期待才艺秀~' },
+    { id: 7, name: '小刘', icon: '👦' },
+    { id: 8, name: '小胖', icon: '👦', bubble: '想去小卖部！' }
+  ];
+  desks.forEach(d => {
+    const deskItem = h('div', 'el-desk-item');
+    let bubbleHtml = '';
+    if (d.bubble) {
+      bubbleHtml = '<div class="el-desk-bubble">' + d.bubble + '</div>';
+    }
+    deskItem.innerHTML =
+      bubbleHtml +
+      '<div class="el-desk-avatar">' + (d.icon || '🧑') + '</div>' +
+      '<div class="el-desk-name">' + d.name + '</div>';
+    desksGrid.appendChild(deskItem);
   });
-  body.appendChild(blocsRow);
+  classroomBox.appendChild(desksGrid);
+  body.appendChild(classroomBox);
 
-  // 4) 讲台黑板报实时速记
+  // 4) 墨绿黑板实时发言速记 (Blackboard Logs)
   const blackboard = h('div', 'el-blackboard');
   const logs = el.logs || [];
   blackboard.innerHTML =
-    '<div class="el-bb-title">📝 讲台竞选速记与同学反响</div>' +
+    '<div class="el-bb-title">' +
+      '<span>📝 讲台粉笔板书 · 竞选发言速记</span>' +
+      '<span>过半门槛: ' + (el.targetVotes || 26) + ' 票</span>' +
+    '</div>' +
     '<div class="el-bb-list">' +
-      logs.slice(-4).map(line => '<div class="el-bb-line">' + line + '</div>').join('') +
+      logs.slice(0, 4).map(line => '<div class="el-bb-line">' + line + '</div>').join('') +
     '</div>';
   body.appendChild(blackboard);
 
-  // 5) 四大施政演说策略卡牌
+  // 5) 四大施政演说策略卡牌与揭短选择
   const tacticsBox = h('div', 'el-tactics-box');
-  tacticsBox.innerHTML = '<div class="el-tactics-title">🗣️ 请选择本轮施政演说策略 (见招拆招争夺三大选民群体)：</div>';
+  tacticsBox.innerHTML = '<div class="el-tactics-title">🗣️ 请选择本轮施政演说策略 (扬长避短，见招拆招)：</div>';
   const grid = h('div', 'el-tactics-grid');
 
   const defaultOpts = [
-    { label: '🤝 亲民路线·倾听心声', sub: '基于情商，重点拉拢中立吃瓜圈(20票)' },
-    { label: '🌟 才艺展示·硬核特长', sub: '亮出最高特长才华，吸引中立与后排同学' },
-    { label: '🍭 零食许诺·请客公关', sub: '花费 20 元买零食，绝杀收割后排圈(15票)' },
-    { label: '📜 严密施政·学业互助', sub: '基于智商，强力斩获学霸尖子圈(15票)' }
+    { label: '📢 自我宣传·发挥优势', sub: '大力宣扬自身长板（得票加成+40%），稳扎稳打拉票' },
+    { label: '👩‍🏫 亲近老师·主动担当', sub: '帮老师整理讲台抱作业，强力提升【师生关系】支持度' },
+    { label: '🍭 亲近群众·零食福利', sub: '许诺辣条雪糕或幽默逗乐，强力收割【群众基础】票仓' },
+    { label: '⚡ 针对揭短·曝光短板', sub: '针对对手弱项猛烈开炮，分化对手票仓！' }
   ];
   const opts = (p.opts && p.opts.length === 4) ? p.opts : defaultOpts;
 
@@ -3104,12 +3124,39 @@ function renderElectionModal(p, m) {
     grid.appendChild(card);
   });
   tacticsBox.appendChild(grid);
-  body.appendChild(tacticsBox);
 
+  // 快捷针对揭短小目标
+  const targetPicker = h('div', 'el-target-picker');
+  targetPicker.innerHTML =
+    '<span>🎯 针对揭短目标：</span>' +
+    '<button class="el-target-pill" id="target-rival-a">⚡ 曝光王小明 (打小报告/死板)</button>' +
+    '<button class="el-target-pill" id="target-rival-b">⚡ 曝光赵小刚 (迟到/纪律差)</button>';
+  tacticsBox.appendChild(targetPicker);
+
+  const btnA = targetPicker.querySelector('#target-rival-a');
+  if (btnA) {
+    btnA.onclick = () => {
+      sound.click();
+      const r = CP.resolve({ tactic: 3, target: 'rivalA' });
+      if (r) toast(r);
+      renderAll();
+    };
+  }
+  const btnB = targetPicker.querySelector('#target-rival-b');
+  if (btnB) {
+    btnB.onclick = () => {
+      sound.click();
+      const r = CP.resolve({ tactic: 3, target: 'rivalB' });
+      if (r) toast(r);
+      renderAll();
+    };
+  }
+
+  body.appendChild(tacticsBox);
   m.appendChild(body);
 }
 
-/* ---------- 🏆 班干部正式任命聘书战报卡片 2.0 ---------- */
+/* ---------- 🏆 班干部正式任命聘书战报卡片 3.0 ---------- */
 function renderElectionResultModal(p, m) {
   m = m || $('#modal');
   if (!m) return;
@@ -3117,22 +3164,30 @@ function renderElectionResultModal(p, m) {
   m.innerHTML = '';
 
   const el = p.election || (CP.election ? CP.election() : {}) || {};
-  const isWon = p.win != null ? p.win : (el.myVotes >= (el.rival ? el.rival.votes : 0));
+  const cands = el.candidates ? [...el.candidates] : [
+    { isPlayer: true, name: (CP.state && CP.state().name) || '我', votes: el.myVotes || 0 },
+    { isPlayer: false, name: (el.rival ? el.rival.name : '王小明'), votes: (el.rival ? el.rival.votes : 0) },
+    { isPlayer: false, name: (el.rival2 ? el.rival2.name : '赵小刚'), votes: (el.rival2 ? el.rival2.votes : 0) }
+  ];
+  cands.sort((a, b) => b.votes - a.votes);
+  const pRank = p.rank || cands.findIndex(c => c.isPlayer) + 1;
+  const isWon = (pRank === 1);
 
-  if (isWon) sound.win(); else sound.fail();
+  if (isWon) sound.win(); else sound.pop();
 
   const body = h('div', 'm-body el-modal');
 
   // 1) 顶部徽章
   const head = h('div', 'el-header');
+  const badgeTitle = isWon ? '🎉 胜选出线 · 光荣履新中队长' : (pRank === 2 ? '🥈 虽败犹荣 · 受任副班长' : '🧹 实干模范 · 委任劳动委员');
   head.innerHTML =
-    '<div class="el-badge ' + (isWon ? 'win' : 'lose') + '">' + (isWon ? '🎉 胜选出线 · 光荣履新' : '📜 虽败犹荣 · 课代表任职') + '</div>' +
-    '<div class="el-title">' + (p.title || '班干部竞选任命公报') + '</div>';
+    '<div class="el-badge ' + (isWon ? 'win' : 'lose') + '">' + badgeTitle + '</div>' +
+    '<div class="el-title">' + (p.title || '少先队中队干部正式任命公报') + '</div>';
   body.appendChild(head);
 
-  // 2) 红底任命聘书卡片
-  const certCard = h('div', 'el-cert-card');
-  if (isWon) {
+  // 2) 红底任命聘书卡片 (三档)
+  const certCard = h('div', 'el-cert-card rank-' + pRank);
+  if (pRank === 1) {
     certCard.innerHTML =
       '<div class="el-sleeve-badge">' +
         '<div class="el-sleeve-bar"></div>' +
@@ -3140,48 +3195,82 @@ function renderElectionResultModal(p, m) {
         '<div class="el-sleeve-bar"></div>' +
       '</div>' +
       '<div class="el-cert-title">班级中队长任命聘书</div>' +
-      '<div style="font-size:12px; color:#78350f; line-height:1.6; margin:8px 0 12px;">' +
-        '兹聘任你为本学年 <b>班级中队长</b>！<br>经全班 50 名少先队员民主投票，你以 <b>' + el.myVotes + '</b> 票绝对优势胜选，特颁此证！' +
+      '<div style="font-size:12px; color:#78350f; line-height:1.6; margin:6px 0 8px;">' +
+        '兹聘任你为本学年 <b>班级中队长 / 班长</b>！<br>经全班 50 名少先队员民主投票，你以 <b>' + el.myVotes + '</b> 票荣膺全班第一，特颁此证！' +
+      '</div>' +
+      '<div class="el-award-talent">' +
+        '<span class="el-award-talent-icon">🎖️</span>' +
+        '<div class="el-award-talent-info">' +
+          '<div class="el-award-talent-name">金色传说特长：威风凛凛一班之长</div>' +
+          '<div class="el-award-talent-desc">少先队大队长领袖威望，面子对决出战威慑全场！</div>' +
+        '</div>' +
       '</div>' +
       '<div class="el-cert-seal">少先队中队<br>正式特聘</div>';
+  } else if (pRank === 2) {
+    certCard.innerHTML =
+      '<div class="el-sleeve-badge rank-2">' +
+        '<div class="el-sleeve-bar"></div>' +
+        '<div class="el-sleeve-bar"></div>' +
+      '</div>' +
+      '<div class="el-cert-title" style="color:#0369a1;">班级副班长委任状</div>' +
+      '<div style="font-size:12px; color:#0369a1; line-height:1.6; margin:6px 0 8px;">' +
+        '你以 <b>' + el.myVotes + '</b> 票位列第二！虽与班长失之交臂，全班同学深为你的人格魅力折服，特委任你为 <b>副班长 / 宣传委员</b>！' +
+      '</div>' +
+      '<div class="el-award-talent" style="border-color:#0284c7;">' +
+        '<span class="el-award-talent-icon">🎗️</span>' +
+        '<div class="el-award-talent-info">' +
+          '<div class="el-award-talent-name" style="color:#0369a1;">史诗特长：班级得力臂膀</div>' +
+          '<div class="el-award-talent-desc" style="color:#0284c7;">班主任的左膀右臂，情商与人缘大幅升华！</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="el-cert-seal" style="border-color:#0284c7; color:#0284c7;">少先队副队<br>光荣委任</div>';
   } else {
     certCard.innerHTML =
-      '<div style="font-size:32px; margin-bottom:4px;">🧹</div>' +
-      '<div class="el-cert-title" style="color:#475569;">班级劳动委员委任书</div>' +
-      '<div style="font-size:12px; color:#475569; line-height:1.6; margin:8px 0 12px;">' +
-        '最终斩获 <b>' + el.myVotes + '</b> 票！虽与班长失之交臂，班主任与全班同学特委任你为 <b>劳动委员</b>，带领大家打扫包干区！' +
-      '</div>';
+      '<div class="el-sleeve-badge rank-3">' +
+        '<div class="el-sleeve-bar"></div>' +
+      '</div>' +
+      '<div class="el-cert-title" style="color:#15803d;">班级劳动委员任命书</div>' +
+      '<div style="font-size:12px; color:#15803d; line-height:1.6; margin:6px 0 8px;">' +
+        '最终斩获 <b>' + el.myVotes + '</b> 票！班主任与全班同学特委任你为 <b>劳动委员 / 保洁专员</b>，带领大家打扫包干区！' +
+      '</div>' +
+      '<div class="el-award-talent" style="border-color:#16a34a;">' +
+        '<span class="el-award-talent-icon">🧹</span>' +
+        '<div class="el-award-talent-info">' +
+          '<div class="el-award-talent-name" style="color:#15803d;">稀有搞笑特长：包干区总管</div>' +
+          '<div class="el-award-talent-desc" style="color:#16a34a;">扫地也能扫出自信，体魄与实干能力暴增！</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="el-cert-seal" style="border-color:#16a34a; color:#16a34a;">劳动光荣<br>包干区长</div>';
   }
   body.appendChild(certCard);
 
-  // 3) 三大圈子选票大盘复盘
-  if (el.blocs) {
-    const blocsRow = h('div', 'el-blocs-row');
-    Object.keys(el.blocs).forEach(k => {
-      const b = el.blocs[k];
-      const card = h('div', 'el-bloc-card');
-      card.innerHTML =
-        '<div class="el-bloc-name">' + b.icon + ' ' + b.name + '</div>' +
-        '<div style="font-size:11px; font-weight:800; color:' + (b.myVotes >= b.rivalVotes ? '#4f46e5' : '#ef4444') + ';">' +
-          '我 ' + b.myVotes + ' 票 vs 敌 ' + b.rivalVotes + ' 票' +
-        '</div>';
-      blocsRow.appendChild(card);
-    });
-    body.appendChild(blocsRow);
-  }
+  // 3) 三人得票荣誉金银铜榜
+  const rankBoard = h('div', 'el-blocs-row');
+  const medals = ['🥇 第一名', '🥈 第二名', '🥉 第三名'];
+  cands.slice(0, 3).forEach((c, idx) => {
+    const card = h('div', 'el-bloc-card');
+    const isMe = c.isPlayer;
+    card.innerHTML =
+      '<div style="font-size:10px; font-weight:800; color:' + (idx === 0 ? '#b45309' : (idx === 1 ? '#0369a1' : '#15803d')) + ';">' + medals[idx] + '</div>' +
+      '<div class="el-bloc-name">' + (c.icon || '🧑') + ' ' + c.name + (isMe ? ' (我)' : '') + '</div>' +
+      '<div style="font-size:12px; font-weight:900; color:#1e293b; margin-top:2px;">' + c.votes + ' 票</div>';
+    rankBoard.appendChild(card);
+  });
+  body.appendChild(rankBoard);
 
   // 4) 战果收益面板
   const rwBox = h('div', 'ts-rewards-row');
   rwBox.innerHTML =
-    '<span class="ts-rw-item face pos">⭐ 家族面子 ' + (isWon ? '+60' : '-10') + '</span>' +
-    '<span class="ts-rw-item ins">❤️ 全员好感 ' + (isWon ? '+8' : '+3') + '</span>';
+    '<span class="ts-rw-item face pos">⭐ 面子 ' + (pRank === 1 ? '+100' : (pRank === 2 ? '+50' : '+20')) + '</span>' +
+    '<span class="ts-rw-item ins">💡 悟性 ' + (pRank === 1 ? '+300' : (pRank === 2 ? '+180' : '+80')) + '</span>' +
+    '<span class="ts-rw-item aff">❤️ 好感 ' + (pRank === 1 ? '+12' : (pRank === 2 ? '+6' : '+3')) + '</span>';
   body.appendChild(rwBox);
 
   // 5) 确认就任按钮 (支持 Enter/Space)
-  const btnText = isWon ? '🎖️ 光荣佩戴三道杠就任！(按回车/空格确认)' : '🧹 欣然受任劳动委员 (按回车/空格确认)';
+  const btnText = pRank === 1 ? '🎖️ 光荣佩戴三道杠就任！(回车/空格)' : (pRank === 2 ? '🎗️ 欣然佩戴二道杠履新！(回车/空格)' : '🧹 欣然佩戴一道杠受任！(回车/空格)');
   const confirmBtn = h('button', 'btn big ' + (isWon ? 'primary pulse' : 'secondary'), btnText);
   confirmBtn.style.width = '100%';
-  confirmBtn.style.marginTop = '12px';
+  confirmBtn.style.marginTop = '10px';
 
   let resultKeyHandler = null;
   const doConfirm = () => {
