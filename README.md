@@ -10,10 +10,10 @@
 
 <p align="center">
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/Live_Demo-chinese--parent.pages.dev-d33824?style=flat-square&logo=cloudflare" alt="Live Demo" /></a>
-  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v2.7.0-orange?style=flat-square" alt="Version" /></a>
+  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v2.8.0-orange?style=flat-square" alt="Version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /></a>
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/PWA-Supported-green?style=flat-square&logo=pwa" alt="PWA Ready" /></a>
-  <a href="./tests/"><img src="https://img.shields.io/badge/Tests-5%2F5%20Suites%20Passed-brightgreen?style=flat-square" alt="Automated Tests" /></a>
+  <a href="./tests/"><img src="https://img.shields.io/badge/Tests-6%2F6%20Suites%20Passed-brightgreen?style=flat-square" alt="Automated Tests" /></a>
 </p>
 
 ---
@@ -44,7 +44,19 @@
 
 ## ✨ 核心特色与系统全览 (Key Features)
 
-### 1. 👪 家庭育儿风格流派系统 (Parenting Styles · v2.7)
+### 1. ⚔️ 原汁原味 · 面子对决原版经典深度还原 (Faithful Face Duel · v2.8)
+- **五大人生经典亲戚对决**：对齐原版成长轨迹，幼小初高五大阶段迎战远房表嫂（早教优越）、二姨（才艺培训）、二舅妈（学科奥数）、周阿姨（综合素质）、大姑（名校保送）；
+- **特长单场单次消耗制 (Single-Use Protocol)**：深度复刻原版策略核心！每项掌握的特长单场仅可出战 1 次，出战后变灰锁定并加盖【已出战】印章，考验平时特长深度积累与出招次序；
+- **特长品阶专属原版特效**：
+  - **Rank 1 普通**：基础稳定输出（18~28 点）；
+  - **Rank 2 稀有**：35% 几率触发【精彩暴击！】（1.5 倍伤害并大量增加对手破防槽）；
+  - **Rank 3 史诗**：必定附加【气焰受挫】（造成高额伤害并削弱对手下轮攻击 40%）；
+  - **Rank 4 传说**：必定触发【传说降维打击！】（真伤破防贯穿全场）；
+- **特长耗尽保底【客套赔笑】**：所有特长用尽时提供专属中国式人情世故保底招式，勉强应对不卡死；
+- **现场对峙气泡与老妈必杀**：实时渲染亲戚炫耀挑衅与老妈犀利回怼台词气泡；老妈怒气满 100% 触发拍案而起全家杀手锏；
+- **面子与索取成长飞轮**：赢下面子对决大幅提升家庭面子，解锁向父母索取高阶器材（橡皮泥、电子琴、黄冈密卷），解锁高阶特长碾压下一轮对决！
+
+### 2. 👪 家庭育儿风格流派系统 (Parenting Styles · v2.7)
 - **四大特色流派**：每代出生时根据前代声望与门第智能抽选流派：
   - **🐯 虎妈狼爸**：学习类行动消耗仅需 2 点行动力，严禁索取娱乐心愿；
   - **🧘 佛系放养**：每回合自然减压 -8 点，心理阴影爆发阈值永久截断在 60 点；

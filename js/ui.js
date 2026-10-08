@@ -1999,7 +1999,7 @@ function renderFaceDuelModal(p, m) {
 
   fighters.innerHTML =
     '<div class="fd-fighter left">' +
-      '<div class="fd-f-header"><span class="av">👶</span><span class="fd-f-name">我家宝儿</span><span class="fd-f-badge">我方</span></div>' +
+      '<div class="fd-f-header"><span class="av">👩‍👦</span><span class="fd-f-name">老妈 & 宝儿</span><span class="fd-f-badge">我方阵营</span></div>' +
       '<div class="fd-hp-wrap"><div class="fd-hp-fill mine" style="width:' + myHpPct + '%"></div></div>' +
       '<div class="fd-hp-val">面子: ' + duel.myHp + ' / ' + duel.maxMyHp + '</div>' +
       '<div class="fd-sub-meter">' +
@@ -2013,7 +2013,7 @@ function renderFaceDuelModal(p, m) {
       '<span class="fd-vs-round">第 ' + duel.round + ' / ' + duel.maxRound + ' 轮</span>' +
     '</div>' +
     '<div class="fd-fighter right">' +
-      '<div class="fd-f-header"><span class="av">' + (duel.opp.icon || '🧑‍🎓') + '</span><span class="fd-f-name">' + duel.opp.name + '</span><span class="fd-f-badge">' + (duel.opp.style || '学神') + '</span></div>' +
+      '<div class="fd-f-header"><span class="av">' + (duel.opp.icon || '👩') + '</span><span class="fd-f-name">' + duel.opp.name + '</span><span class="fd-f-badge">' + (duel.opp.style || '亲戚') + '</span></div>' +
       '<div class="fd-hp-wrap"><div class="fd-hp-fill opp" style="width:' + oppHpPct + '%"></div></div>' +
       '<div class="fd-hp-val">面子: ' + duel.opp.hp + ' / ' + duel.opp.maxHp + '</div>' +
       '<div class="fd-sub-meter">' +
@@ -2024,7 +2024,19 @@ function renderFaceDuelModal(p, m) {
     '</div>';
   body.appendChild(fighters);
 
-  // 2) 羁绊状态行 (若已激活特长羁绊)
+  // 2) 现场交锋对白气泡 (亲戚挑衅与老妈犀利回怼)
+  const bubblesWrap = h('div', 'fd-bubbles-wrap');
+  if (duel.oppCurrentLine) {
+    bubblesWrap.appendChild(h('div', 'fd-bubble opp', '💬 <b>' + duel.opp.name + '</b>：“' + duel.oppCurrentLine + '”'));
+  }
+  if (duel.momCurrentLine) {
+    bubblesWrap.appendChild(h('div', 'fd-bubble mom', '🛡️ <b>老妈回敬</b>：' + duel.momCurrentLine));
+  }
+  if (bubblesWrap.children.length > 0) {
+    body.appendChild(bubblesWrap);
+  }
+
+  // 3) 羁绊状态行 (若已激活特长羁绊)
   if (duel.activeSynergies && duel.activeSynergies.length > 0) {
     const synRow = h('div', 'fd-synergies-row');
     duel.activeSynergies.forEach(syn => {
@@ -2034,33 +2046,53 @@ function renderFaceDuelModal(p, m) {
     body.appendChild(synRow);
   }
 
-  // 3) 战报文本流
+  // 4) 战报文本流
   const logBox = h('div', 'fd-combat-box');
   const recentLogs = duel.logs.slice(-4);
   logBox.innerHTML = recentLogs.map(l => '<div>' + l + '</div>').join('');
   body.appendChild(logBox);
 
-  // 4) 手牌卡牌出招区
+  // 5) 手牌特长技能卡槽 (支持品质边框与单次消耗置灰)
   const cardsGrid = h('div', 'fd-cards-grid');
   const handList = (duel.hand && duel.hand.length) ? duel.hand : (p.opts || []);
+  const usedSet = new Set(duel.usedCardIds || []);
+
   handList.forEach((cardItem, idx) => {
     const card = h('button', 'fd-card-btn');
     const isObj = cardItem && typeof cardItem === 'object';
     const label = isObj ? (cardItem.name || cardItem.label || '出招') : String(cardItem);
     const icon = isObj ? (cardItem.icon || '') : '';
     let sub = isObj ? (cardItem.sub || '') : '';
+    const isUsed = isObj && (cardItem.used || usedSet.has(cardItem.id));
+
+    // 品阶样式
+    if (isObj && cardItem.r) {
+      card.classList.add('rank-' + cardItem.r);
+    } else if (isObj && cardItem.type === 'fallback') {
+      card.classList.add('fallback');
+    }
+
+    // 已出战单场消耗标记
+    if (isUsed) {
+      card.classList.add('used');
+    }
 
     // 检测卡牌是否享受激活羁绊
     const cat = isObj ? cardItem.cat : null;
     const hasSynergy = cat && (duel.activeSynergies || []).some(s => s.reqCats && s.reqCats.includes(cat));
-    if (hasSynergy) {
+    if (hasSynergy && !isUsed) {
       card.classList.add('synergy-active');
       sub = '✨ 羁绊激活 · ' + sub;
     }
 
     const titleHtml = icon ? ('<span style="margin-right:4px">' + icon + '</span>' + label) : label;
     card.innerHTML = '<span class="fd-c-title">' + titleHtml + '</span>' + (sub ? '<span class="fd-c-sub">' + sub + '</span>' : '');
+
     card.onclick = () => {
+      if (isUsed) {
+        toast('此特长本场已出战展示过了，请选择其他特长！');
+        return;
+      }
       sound.faceCrit();
       const r = CP.resolve(idx);
       if (r) toast(r);
@@ -2070,9 +2102,9 @@ function renderFaceDuelModal(p, m) {
   });
   body.appendChild(cardsGrid);
 
-  // 5) 老妈必杀绝招按钮 (当老妈怒气达到 100% 时爆发)
+  // 6) 老妈必杀绝招按钮 (当老妈怒气达到 100% 时爆发)
   if (duel.momRage >= 100) {
-    const momUltBtn = h('button', 'fd-mom-ult-btn pulse', '💥 老妈必杀爆发！【典型事迹降维打击】(立即释放)');
+    const momUltBtn = h('button', 'fd-mom-ult-btn pulse', '💥 老妈拍案而起！【全家杀手锏·市级表彰降维打击】(立即释放)');
     momUltBtn.onclick = () => {
       sound.faceCrit();
       const r = CP.resolve('mom');
@@ -2153,7 +2185,16 @@ function renderFaceDuelResult(duel, p, m) {
     '<b>老妈</b>: ' + momQuote;
   body.appendChild(diagBox);
 
-  // 4) 确认按钮与快捷键监听
+  // 4) 向父母索取正向飞轮指引
+  if (isWon) {
+    const tipBox = h('div', 'fd-result-dialogue', '💡 <b>原版进阶秘籍</b>：家族面子已大幅提升！回到主界面后请立刻点击【索取】，向父母索取高阶道具（如橡皮泥、电子琴、黄冈密卷），在日程中解锁更高阶的特长备战下一轮亲友对决！');
+    tipBox.style.background = '#e8f5e9';
+    tipBox.style.borderColor = '#c8e6c9';
+    tipBox.style.color = '#1b5e20';
+    body.appendChild(tipBox);
+  }
+
+  // 5) 确认按钮与快捷键监听
   const btnText = isWon ? '🏆 扬眉吐气！收下赞誉 (继续)' : '💨 默默低头离开饭局 (继续)';
   const confirmBtn = h('button', 'btn big ' + (isWon ? 'primary pulse' : 'secondary'), btnText);
   confirmBtn.style.width = '100%';

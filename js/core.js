@@ -1783,8 +1783,11 @@ function endTurn() {
   if (t === 43) pendGraduationToken();
   if (t === 44) pendGaokao();
   if (t === 46) pendCrossroad();
-  if (t === 28) pendFace(0);
-  if (t === 37) pendFace(1);
+  if (t === 14) pendFace(0);
+  if (t === 22) pendFace(1);
+  if (t === 28) pendFace(2);
+  if (t === 36 || (t === 37 && !S.flags.face36)) { S.flags.face36 = 1; pendFace(3); }
+  if (t === 42) pendFace(4);
   if (t === 50) pendCareer();
   if (t === 54) pendPromotion();
   if (t === 58) pendMarry();
@@ -2155,11 +2158,14 @@ function bestTalent() {
   return b;
 }
 
-/* ---------- 面子对决 2.0 (手牌化/特长羁绊/对手破防槽/老妈必杀) ---------- */
+/* ---------- 面子对决原版还原 2.8 (单场单次消耗/品阶特效/对手破防/老妈必杀) ---------- */
 function pendFace(n) {
   if (!S || !S.pending) return;
-  const opp = D.rivals[n % 4] || pick(D.rivals);
-  const oppMaxHp = opp.face || 300;
+  const oppList = (D.rivals && D.rivals.length) ? D.rivals : [
+    { id: 'biaosao', n: '远房表嫂', icon: '👩', face: 80, atk: 20, style: '早教优越', l: ['我家小宝早教很优秀'], tiltLines: ['表嫂红着脸离席！'] }
+  ];
+  const opp = oppList[n % oppList.length] || oppList[0];
+  const oppMaxHp = opp.face || 120;
 
   // 1) 检录玩家已觉醒特长，按稀有度及战力排序
   const myTalents = (S.talents || []).map(id => D.talentData.find(x => x.id === id)).filter(Boolean);
@@ -2179,18 +2185,33 @@ function pendFace(n) {
     if (can) activeSynergies.push(syn);
   });
 
-  // 3) 构建出招手牌 (Hand Cards: 2~3张主力特长 + 凡尔赛 + 谦虚防反)
+  // 3) 构建出招手牌 (全量收录玩家所有已学特长 + 通用战术卡 + 保底卡)
   const duelHand = [];
+  const rankEffectMap = {
+    1: { tag: '稳定输出', sub: '普通才华 战力 18~28' },
+    2: { tag: '35%暴击', sub: '稀有才华 概率暴击1.5倍' },
+    3: { tag: '削弱攻势', sub: '史诗才华 削弱对手下轮40%' },
+    4: { tag: '降维真伤', sub: '传说王牌 破防贯穿一击必杀' }
+  };
+
   if (myTalents.length > 0) {
-    duelHand.push({
-      id: myTalents[0].id,
-      type: 'talent',
-      name: myTalents[0].n,
-      icon: myTalents[0].icon,
-      cat: myTalents[0].cat || 'art',
-      r: myTalents[0].r || 1,
-      atkVal: RATK[myTalents[0].r || 1] || 18,
-      sub: '主力特长 战力 ' + (RATK[myTalents[0].r || 1] || 18)
+    myTalents.forEach((tal, idx) => {
+      const r = tal.r || 1;
+      const eff = rankEffectMap[r] || rankEffectMap[1];
+      const rAtk = (r === 4 ? 145 : (r === 3 ? 88 : (r === 2 ? 49 : 20)));
+      duelHand.push({
+        id: tal.id,
+        type: 'talent',
+        name: tal.n,
+        icon: tal.icon || '✨',
+        cat: tal.cat || 'art',
+        r: r,
+        atkVal: rAtk,
+        effectType: r === 4 ? 'pierce' : (r === 3 ? 'weaken' : (r === 2 ? 'crit' : 'normal')),
+        used: false,
+        desc: tal.src ? ('源自「' + tal.src + '」') : '独门看家本领',
+        sub: eff.tag + ' · ' + (idx === 0 ? '主力' : (idx === 1 ? '次席' : '备选')) + ' 威力 ~' + rAtk
+      });
     });
   } else {
     duelHand.push({
@@ -2201,54 +2222,59 @@ function pendFace(n) {
       cat: 'phy',
       r: 1,
       atkVal: 18,
+      used: false,
+      effectType: 'normal',
+      desc: '天生本能',
       sub: '天生本能 威力 18'
     });
   }
 
-  if (myTalents.length > 1) {
-    duelHand.push({
-      id: myTalents[1].id,
-      type: 'talent',
-      name: myTalents[1].n,
-      icon: myTalents[1].icon,
-      cat: myTalents[1].cat || 'art',
-      r: myTalents[1].r || 1,
-      atkVal: RATK[myTalents[1].r || 1] || 18,
-      sub: '次席特长 战力 ' + (RATK[myTalents[1].r || 1] || 18)
-    });
-  }
-
-  // 常驻心理战术卡：凡尔赛
-  const baseVersalAtk = Math.round(35 + (S.attrs.iq / 8) + (S.attrs.eq / 8));
+  // 常驻心理战术卡：凡尔赛冷嘲
+  const baseVersalAtk = Math.round(35 + ((S.attrs.iq || 0) / 8) + ((S.attrs.eq || 0) / 8));
   duelHand.push({
     id: 'tact_versal',
     type: 'tactic',
     name: '凡尔赛冷嘲',
     icon: '😏',
     atkVal: baseVersalAtk,
-    sub: '智商+情商穿透 威力 ~' + baseVersalAtk
+    sub: '智商+情商穿透 威力 ~' + baseVersalAtk,
+    used: false
   });
 
-  // 常驻心理战术卡：谦虚防反
+  // 常驻心理战术卡：谦虚客套防反
   duelHand.push({
     id: 'tact_defend',
     type: 'tactic',
     name: '谦虚客套防反',
     icon: '🛡️',
     atkVal: 30,
-    sub: '化解65%攻势·反弹·老妈蓄怒'
+    sub: '化解65%攻势·反弹·老妈蓄怒',
+    used: false
   });
+
+  // 特长耗尽保底卡：客套赔笑
+  duelHand.push({
+    id: 'tact_polite',
+    type: 'fallback',
+    name: '客套赔笑',
+    icon: '😅',
+    atkVal: 15,
+    sub: '特长耗尽保底 · 尴尬应对',
+    used: false
+  });
+
+  const initialOppLine = (opp.l && opp.l.length) ? opp.l[0] : '我家孩子很优秀！';
 
   S.faceDuel = {
     n,
     opp: {
       id: opp.id,
       name: opp.n,
-      icon: opp.icon || '🧑‍🎓',
+      icon: opp.icon || '👩',
       style: opp.style || '炫耀',
       hp: oppMaxHp,
       maxHp: oppMaxHp,
-      atk: opp.atk || (n === 1 ? 55 : 35),
+      atk: opp.atk || 35,
       tilt: 0, // 0~100 心理破防槽
       lines: opp.l || ['我家孩子很优秀'],
       tiltLines: opp.tiltLines || ['对方神色慌乱！']
@@ -2257,8 +2283,11 @@ function pendFace(n) {
     maxMyHp: 400,
     momRage: 0, // 0~100 老妈怒气槽
     round: 1,
-    maxRound: 4,
-    logs: ['「' + opp.n + '」带着孩子昂首走来，眼神中充满攀比火药味！'],
+    maxRound: 6,
+    usedCardIds: [],
+    oppCurrentLine: initialOppLine,
+    momCurrentLine: '',
+    logs: ['「' + opp.n + '」带着孩子昂首走来，挑衅道：“' + initialOppLine + '”'],
     hand: duelHand,
     activeSynergies: activeSynergies,
     defending: false,
@@ -2275,7 +2304,7 @@ function pendFace(n) {
     type: 'face_duel',
     title: '⚔️ 家族面子大对决 vs ' + opp.n,
     duel: S.faceDuel,
-    body: '「' + opp.n + '」: 我家孩子 ' + (opp.l[0] || '很优秀') + '！\n\n火药味弥漫全场，请构筑你的战术！',
+    body: '「' + opp.n + '」: 我家孩子 ' + initialOppLine + '\n\n火药味弥漫全场，请从特长库中挑选出招！',
     opts: duelHand.map(c => ({
       label: c.icon + ' ' + c.name,
       sub: c.sub
@@ -2290,25 +2319,28 @@ function faceDuelStep(actionIdx) {
   // 兜底自愈与老存档兼容
   if (typeof duel.momRage !== 'number') duel.momRage = 0;
   if (typeof duel.opp.tilt !== 'number') duel.opp.tilt = 0;
+  if (!duel.usedCardIds) duel.usedCardIds = [];
   if (!duel.hand || !duel.hand.length) {
     const mine = bestTalent();
     duel.hand = [
-      { id: 't1', type: 'talent', name: mine ? mine.n : '大嗓门', r: mine ? mine.r : 1, cat: mine ? mine.cat : 'art', atkVal: mine ? RATK[mine.r] : 18, sub: '战力 ' + (mine ? RATK[mine.r] : 18) },
-      { id: 'tact_versal', type: 'tactic', name: '凡尔赛冷嘲', icon: '😏', atkVal: 40, sub: '心理穿透' },
-      { id: 'tact_defend', type: 'tactic', name: '谦虚客套防反', icon: '🛡️', atkVal: 30, sub: '减伤反弹' }
+      { id: 't1', type: 'talent', name: mine ? mine.n : '大嗓门', r: mine ? mine.r : 1, cat: mine ? mine.cat : 'art', atkVal: mine ? RATK[mine.r] : 18, used: false, sub: '战力 ' + (mine ? RATK[mine.r] : 18) },
+      { id: 'tact_versal', type: 'tactic', name: '凡尔赛冷嘲', icon: '😏', atkVal: 40, used: false, sub: '心理穿透' },
+      { id: 'tact_defend', type: 'tactic', name: '谦虚客套防反', icon: '🛡️', atkVal: 30, used: false, sub: '减伤反弹' },
+      { id: 'tact_polite', type: 'fallback', name: '客套赔笑', icon: '😅', atkVal: 15, used: false, sub: '客套保底' }
     ];
   }
 
   let myDmg = 0;
   let playerLog = '';
   let synergyNotice = '';
-  const isMomUlt = (actionIdx === 'mom' || (actionIdx === 4 && duel.momRage >= 100));
+  const isMomUlt = (actionIdx === 'mom' || (actionIdx === 4 && duel.momRage >= 100) || actionIdx === 'mom_ult');
 
   if (isMomUlt) {
     duel.momRage = 0;
     myDmg = Math.round(140 + RI(15, 35));
     synergyNotice = '💥【老妈必杀·全家杀手锏】爆发！';
-    playerLog = '第' + duel.round + '轮: 🔥 老妈拍案而起：“我家宝儿上个月刚作为全区优秀少先队员做过典型汇报！” 字字诛心！暴击打掉对方 ' + myDmg + ' 点面子！';
+    playerLog = '第' + duel.round + '轮: 🔥 老妈拍案而起：“我家宝儿上个月刚作为全区优秀少先队员做过典型汇报！” 字字诛心！老妈必杀爆发！暴击打掉对方 ' + myDmg + ' 点面子！';
+    duel.momCurrentLine = '“我家宝儿上个月刚在市委礼堂作为优秀少年代表做汇报！”';
     if (!duel.mvpDamage || myDmg > duel.mvpDamage) {
       duel.mvpDamage = myDmg;
       duel.mvpTalent = '老妈必杀技';
@@ -2324,8 +2356,27 @@ function faceDuelStep(actionIdx) {
     const card = duel.hand[cIdx] || duel.hand[0];
 
     if (card.type === 'talent') {
-      const baseAtk = card.atkVal || (card.r ? RATK[card.r] : 18);
+      // 原版核心：单场单次消耗制
+      card.used = true;
+      if (duel.usedCardIds.indexOf(card.id) < 0) duel.usedCardIds.push(card.id);
+
+      const baseAtk = card.atkVal || (card.r === 4 ? 145 : (card.r === 3 ? 88 : (card.r === 2 ? 49 : 20)));
       myDmg = Math.round(baseAtk * (0.95 + Math.random() * 0.35));
+
+      // 原版品阶特效触发
+      let rankNotice = '';
+      if (card.r === 2 && Math.random() < 0.35) {
+        myDmg = Math.round(myDmg * 1.5);
+        duel.opp.tilt = Math.min(100, (duel.opp.tilt || 0) + 15);
+        rankNotice = ' 💥【精彩暴击！】全场惊艳！';
+      } else if (card.r === 3) {
+        duel.oppWeaken = Math.max(duel.oppWeaken || 0, 0.40);
+        rankNotice = ' 🌪️【气焰受挫】对手受到深度心理压制，下轮反击减免40%！';
+      } else if (card.r === 4) {
+        myDmg = Math.round(myDmg * (1.2 + Math.random() * 0.25));
+        duel.opp.tilt = Math.min(100, (duel.opp.tilt || 0) + 30);
+        rankNotice = ' 👑【传说降维打击！】震撼全场！直接贯穿对手防线！';
+      }
 
       // 羁绊加成判定
       const synStem = (duel.activeSynergies || []).find(s => s.id === 'synergy_stem');
@@ -2352,11 +2403,20 @@ function faceDuelStep(actionIdx) {
         duel.mvpDamage = myDmg;
         duel.mvpTalent = card.name;
       }
-      playerLog = '第' + duel.round + '轮: 你亮出特长「' + card.name + '」！' + synergyNotice + ' 打掉对方 ' + myDmg + ' 点面子！';
+
+      const momQuotes = [
+        '“哪里哪里，小孩子平时就喜欢随便玩玩，长辈见笑了～”',
+        '“害，孩子这门特长也没花大钱，全靠自己争气顺手拿了奖～”',
+        '“长辈过奖啦，小孩子就是耐得住寂寞，平时都不用我们操心～”',
+        '“我家宝儿就是低调，平时在学校拿了什么荣誉回家都不吭声～”'
+      ];
+      duel.momCurrentLine = momQuotes[(duel.round - 1) % momQuotes.length];
+      playerLog = '第' + duel.round + '轮: 你亮出特长「' + card.name + '」！' + rankNotice + synergyNotice + ' 打掉对方 ' + myDmg + ' 点面子！';
 
     } else if (card.id === 'tact_versal' || card.id === 't_v') {
-      myDmg = Math.round(35 + (S.attrs.iq / 8) + (S.attrs.eq / 8) + RI(0, 15));
+      myDmg = Math.round(35 + ((S.attrs.iq || 0) / 8) + ((S.attrs.eq || 0) / 8) + RI(0, 15));
       if (duel.opp.tilt >= 50) myDmg = Math.round(myDmg * 1.25);
+      duel.momCurrentLine = '“哎呀现在的孩子真不容易，我们家那个随便考考就年级前十了，愁人～”';
       playerLog = '第' + duel.round + '轮: 你轻描淡写地凡尔赛了几句，字字诛心！打掉对方 ' + myDmg + ' 点面子！';
 
     } else if (card.id === 'tact_defend' || card.id === 't_d') {
@@ -2364,7 +2424,13 @@ function faceDuelStep(actionIdx) {
       myDmg = Math.round(25 + RI(5, 15));
       duel.myHp = Math.min(duel.maxMyHp, duel.myHp + 35);
       duel.momRage = Math.min(100, duel.momRage + 25);
+      duel.momCurrentLine = '“哪里哪里，差得远呢！粗茶淡饭养大的，比不上您家娇生惯养～”';
       playerLog = '第' + duel.round + '轮: 你笑呵呵地连称“哪里哪里，差得远”，化解攻势并暗讽反弹 ' + myDmg + ' 点面子，自身气势回复 35，老妈怒气+25%！';
+
+    } else if (card.id === 'tact_polite' || card.type === 'fallback') {
+      myDmg = Math.round(15 + RI(3, 10));
+      duel.momCurrentLine = '“哈哈……今天这茶真香，来来来，喝茶吃点心……”';
+      playerLog = '第' + duel.round + '轮: 你已无更多特长可亮，只能客套赔笑化解尴尬，勉强打掉对方 ' + myDmg + ' 点面子！';
 
     } else {
       myDmg = Math.round(25 + RI(5, 15));
@@ -2404,7 +2470,7 @@ function faceDuelStep(actionIdx) {
       : '面子彻底崩溃，借口灶上炖着汤悻悻离席！';
     duel.logs.push('💥 ' + duel.opp.name + finQuote);
     S.face += 120;
-    S.sat = clamp(S.sat + 10, 0, 140);
+    S.sat = clamp(S.sat + 15, 0, 140);
     return;
   }
 
@@ -2416,7 +2482,7 @@ function faceDuelStep(actionIdx) {
     let oppAtk = Math.round((duel.opp.atk || 35) * (0.8 + Math.random() * 0.4));
     if (duel.defending) {
       oppAtk = Math.round(oppAtk * 0.35);
-      if (hasRelic('relic_racket')) {
+      if (typeof hasRelic === 'function' && hasRelic('relic_racket')) {
         const reflectDmg = Math.round(oppAtk * 0.4);
         duel.opp.hp = Math.max(0, duel.opp.hp - reflectDmg);
         duel.logs.push('🏓 传家宝【妈妈的双喜乒乓拍】强势反弹 ' + reflectDmg + ' 点面子伤害！');
@@ -2431,8 +2497,9 @@ function faceDuelStep(actionIdx) {
     duel.myHp = Math.max(0, duel.myHp - oppAtk);
     duel.momRage = Math.min(100, (duel.momRage || 0) + Math.round(oppAtk * 0.6) + 10);
 
-    const oppLine = duel.opp.lines[(duel.round - 1) % duel.opp.lines.length] || '我家孩子很棒！';
-    duel.logs.push('对手回敬「' + oppLine + '」，你损失了 ' + oppAtk + ' 点面子 (老妈怒气升至 ' + duel.momRage + '%)。');
+    const nextOppLine = duel.opp.lines[(duel.round) % duel.opp.lines.length] || '我家孩子很棒！';
+    duel.oppCurrentLine = nextOppLine;
+    duel.logs.push('对手回敬「' + nextOppLine + '」，你损失了 ' + oppAtk + ' 点面子 (老妈怒气升至 ' + duel.momRage + '%)。');
   }
 
   // 判定我方是否溃败
@@ -2452,9 +2519,9 @@ function faceDuelStep(actionIdx) {
     if (duel.won) {
       if (!S.flags) S.flags = {};
       S.flags.wonDuel = 1;
-      duel.logs.push('🎉 4轮交锋结束，我方面子更胜一筹！全场称赞！');
+      duel.logs.push('🎉 ' + duel.maxRound + '轮交锋结束，我方面子更胜一筹！全场称赞！');
       S.face += 120;
-      S.sat = clamp(S.sat + 10, 0, 140);
+      S.sat = clamp(S.sat + 15, 0, 140);
     } else {
       duel.logs.push('败下阵来……妈妈说今晚回家不吃鸡肉了。');
       S.face = Math.max(0, S.face - 40);
