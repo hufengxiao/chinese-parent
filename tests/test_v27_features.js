@@ -106,7 +106,10 @@ function createSandbox() {
     rival: { talent: { r: 4, atk: 50 } }
   }];
   // 模拟选秀未夺冠
+  const origRandom = sb.Math.random;
+  sb.Math.random = () => 0.99;
   CP.talentShowPerform('voice_loud', 'normal', false);
+  sb.Math.random = origRandom;
   assert(state.sat <= 55, '卷王世家在才艺舞台未能夺冠时，父母满意度必须骤降 25');
 
   // 1.5 民主知心 (Democratic): 满意度保底50、索取失败无失落惩罚

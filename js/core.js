@@ -2140,7 +2140,7 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice) {
       : `惜败……对手【${rival.talent.n}】稍胜一筹，斩获优秀奖。(悟性+${gi}, 面子${gf})`),
     opts: ['收下奖项，走下舞台 🏆']
   };
-  S.pending.push(resultModal);
+  S.pending.unshift(resultModal);
 
   log((win ? '🏆 才艺选秀夺冠！' : '才艺选秀参与奖：') + '凭【' + mine.n + '】获悟性+' + gi + ', 面子' + (gf >= 0 ? '+' : '') + gf);
   return resultModal;
@@ -2686,7 +2686,7 @@ function electionFinish() {
     S.face = Math.max(0, S.face - 10);
   }
 
-  S.pending.push({
+  S.pending.unshift({
     type: 'electionr',
     title: win ? '🏆 班干部正式任命聘书' : '📜 班干部竞选公报',
     election: el,
