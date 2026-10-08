@@ -165,4 +165,35 @@ assert(exitMsg.includes('面子对决大获全胜'), '战报确认返回提示�
 assert.strictEqual(CP.faceDuel(), null, '对决状态在退出后必须被清空');
 console.log('✅ 终局战报看板、MVP 结算、面子暴增与状态清理断言全部通过！');
 
-console.log('\n🎉🎉🎉 原版还原·面子对决全部五大专项深度测试 100% 成功通过！');
+// ==========================================
+// 测试 6: 🥋 回合制格斗攻防数据流 (lastAction与双向打击状态)
+// ==========================================
+console.log('\n--- 测试 6: 🥋 回合制格斗攻防数据流与打击反馈元数据 ---');
+CP.newGame('格斗宝宝');
+while (CP.pending().length) CP.resolve(0);
+CP.state().talents = ['tuyasha'];
+CP.pendFace(0); // 表嫂
+const duelArcade = CP.faceDuel();
+assert(duelArcade, '对决初始化成功');
+
+// 轮次 1 出招
+const beforeOppHp = duelArcade.opp.hp;
+CP.resolve('tuyasha');
+const act1 = duelArcade.lastAction;
+assert(act1, '必须生成 lastAction 攻防演播元数据');
+assert(act1.myDmg > 0, '必须记录造成的伤害值');
+assert.strictEqual(act1.prevOppHp, beforeOppHp, '必须记录受创前对手血量');
+assert.strictEqual(act1.newOppHp, duelArcade.opp.hp, '必须记录受创后对手血量');
+assert(act1.cardName === '小涂鸦师', '记录出招技能名称');
+assert(typeof act1.isCrit === 'boolean', '必须记录暴击布尔标识');
+assert(typeof act1.oppAtk === 'number', '必须记录对手反击伤害');
+
+// 轮次 2 见招拆招防反
+CP.resolve('tact_defend');
+const act2 = duelArcade.lastAction;
+assert(act2, '防反行动生成元数据');
+assert(duelArcade.momRage >= 25, '防反为老妈怒气充能');
+
+console.log('✅ 回合制格斗攻防数据流、打击反馈元数据断言全部通过！');
+
+console.log('\n🎉🎉🎉 原版还原·面子对决全部六大专项深度测试 100% 成功通过！');

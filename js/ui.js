@@ -318,6 +318,112 @@ class SoundManager {
       });
     } catch(e) {}
   }
+
+  // 5. 面子对决 · 普通攻击突进 (清脆短促打击音)
+  faceAttack() {
+    this.tryStartBGM();
+    if (this.mode === 'mute') return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const ctx = this.ctx;
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(320, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } catch(e) {}
+  }
+
+  // 6. 面子对决 · 亲戚受击钝击音
+  faceHit() {
+    this.tryStartBGM();
+    if (this.mode === 'mute') return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const ctx = this.ctx;
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.14);
+      gain.gain.setValueAtTime(0.16, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch(e) {}
+  }
+
+  // 7. 面子对决 · 老妈必杀奥义爆发 (上升音阶 + 强力爆破音)
+  faceUlt() {
+    this.tryStartBGM();
+    if (this.mode === 'mute') return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const ctx = this.ctx;
+      if (ctx.state === 'suspended') ctx.resume();
+      [220, 330, 440, 660, 880].forEach((freq, idx) => {
+        setTimeout(() => this.playTone(freq, 0.1, 'sawtooth', 0.15), idx * 40);
+      });
+      setTimeout(() => this.faceCrit(), 200);
+    } catch(e) {}
+  }
+
+  // 8. 面子对决 · 破防瘫痪眩晕音 (卡通小鸟音)
+  faceStun() {
+    this.tryStartBGM();
+    [880, 988, 1175, 880, 988].forEach((f, idx) => {
+      setTimeout(() => this.playTone(f, 0.08, 'sine', 0.1), idx * 60);
+    });
+  }
+
+  // 9. 面子对决 · 谦虚防反金属格挡
+  faceDefend() {
+    this.tryStartBGM();
+    this.playTone(800, 0.06, 'triangle', 0.15);
+    setTimeout(() => this.playTone(1200, 0.1, 'sine', 0.12), 40);
+  }
+
+  // 10. 面子对决 · 格斗 K.O. 震撼铜锣与胜利乐句
+  ko() {
+    this.tryStartBGM();
+    if (this.mode === 'mute') return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const ctx = this.ctx;
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(110, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.8);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.9);
+
+      setTimeout(() => {
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
+          setTimeout(() => this.playTone(f, 0.25, 'triangle', 0.15), idx * 70);
+        });
+      }, 250);
+    } catch(e) {}
+  }
 }
 const sound = new SoundManager();
 if (typeof window !== 'undefined') {
@@ -1964,7 +2070,7 @@ function renderHongbaoResult(p, m, posVal, isSkip, resText) {
   m.appendChild(body);
 }
 
-/* ---------- ⚔️ 面子对决卡牌对战场 2.0 ---------- */
+/* ---------- ⚔️ 街机格斗风·面子对决 3.0 (Turn-Based Arcade Face Duel) ---------- */
 function renderFaceDuelModal(p, m) {
   m = m || $('#modal');
   if (!m) return;
@@ -1979,6 +2085,7 @@ function renderFaceDuelModal(p, m) {
   }
 
   const body = h('div', 'm-body fd-arena');
+  body.id = 'fd-arena-body';
   body.appendChild(h('div', 'm-title', p.title || '⚔️ 家族面子大对决'));
 
   if (!duel) {
@@ -1990,7 +2097,7 @@ function renderFaceDuelModal(p, m) {
     return;
   }
 
-  // 1) 双方战斗信息与副计量槽 (破防槽 & 老妈怒气槽)
+  // 1) 顶部街机格斗血条与副计量槽
   const fighters = h('div', 'fd-fighters');
   const myHpPct = Math.max(0, Math.min(100, Math.round((duel.myHp / duel.maxMyHp) * 100)));
   const oppHpPct = Math.max(0, Math.min(100, Math.round((duel.opp.hp / duel.opp.maxHp) * 100)));
@@ -2000,41 +2107,68 @@ function renderFaceDuelModal(p, m) {
   fighters.innerHTML =
     '<div class="fd-fighter left">' +
       '<div class="fd-f-header"><span class="av">👩‍👦</span><span class="fd-f-name">老妈 & 宝儿</span><span class="fd-f-badge">我方阵营</span></div>' +
-      '<div class="fd-hp-wrap"><div class="fd-hp-fill mine" style="width:' + myHpPct + '%"></div></div>' +
-      '<div class="fd-hp-val">面子: ' + duel.myHp + ' / ' + duel.maxMyHp + '</div>' +
+      '<div class="fd-hp-wrap">' +
+        '<div class="fd-hp-trail mine" id="fd-my-trail" style="width:' + myHpPct + '%"></div>' +
+        '<div class="fd-hp-fill mine" id="fd-my-fill" style="width:' + myHpPct + '%"></div>' +
+      '</div>' +
+      '<div class="fd-hp-val" id="fd-my-hp-text">面子: ' + duel.myHp + ' / ' + duel.maxMyHp + '</div>' +
       '<div class="fd-sub-meter">' +
-        '<span style="color:#d84315">🔥老妈怒气</span>' +
-        '<div class="fd-sub-bar-wrap"><div class="fd-sub-bar-fill rage" style="width:' + momRageVal + '%"></div></div>' +
-        '<span>' + momRageVal + '%</span>' +
+        '<span style="color:#ff7043">🔥老妈怒气</span>' +
+        '<div class="fd-sub-bar-wrap"><div class="fd-sub-bar-fill rage' + (momRageVal >= 100 ? ' rage-max' : '') + '" id="fd-mom-rage-fill" style="width:' + momRageVal + '%"></div></div>' +
+        '<span id="fd-mom-rage-text">' + momRageVal + '%</span>' +
       '</div>' +
     '</div>' +
     '<div class="fd-vs-col">' +
-      '<span>VS</span>' +
-      '<span class="fd-vs-round">第 ' + duel.round + ' / ' + duel.maxRound + ' 轮</span>' +
+      '<span class="fd-vs-badge">VS</span>' +
+      '<span class="fd-vs-round" id="fd-round-text">第 ' + duel.round + ' / ' + duel.maxRound + ' 轮</span>' +
+      '<span class="fd-phase-pill" id="fd-phase-pill">我方出招</span>' +
     '</div>' +
     '<div class="fd-fighter right">' +
       '<div class="fd-f-header"><span class="av">' + (duel.opp.icon || '👩') + '</span><span class="fd-f-name">' + duel.opp.name + '</span><span class="fd-f-badge">' + (duel.opp.style || '亲戚') + '</span></div>' +
-      '<div class="fd-hp-wrap"><div class="fd-hp-fill opp" style="width:' + oppHpPct + '%"></div></div>' +
-      '<div class="fd-hp-val">面子: ' + duel.opp.hp + ' / ' + duel.opp.maxHp + '</div>' +
+      '<div class="fd-hp-wrap">' +
+        '<div class="fd-hp-trail opp" id="fd-opp-trail" style="width:' + oppHpPct + '%"></div>' +
+        '<div class="fd-hp-fill opp" id="fd-opp-fill" style="width:' + oppHpPct + '%"></div>' +
+      '</div>' +
+      '<div class="fd-hp-val" id="fd-opp-hp-text">面子: ' + duel.opp.hp + ' / ' + duel.opp.maxHp + '</div>' +
       '<div class="fd-sub-meter">' +
-        '<span style="color:#f44336">💢破防值</span>' +
-        '<div class="fd-sub-bar-wrap"><div class="fd-sub-bar-fill tilt" style="width:' + oppTiltVal + '%"></div></div>' +
-        '<span>' + oppTiltVal + '%</span>' +
+        '<span style="color:#ff9800">💢心理破防</span>' +
+        '<div class="fd-sub-bar-wrap"><div class="fd-sub-bar-fill tilt" id="fd-opp-tilt-fill" style="width:' + oppTiltVal + '%"></div></div>' +
+        '<span id="fd-opp-tilt-text">' + oppTiltVal + '%</span>' +
       '</div>' +
     '</div>';
   body.appendChild(fighters);
 
-  // 2) 现场交锋对白气泡 (亲戚挑衅与老妈犀利回怼)
+  // 2) 🥋 格斗对峙舞台擂台区 (Stage View: 角色姿态与台词气泡)
+  const stageView = h('div', 'fd-stage-view');
+  stageView.id = 'fd-stage-view';
+
+  // 角色对峙层
+  const stageFighters = h('div', 'fd-stage-fighters');
+  const leftSpriteWrap = h('div', 'fd-sprite-wrap left');
+  leftSpriteWrap.id = 'fd-left-sprite-wrap';
+  leftSpriteWrap.innerHTML = '<div class="fd-sprite mine">👩‍👦</div><div class="fd-sprite-tag">老妈 & 宝儿</div>';
+
+  const rightSpriteWrap = h('div', 'fd-sprite-wrap right');
+  rightSpriteWrap.id = 'fd-right-sprite-wrap';
+  rightSpriteWrap.innerHTML = '<div class="fd-sprite opp">' + (duel.opp.icon || '👩') + '</div><div class="fd-sprite-tag">' + duel.opp.name + '</div>';
+
+  stageFighters.appendChild(leftSpriteWrap);
+  stageFighters.appendChild(rightSpriteWrap);
+  stageView.appendChild(stageFighters);
+
+  // 现场交锋对白气泡
   const bubblesWrap = h('div', 'fd-bubbles-wrap');
-  if (duel.oppCurrentLine) {
-    bubblesWrap.appendChild(h('div', 'fd-bubble opp', '💬 <b>' + duel.opp.name + '</b>：“' + duel.oppCurrentLine + '”'));
-  }
-  if (duel.momCurrentLine) {
-    bubblesWrap.appendChild(h('div', 'fd-bubble mom', '🛡️ <b>老妈回敬</b>：' + duel.momCurrentLine));
-  }
-  if (bubblesWrap.children.length > 0) {
-    body.appendChild(bubblesWrap);
-  }
+  bubblesWrap.id = 'fd-bubbles-wrap';
+  const oppBubble = h('div', 'fd-bubble opp', '💬 <b>' + duel.opp.name + '</b>：“' + (duel.oppCurrentLine || '我家孩子很优秀！') + '”');
+  oppBubble.id = 'fd-opp-bubble';
+  bubblesWrap.appendChild(oppBubble);
+
+  const momBubble = h('div', 'fd-bubble mom', '🛡️ <b>老妈回敬</b>：' + (duel.momCurrentLine || '“哪里哪里，小孩子平时就随便玩玩～”'));
+  momBubble.id = 'fd-mom-bubble';
+  bubblesWrap.appendChild(momBubble);
+  stageView.appendChild(bubblesWrap);
+
+  body.appendChild(stageView);
 
   // 3) 羁绊状态行 (若已激活特长羁绊)
   if (duel.activeSynergies && duel.activeSynergies.length > 0) {
@@ -2046,74 +2180,304 @@ function renderFaceDuelModal(p, m) {
     body.appendChild(synRow);
   }
 
-  // 4) 战报文本流
+  // 4) 战报文本流水
   const logBox = h('div', 'fd-combat-box');
+  logBox.id = 'fd-combat-box';
   const recentLogs = duel.logs.slice(-4);
   logBox.innerHTML = recentLogs.map(l => '<div>' + l + '</div>').join('');
   body.appendChild(logBox);
 
-  // 5) 手牌特长技能卡槽 (支持品质边框与单次消耗置灰)
-  const cardsGrid = h('div', 'fd-cards-grid');
+  // 5) 🥋 格斗出招指令台 (Command Deck)
+  const cmdDeck = h('div', 'fd-command-deck');
+  cmdDeck.id = 'fd-command-deck';
+
+  // 区分特长招式与通用战术
   const handList = (duel.hand && duel.hand.length) ? duel.hand : (p.opts || []);
   const usedSet = new Set(duel.usedCardIds || []);
+  const talentCards = [];
+  const tacticCards = [];
 
-  handList.forEach((cardItem, idx) => {
-    const card = h('button', 'fd-card-btn');
-    const isObj = cardItem && typeof cardItem === 'object';
-    const label = isObj ? (cardItem.name || cardItem.label || '出招') : String(cardItem);
-    const icon = isObj ? (cardItem.icon || '') : '';
-    let sub = isObj ? (cardItem.sub || '') : '';
-    const isUsed = isObj && (cardItem.used || usedSet.has(cardItem.id));
+  handList.forEach((c, idx) => {
+    const item = { card: c, idx: idx };
+    if (c && typeof c === 'object' && (c.type === 'tactic' || c.type === 'fallback' || c.id === 'tact_defend' || c.id === 'tact_versal' || c.id === 'tact_polite')) {
+      tacticCards.push(item);
+    } else {
+      talentCards.push(item);
+    }
+  });
 
-    // 品阶样式
-    if (isObj && cardItem.r) {
-      card.classList.add('rank-' + cardItem.r);
-    } else if (isObj && cardItem.type === 'fallback') {
-      card.classList.add('fallback');
+  let isCombatAnimating = false;
+
+  // 核心格斗演播动作执行器
+  const executeCombatAction = (targetIdxOrId) => {
+    if (isCombatAnimating) return;
+    isCombatAnimating = true;
+
+    // 禁用所有指令按钮
+    const allBtns = cmdDeck.querySelectorAll('button');
+    allBtns.forEach(b => b.disabled = true);
+
+    // 调用核心结算
+    const r = CP.resolve(targetIdxOrId);
+    if (r) toast(r);
+
+    const duelAfter = CP.faceDuel();
+    if (!duelAfter) {
+      renderAll();
+      return;
     }
 
-    // 已出战单场消耗标记
-    if (isUsed) {
-      card.classList.add('used');
+    const action = duelAfter.lastAction || {};
+    const arenaBody = $('#fd-arena-body');
+    const stage = $('#fd-stage-view');
+    const leftSpr = $('#fd-left-sprite-wrap');
+    const rightSpr = $('#fd-right-sprite-wrap');
+    const myFill = $('#fd-my-fill');
+    const myTrail = $('#fd-my-trail');
+    const oppFill = $('#fd-opp-fill');
+    const oppTrail = $('#fd-opp-trail');
+    const myHpText = $('#fd-my-hp-text');
+    const oppHpText = $('#fd-opp-hp-text');
+    const momRageFill = $('#fd-mom-rage-fill');
+    const momRageText = $('#fd-mom-rage-text');
+    const oppTiltFill = $('#fd-opp-tilt-fill');
+    const oppTiltText = $('#fd-opp-tilt-text');
+    const phasePill = $('#fd-phase-pill');
+    const cLogBox = $('#fd-combat-box');
+    const mBubble = $('#fd-mom-bubble');
+    const oBubble = $('#fd-opp-bubble');
+
+    // 浮动跳字生成工具
+    const spawnFloat = (text, side, isCrit) => {
+      if (!stage) return;
+      const f = h('div', 'fd-float-num ' + side + (isCrit ? ' crit' : ''), text);
+      stage.appendChild(f);
+      setTimeout(() => { if (f.parentNode) f.remove(); }, 850);
+    };
+
+    // Phase 1: 我方突进打击 (0ms ~ 350ms)
+    if (phasePill) phasePill.textContent = '我方出招！';
+    if (leftSpr) leftSpr.classList.add('fd-lunge-forward');
+
+    if (action.isMomUlt) {
+      sound.faceUlt();
+      if (arenaBody) arenaBody.classList.add('shake-crit');
+    } else if (action.isCrit) {
+      sound.faceCrit();
+      if (arenaBody) arenaBody.classList.add('shake-crit');
+    } else if (action.cardType === 'tactic' && action.cardName && action.cardName.includes('防反')) {
+      sound.faceDefend();
+      if (arenaBody) arenaBody.classList.add('shake');
+    } else {
+      sound.faceAttack();
+      if (arenaBody) arenaBody.classList.add('shake');
     }
 
-    // 检测卡牌是否享受激活羁绊
-    const cat = isObj ? cardItem.cat : null;
-    const hasSynergy = cat && (duel.activeSynergies || []).some(s => s.reqCats && s.reqCats.includes(cat));
-    if (hasSynergy && !isUsed) {
-      card.classList.add('synergy-active');
-      sub = '✨ 羁绊激活 · ' + sub;
-    }
+    setTimeout(() => {
+      if (arenaBody) {
+        arenaBody.classList.remove('shake');
+        arenaBody.classList.remove('shake-crit');
+      }
+    }, 450);
 
-    const titleHtml = icon ? ('<span style="margin-right:4px">' + icon + '</span>' + label) : label;
-    card.innerHTML = '<span class="fd-c-title">' + titleHtml + '</span>' + (sub ? '<span class="fd-c-sub">' + sub + '</span>' : '');
+    // 140ms: 对手受创震颤闪红与伤害跳字
+    setTimeout(() => {
+      if (rightSpr) rightSpr.classList.add('fd-take-hit');
+      setTimeout(() => { if (rightSpr) rightSpr.classList.remove('fd-take-hit'); }, 340);
 
-    card.onclick = () => {
-      if (isUsed) {
-        toast('此特长本场已出战展示过了，请选择其他特长！');
+      const dmgText = '-' + (action.myDmg || 0) + (action.isCrit ? ' 💥暴击!' : (action.isPierce ? ' 👑降维!' : ''));
+      spawnFloat(dmgText, 'opp', action.isCrit || action.isPierce);
+
+      // 更新对手血条
+      const newOppPct = Math.max(0, Math.min(100, Math.round((action.newOppHp / duelAfter.opp.maxHp) * 100)));
+      if (oppFill) oppFill.style.width = newOppPct + '%';
+      if (oppHpText) oppHpText.textContent = '面子: ' + action.newOppHp + ' / ' + duelAfter.opp.maxHp;
+      setTimeout(() => { if (oppTrail) oppTrail.style.width = newOppPct + '%'; }, 220);
+
+      // 更新对手破防槽
+      const newTiltVal = Math.min(100, Math.max(0, action.newOppTilt || 0));
+      if (oppTiltFill) oppTiltFill.style.width = newTiltVal + '%';
+      if (oppTiltText) oppTiltText.textContent = newTiltVal + '%';
+
+      // 更新台词气泡与战报
+      if (mBubble && duelAfter.momCurrentLine) {
+        mBubble.innerHTML = '🛡️ <b>老妈回敬</b>：' + duelAfter.momCurrentLine;
+      }
+      if (cLogBox) {
+        cLogBox.innerHTML = duelAfter.logs.slice(-4).map(l => '<div>' + l + '</div>').join('');
+        cLogBox.scrollTop = cLogBox.scrollHeight;
+      }
+    }, 140);
+
+    // Phase 2: 判定对手是否退场(KO) 或 破防石化(Stun)
+    setTimeout(() => {
+      if (leftSpr) leftSpr.classList.remove('fd-lunge-forward');
+
+      // 胜负终结KO判定
+      if (action.newOppHp <= 0 || (duelAfter.finished && duelAfter.won)) {
+        sound.ko();
+        if (rightSpr) rightSpr.classList.add('fd-knockout');
+        if (stage) {
+          const koBanner = h('div', 'fd-ko-banner win');
+          koBanner.innerHTML = '<div class="fd-ko-text">K.O. 💥 完胜！</div>';
+          stage.appendChild(koBanner);
+        }
+        setTimeout(() => {
+          renderFaceDuelResult(duelAfter, p, m);
+        }, 1100);
         return;
       }
-      sound.faceCrit();
-      const r = CP.resolve(idx);
-      if (r) toast(r);
-      renderAll();
-    };
-    cardsGrid.appendChild(card);
-  });
-  body.appendChild(cardsGrid);
 
-  // 6) 老妈必杀绝招按钮 (当老妈怒气达到 100% 时爆发)
-  if (duel.momRage >= 100) {
-    const momUltBtn = h('button', 'fd-mom-ult-btn pulse', '💥 老妈拍案而起！【全家杀手锏·市级表彰降维打击】(立即释放)');
-    momUltBtn.onclick = () => {
-      sound.faceCrit();
-      const r = CP.resolve('mom');
-      if (r) toast(r);
-      renderAll();
-    };
-    body.appendChild(momUltBtn);
+      // 对手破防石化跳过反击
+      if (action.wasStunned) {
+        sound.faceStun();
+        if (phasePill) phasePill.textContent = '对手破防瘫痪！';
+        if (rightSpr) {
+          const stars = h('div', 'fd-stun-stars', '💫💫💫');
+          rightSpr.appendChild(stars);
+          setTimeout(() => { if (stars.parentNode) stars.remove(); }, 800);
+        }
+        setTimeout(() => {
+          renderFaceDuelModal(p, m);
+        }, 650);
+        return;
+      }
+
+      // Phase 3: 亲戚反击阶段 (380ms ~ 750ms)
+      if (phasePill) phasePill.textContent = '亲戚回击！';
+      if (rightSpr) rightSpr.classList.add('fd-lunge-opp');
+      sound.faceHit();
+
+      setTimeout(() => {
+        if (rightSpr) rightSpr.classList.remove('fd-lunge-opp');
+        if (leftSpr) leftSpr.classList.add('fd-take-hit');
+        setTimeout(() => { if (leftSpr) leftSpr.classList.remove('fd-take-hit'); }, 340);
+
+        if (action.oppAtk > 0) {
+          spawnFloat('-' + action.oppAtk, 'mine', false);
+        }
+
+        // 更新我方血条
+        const newMyPct = Math.max(0, Math.min(100, Math.round((action.newMyHp / duelAfter.maxMyHp) * 100)));
+        if (myFill) myFill.style.width = newMyPct + '%';
+        if (myHpText) myHpText.textContent = '面子: ' + action.newMyHp + ' / ' + duelAfter.maxMyHp;
+        setTimeout(() => { if (myTrail) myTrail.style.width = newMyPct + '%'; }, 220);
+
+        // 更新老妈怒气槽
+        const newRageVal = Math.min(100, Math.max(0, action.newMomRage || 0));
+        if (momRageFill) {
+          momRageFill.style.width = newRageVal + '%';
+          if (newRageVal >= 100) momRageFill.classList.add('rage-max');
+          else momRageFill.classList.remove('rage-max');
+        }
+        if (momRageText) momRageText.textContent = newRageVal + '%';
+
+        // 更新亲戚台词气泡
+        if (oBubble && duelAfter.oppCurrentLine) {
+          oBubble.innerHTML = '💬 <b>' + duelAfter.opp.name + '</b>：“' + duelAfter.oppCurrentLine + '”';
+        }
+        if (cLogBox) {
+          cLogBox.innerHTML = duelAfter.logs.slice(-4).map(l => '<div>' + l + '</div>').join('');
+          cLogBox.scrollTop = cLogBox.scrollHeight;
+        }
+
+        // 我方战败判定
+        if (action.newMyHp <= 0 || (duelAfter.finished && !duelAfter.won)) {
+          sound.fail();
+          if (leftSpr) leftSpr.classList.add('fd-knockout');
+          if (stage) {
+            const koBanner = h('div', 'fd-ko-banner lose');
+            koBanner.innerHTML = '<div class="fd-ko-text">DEFEAT 🌧️ 败退</div>';
+            stage.appendChild(koBanner);
+          }
+          setTimeout(() => {
+            renderFaceDuelResult(duelAfter, p, m);
+          }, 1100);
+          return;
+        }
+
+        // 重新渲染至下一轮指令状态
+        setTimeout(() => {
+          renderFaceDuelModal(p, m);
+        }, 320);
+
+      }, 160);
+
+    }, 320);
+  };
+
+  // 5.1 组装出战特长绝技卡组
+  if (talentCards.length > 0) {
+    const secTalentTitle = h('div', 'fd-sec-title');
+    secTalentTitle.innerHTML = '<span>🎴 出战特长绝技 (单场单次消耗)</span><span style="font-size:10px;color:var(--ink-secondary)">已学 ' + talentCards.length + ' 招</span>';
+    cmdDeck.appendChild(secTalentTitle);
+
+    const cardsGrid = h('div', 'fd-cards-grid');
+    talentCards.forEach(item => {
+      const cardItem = item.card;
+      const idx = item.idx;
+      const card = h('button', 'fd-card-btn');
+      const isObj = cardItem && typeof cardItem === 'object';
+      const label = isObj ? (cardItem.name || cardItem.label || '出招') : String(cardItem);
+      const icon = isObj ? (cardItem.icon || '✨') : '✨';
+      let sub = isObj ? (cardItem.sub || '') : '';
+      const isUsed = isObj && (cardItem.used || usedSet.has(cardItem.id));
+
+      if (isObj && cardItem.r) card.classList.add('rank-' + cardItem.r);
+      if (isUsed) card.classList.add('used');
+
+      const cat = isObj ? cardItem.cat : null;
+      const hasSynergy = cat && (duel.activeSynergies || []).some(s => s.reqCats && s.reqCats.includes(cat));
+      if (hasSynergy && !isUsed) {
+        card.classList.add('synergy-active');
+        sub = '✨ 羁绊激活 · ' + sub;
+      }
+
+      card.innerHTML = '<span class="fd-c-title"><span style="margin-right:3px">' + icon + '</span>' + label + '</span>' + (sub ? '<span class="fd-c-sub">' + sub + '</span>' : '');
+
+      card.onclick = () => {
+        if (isUsed) {
+          toast('此特长本场已出战展示过了，请选择其他特长！');
+          return;
+        }
+        executeCombatAction(idx);
+      };
+      cardsGrid.appendChild(card);
+    });
+    cmdDeck.appendChild(cardsGrid);
   }
 
+  // 5.2 组装见招拆招与心理战术行
+  const secTactTitle = h('div', 'fd-sec-title');
+  secTactTitle.innerHTML = '<span>🛡️ 心理战术与见招拆招</span>';
+  cmdDeck.appendChild(secTactTitle);
+
+  const tactRow = h('div', 'fd-tactics-row');
+  tacticCards.forEach(item => {
+    const cardItem = item.card;
+    const idx = item.idx;
+    const btn = h('button', 'fd-tact-btn');
+    const name = cardItem.name || '战术';
+    const icon = cardItem.icon || '💬';
+    const sub = cardItem.id === 'tact_defend' ? '减伤65%·蓄怒' : (cardItem.id === 'tact_versal' ? '穿透真实伤害' : '尴尬赔笑保底');
+    btn.innerHTML = '<span>' + icon + ' ' + name + '</span><span class="sub">' + sub + '</span>';
+    btn.onclick = () => {
+      executeCombatAction(idx);
+    };
+    tactRow.appendChild(btn);
+  });
+  cmdDeck.appendChild(tactRow);
+
+  // 5.3 老妈必杀绝招按钮 (当老妈怒气达到 100% 时爆发)
+  if (duel.momRage >= 100) {
+    const momUltBtn = h('button', 'fd-mom-ult-btn pulse', '🔥 老妈拍案而起！【全家杀手锏·市级表彰降维打击】(立即释放)');
+    momUltBtn.onclick = () => {
+      executeCombatAction('mom');
+    };
+    cmdDeck.appendChild(momUltBtn);
+  }
+
+  body.appendChild(cmdDeck);
   m.appendChild(body);
 }
 

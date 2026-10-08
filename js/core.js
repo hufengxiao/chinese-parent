@@ -2330,6 +2330,18 @@ function faceDuelStep(actionIdx) {
     ];
   }
 
+  const prevMyHp = duel.myHp;
+  const prevOppHp = duel.opp.hp;
+  const prevMomRage = duel.momRage || 0;
+  const prevOppTilt = duel.opp.tilt || 0;
+  let isCrit = false;
+  let isPierce = false;
+  let isWeaken = false;
+  let card = null;
+  let justParalyzed = false;
+  let oppAtkDealt = 0;
+  let rankNotice = '';
+
   let myDmg = 0;
   let playerLog = '';
   let synergyNotice = '';
@@ -2338,6 +2350,8 @@ function faceDuelStep(actionIdx) {
   if (isMomUlt) {
     duel.momRage = 0;
     myDmg = Math.round(140 + RI(15, 35));
+    isCrit = true;
+    isPierce = true;
     synergyNotice = '💥【老妈必杀·全家杀手锏】爆发！';
     playerLog = '第' + duel.round + '轮: 🔥 老妈拍案而起：“我家宝儿上个月刚作为全区优秀少先队员做过典型汇报！” 字字诛心！老妈必杀爆发！暴击打掉对方 ' + myDmg + ' 点面子！';
     duel.momCurrentLine = '“我家宝儿上个月刚在市委礼堂作为优秀少年代表做汇报！”';
@@ -2353,7 +2367,7 @@ function faceDuelStep(actionIdx) {
       const found = duel.hand.findIndex(c => c.id === actionIdx);
       if (found >= 0) cIdx = found;
     }
-    const card = duel.hand[cIdx] || duel.hand[0];
+    card = duel.hand[cIdx] || duel.hand[0];
 
     if (card.type === 'talent') {
       // 原版核心：单场单次消耗制
@@ -2364,17 +2378,20 @@ function faceDuelStep(actionIdx) {
       myDmg = Math.round(baseAtk * (0.95 + Math.random() * 0.35));
 
       // 原版品阶特效触发
-      let rankNotice = '';
       if (card.r === 2 && Math.random() < 0.35) {
         myDmg = Math.round(myDmg * 1.5);
         duel.opp.tilt = Math.min(100, (duel.opp.tilt || 0) + 15);
+        isCrit = true;
         rankNotice = ' 💥【精彩暴击！】全场惊艳！';
       } else if (card.r === 3) {
         duel.oppWeaken = Math.max(duel.oppWeaken || 0, 0.40);
+        isWeaken = true;
         rankNotice = ' 🌪️【气焰受挫】对手受到深度心理压制，下轮反击减免40%！';
       } else if (card.r === 4) {
         myDmg = Math.round(myDmg * (1.2 + Math.random() * 0.25));
         duel.opp.tilt = Math.min(100, (duel.opp.tilt || 0) + 30);
+        isCrit = true;
+        isPierce = true;
         rankNotice = ' 👑【传说降维打击！】震撼全场！直接贯穿对手防线！';
       }
 
@@ -2453,6 +2470,7 @@ function faceDuelStep(actionIdx) {
   // 是否当场破防
   if (duel.opp.tilt >= 100) {
     duel.paralyzed = true;
+    justParalyzed = true;
     duel.opp.tilt = 0;
     duel.logs.push('😵 【' + duel.opp.name + '】当场被秀得破防石化！张口结舌，本轮无法出招反击！');
   }
@@ -2471,12 +2489,41 @@ function faceDuelStep(actionIdx) {
     duel.logs.push('💥 ' + duel.opp.name + finQuote);
     S.face += 120;
     S.sat = clamp(S.sat + 15, 0, 140);
+    duel.lastAction = {
+      round: duel.round,
+      isMomUlt,
+      cardName: isMomUlt ? '老妈必杀技·全家杀手锏' : (card ? card.name : '从容应对'),
+      cardIcon: isMomUlt ? '🔥' : (card ? (card.icon || '✨') : '✨'),
+      cardRank: isMomUlt ? 4 : (card ? (card.r || 1) : 1),
+      cardType: isMomUlt ? 'ult' : (card ? (card.type || 'talent') : 'talent'),
+      myDmg,
+      isCrit,
+      isPierce,
+      isWeaken,
+      rankNotice: rankNotice || '',
+      synergyNotice: synergyNotice || '',
+      prevMyHp,
+      prevOppHp,
+      prevMomRage,
+      prevOppTilt,
+      newMyHp: duel.myHp,
+      newOppHp: duel.opp.hp,
+      newMomRage: duel.momRage,
+      newOppTilt: duel.opp.tilt,
+      wasStunned: justParalyzed,
+      oppAtk: 0,
+      oppLine: duel.oppCurrentLine,
+      momLine: duel.momCurrentLine,
+      finished: true,
+      won: true
+    };
     return;
   }
 
   // 对手反击阶段
   if (duel.paralyzed) {
     duel.paralyzed = false;
+    oppAtkDealt = 0;
     // 瘫痪跳过反击
   } else {
     let oppAtk = Math.round((duel.opp.atk || 35) * (0.8 + Math.random() * 0.4));
@@ -2496,6 +2543,7 @@ function faceDuelStep(actionIdx) {
 
     duel.myHp = Math.max(0, duel.myHp - oppAtk);
     duel.momRage = Math.min(100, (duel.momRage || 0) + Math.round(oppAtk * 0.6) + 10);
+    oppAtkDealt = oppAtk;
 
     const nextOppLine = duel.opp.lines[(duel.round) % duel.opp.lines.length] || '我家孩子很棒！';
     duel.oppCurrentLine = nextOppLine;
@@ -2508,6 +2556,34 @@ function faceDuelStep(actionIdx) {
     duel.won = false;
     duel.logs.push('🌧️ 我方面子告罄，在亲戚的吹捧声中败下阵来……妈妈说今晚回家不吃鸡肉了。');
     S.face = Math.max(0, S.face - 40);
+    duel.lastAction = {
+      round: duel.round,
+      isMomUlt,
+      cardName: isMomUlt ? '老妈必杀技·全家杀手锏' : (card ? card.name : '从容应对'),
+      cardIcon: isMomUlt ? '🔥' : (card ? (card.icon || '✨') : '✨'),
+      cardRank: isMomUlt ? 4 : (card ? (card.r || 1) : 1),
+      cardType: isMomUlt ? 'ult' : (card ? (card.type || 'talent') : 'talent'),
+      myDmg,
+      isCrit,
+      isPierce,
+      isWeaken,
+      rankNotice: rankNotice || '',
+      synergyNotice: synergyNotice || '',
+      prevMyHp,
+      prevOppHp,
+      prevMomRage,
+      prevOppTilt,
+      newMyHp: duel.myHp,
+      newOppHp: duel.opp.hp,
+      newMomRage: duel.momRage,
+      newOppTilt: duel.opp.tilt,
+      wasStunned: justParalyzed,
+      oppAtk: oppAtkDealt,
+      oppLine: duel.oppCurrentLine,
+      momLine: duel.momCurrentLine,
+      finished: true,
+      won: false
+    };
     return;
   }
 
@@ -2527,6 +2603,35 @@ function faceDuelStep(actionIdx) {
       S.face = Math.max(0, S.face - 40);
     }
   }
+
+  duel.lastAction = {
+    round: duel.round - (duel.finished ? 0 : 1),
+    isMomUlt,
+    cardName: isMomUlt ? '老妈必杀技·全家杀手锏' : (card ? card.name : '从容应对'),
+    cardIcon: isMomUlt ? '🔥' : (card ? (card.icon || '✨') : '✨'),
+    cardRank: isMomUlt ? 4 : (card ? (card.r || 1) : 1),
+    cardType: isMomUlt ? 'ult' : (card ? (card.type || 'talent') : 'talent'),
+    myDmg,
+    isCrit,
+    isPierce,
+    isWeaken,
+    rankNotice: rankNotice || '',
+    synergyNotice: synergyNotice || '',
+    prevMyHp,
+    prevOppHp,
+    prevMomRage,
+    prevOppTilt,
+    newMyHp: duel.myHp,
+    newOppHp: duel.opp.hp,
+    newMomRage: duel.momRage,
+    newOppTilt: duel.opp.tilt,
+    wasStunned: justParalyzed,
+    oppAtk: oppAtkDealt,
+    oppLine: duel.oppCurrentLine,
+    momLine: duel.momCurrentLine,
+    finished: duel.finished,
+    won: duel.won
+  };
 }
 
 /* ---------- 🗳️ 班干部竞选演说策略博弈 2.0 (Class Committee Election) ---------- */
