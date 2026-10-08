@@ -3789,7 +3789,7 @@ function setStoredVer(v) {
 }
 
 function checkChangelogNotice() {
-  const curVer = (D && D.version) ? D.version : 'v2.1.0';
+  const curVer = (D && D.version) ? D.version : 'v2.8.5';
   const lastSeen = getStoredVer();
   const badges = document.querySelectorAll('#update-badge, #splash-update-badge');
   badges.forEach(badge => {
@@ -3821,7 +3821,7 @@ function openChangelogModal(isAuto = false) {
   m.hidden = false;
   m.classList.remove('hidden');
 
-  const curVer = (D && D.version) ? D.version : 'v2.1.0';
+  const curVer = (D && D.version) ? D.version : 'v2.8.5';
   const list = (D && D.changelog) ? D.changelog : [];
   const body = $('#changelog-body');
   if (!body) return;
@@ -3883,7 +3883,7 @@ function closeChangelogModal() {
     m.hidden = true;
     m.classList.add('hidden');
   }
-  const curVer = (D && D.version) ? D.version : 'v2.1.0';
+  const curVer = (D && D.version) ? D.version : 'v2.8.5';
   setStoredVer(curVer);
 
   const badges = document.querySelectorAll('#update-badge, #splash-update-badge');

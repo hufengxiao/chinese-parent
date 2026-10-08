@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/Live_Demo-chinese--parent.pages.dev-d33824?style=flat-square&logo=cloudflare" alt="Live Demo" /></a>
-  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v2.8.0-orange?style=flat-square" alt="Version" /></a>
+  <a href="https://github.com/hufengxiao/chinese-parent"><img src="https://img.shields.io/badge/version-v2.8.5-orange?style=flat-square" alt="Version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /></a>
   <a href="https://chinese-parent.pages.dev/"><img src="https://img.shields.io/badge/PWA-Supported-green?style=flat-square&logo=pwa" alt="PWA Ready" /></a>
   <a href="./tests/"><img src="https://img.shields.io/badge/Tests-6%2F6%20Suites%20Passed-brightgreen?style=flat-square" alt="Automated Tests" /></a>

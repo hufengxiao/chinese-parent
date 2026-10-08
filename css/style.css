@@ -1451,6 +1451,9 @@ button:active { transform: scale(0.96); }
 }
 
 /* ===== 版本更新公告与新玩法弹窗 (Changelog Modal) ===== */
+#changelog-modal {
+  z-index: 120;
+}
 .changelog-wrap {
   background: linear-gradient(145deg, #fffdfa 0%, #fbf4e6 100%);
   border: 2px solid var(--border-active);

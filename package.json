@@ -1,6 +1,6 @@
 {
   "name": "chinese-parent-h5",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "description": "🎮 纯前端深度还原《中国式家长》H5自娱版：原生单页/PWA离线/脑洞日程/特长选秀/高考相亲/百年家族传承",
   "main": "index.html",
   "scripts": {

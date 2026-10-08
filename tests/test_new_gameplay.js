@@ -851,6 +851,14 @@ const nextVersion = DATA.version.replace(/(\d+)$/, m => Number(m) + 1);
 shouldNotice = store['cph_last_seen_ver'] !== nextVersion;
 assert.strictEqual(shouldNotice, true, '开发者发布新版本后，用户刷新将再次自动弹出了解最新玩法');
 
+// 断言全局版本号一致性 (index.html, sw.js, DATA.version) 筑牢发版防线
+const swFileContent = fs.readFileSync(path.join(dir, '..', 'sw.js'), 'utf8');
+const indexHtmlContent = fs.readFileSync(path.join(dir, '..', 'index.html'), 'utf8');
+assert(swFileContent.includes(`CACHE_NAME = 'chinese-parent-${DATA.version}'`), `sw.js 离线缓存版本必须与 DATA.version (${DATA.version}) 严格同步`);
+assert(indexHtmlContent.includes(DATA.version), `index.html 必须包含最新版本号 ${DATA.version}`);
+assert.strictEqual(DATA.version, 'v2.8.5', '当前最新发版版本应为 v2.8.5');
+assert(DATA.changelog[0].title.includes('街机格斗'), 'v2.8.5 首条更新必须包含街机格斗面子对决');
+
 console.log('版本更新公告数据结构、多版本滚动历史、刷新自动识别与开发者升版响应测试 100% 验证通过！');
 
 console.log('\n--- 测试 18: 📱 顶栏UI布局优化：双层结构隔离，行动点等核心资源永不被功能按钮遮挡 ---');
