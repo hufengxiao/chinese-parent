@@ -1695,7 +1695,7 @@ const expectedAges = [
   { turn: 44, age: 18 },
   { turn: 45, age: 18 },
   { turn: 51, age: 22 },
-  { turn: 58, age: 30 }
+  { turn: 58, age: 29 }
 ];
 
 expectedAges.forEach(({ turn, age }) => {

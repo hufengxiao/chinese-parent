@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const assert = require('assert');
 
 const dir = path.join(__dirname, '..', 'js');
 const store = {};
@@ -78,13 +79,9 @@ for (let gen = 1; gen <= MAX_GENS; gen++) {
 
     // 2) 挖脑洞 (回合标准循环: 优先挖脑洞攒悟性)
     const bInfoStart = CP.brain.info();
-    if (bInfoStart.total !== 36) {
-      throw new Error(`第${gen}代 回合${CP.state().turn} 脑洞格数异常: ${bInfoStart.total}`);
-    }
+    assert.strictEqual(bInfoStart.total, 36, `第${gen}代 回合${CP.state().turn} 脑洞格数异常: ${bInfoStart.total}`);
     // 验证每回合开始时脑洞均已刷新为未翻开状态 (0 / 36)
-    if (bInfoStart.open !== 0) {
-      throw new Error(`第${gen}代 回合${CP.state().turn} 脑洞未重置刷新! 已翻开: ${bInfoStart.open}`);
-    }
+    assert.strictEqual(bInfoStart.open, 0, `第${gen}代 回合${CP.state().turn} 脑洞未重置刷新! 已翻开: ${bInfoStart.open}`);
 
     // 翻开 6~12 格脑洞
     const digTimes = ri(7) + 6;
@@ -118,12 +115,8 @@ for (let gen = 1; gen <= MAX_GENS; gen++) {
       const learnedCountBefore = CP.state().learnedCourses ? CP.state().learnedCourses.length : 0;
       if (Math.random() < 0.35 && CP.slots()[1]) {
         CP.removeSlot(1);
-        if (CP.state().insight !== insightBeforeUndo) {
-          throw new Error('removeSlot 破坏了悟性数值!');
-        }
-        if (CP.state().learnedCourses && CP.state().learnedCourses.length !== learnedCountBefore) {
-          throw new Error('removeSlot 抹除了已研习的技能!');
-        }
+        assert.strictEqual(CP.state().insight, insightBeforeUndo, 'removeSlot 破坏了悟性数值!');
+        assert.strictEqual(CP.state().learnedCourses ? CP.state().learnedCourses.length : 0, learnedCountBefore, 'removeSlot 抹除了已研习的技能!');
       }
       // 补齐槽位
       CP.autoFillSlots();
@@ -140,20 +133,18 @@ for (let gen = 1; gen <= MAX_GENS; gen++) {
 }
 
 // ---- 回归断言 ----
-if (summaries.length !== MAX_GENS) throw new Error(`只完成了 ${summaries.length} 代`);
+assert.strictEqual(summaries.length, MAX_GENS, `只完成了 ${summaries.length} 代`);
 summaries.forEach((ss) => {
-  if (ss.phaseTransitions !== 7) throw new Error(`第${ss.gen}代阶段蜕变次数异常: ${ss.phaseTransitions}`);
-  if (!ss.turns || ss.turns < 40) throw new Error(`第${ss.gen}代回合数异常: ${ss.turns}`);
+  assert.strictEqual(ss.phaseTransitions, 7, `第${ss.gen}代阶段蜕变次数异常: ${ss.phaseTransitions}`);
+  assert(ss.turns && ss.turns >= 40, `第${ss.gen}代回合数异常: ${ss.turns}`);
   const maxGk = Math.max.apply(null, gkScores);
   const allCapped = gkScores.every(v => v >= 19900);
-  if (allCapped) throw new Error('高考分数饱和缺陷回归: 全部世代顶到满分! ' + JSON.stringify(gkScores));
-  if (maxGk > 20000) throw new Error(`高考分数不应超过 20000 上限, 实际 ${maxGk}`);
+  assert(!allCapped, '高考分数饱和缺陷回归: 全部世代顶到满分! ' + JSON.stringify(gkScores));
+  assert(maxGk <= 20000, `高考分数不应超过 20000 上限, 实际 ${maxGk}`);
 });
 // 传承断言: 二代起基础属性显著强于一代开局
 for (let i = 1; i < MAX_GENS; i++) {
-  if (baseAttrSums[i] < baseAttrSums[0]) {
-    throw new Error(`第${i + 1}代开局属性(${baseAttrSums[i]})未高于第1代(${baseAttrSums[0]}), 传承机制失效!`);
-  }
+  assert(baseAttrSums[i] >= baseAttrSums[0], `第${i + 1}代开局属性(${baseAttrSums[i]})未高于第1代(${baseAttrSums[0]}), 传承机制失效!`);
 }
 console.log('回归断言通过: 7次蜕变/代, 高考分布合理区分, 世代传承显著生效');
 

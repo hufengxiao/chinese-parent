@@ -50,6 +50,30 @@ body {
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; transition: transform 0.12s ease, filter 0.15s ease; }
 button:active { transform: scale(0.96); }
 
+/* 消除移动端 300ms 点击延迟并保留双指缩放能力 (P1-10) */
+button,
+.btn,
+.tab-btn,
+.icon-toggle,
+.top-tool-btn,
+.card,
+.slot-card,
+.crossroad-card,
+.tree-card,
+.blind-cand-card,
+.marry-action-btn,
+.ts-perform-btn,
+.ts-card,
+.el-cand,
+.el-desk-item,
+[role="button"],
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
 .hidden { display: none !important; }
 [hidden] { display: none !important; }
 

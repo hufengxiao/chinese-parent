@@ -5,7 +5,9 @@
   "main": "index.html",
   "scripts": {
     "start": "npx serve .",
-    "test": "node tests/test_new_gameplay.js && node tests/sim.js && node tests/test_events.js && node tests/test_optimizations.js && node tests/test_v27_features.js && node tests/test_face_duel_faithful.js && node tests/test_class_election_faithful.js && node tests/test_talent_show_faithful.js && node tests/test_audit_and_optimizations.js",
+    "lint": "node scripts/lint.js",
+    "test": "node tests/run_all.js",
+    "test:all": "node tests/run_all.js",
     "test:gameplay": "node tests/test_new_gameplay.js",
     "test:sim": "node tests/sim.js",
     "test:events": "node tests/test_events.js",
@@ -14,7 +16,11 @@
     "test:duel": "node tests/test_face_duel_faithful.js",
     "test:election": "node tests/test_class_election_faithful.js",
     "test:show": "node tests/test_talent_show_faithful.js",
-    "test:audit": "node tests/test_audit_and_optimizations.js"
+    "test:audit": "node tests/test_audit_and_optimizations.js",
+    "test:fixes": "node tests/test_code_review_fixes.js",
+    "test:ui": "node tests/test_ui_security_audit.js",
+    "test:smoke": "node tests/test_ui_smoke.js",
+    "test:sw": "node tests/test_sw_offline.js"
   },
   "keywords": [
     "chinese-parents",

@@ -72,11 +72,25 @@ D.events.forEach(ev => {
 
 console.log('--- 测试 3: 模拟所有事件生效与数值结算容错 ---');
 CP.newGame();
+// 清空开局初始挂起的 intro 事件，确保测试队列隔离
+while (CP.pending().length) {
+  CP.resolve(0);
+}
+assert.strictEqual(CP.pending().length, 0, '测试开始前挂起队列必须已清空');
+
+let simulatedEventsCount = 0;
+let simulatedOptionsCount = 0;
+
 D.events.forEach(ev => {
   if (ev.type === 'rand') {
-    // 模拟 applyEff
+    // 模拟 applyEff 并压入 news 弹窗
+    if (ev.eff && typeof CP.applyEff === 'function') {
+      CP.applyEff(ev.eff);
+    }
     CP.state().pending.push({ type: 'news', title: ev.n, body: ev.d, opts: ['好'] });
     CP.resolve(0);
+    simulatedEventsCount++;
+    assert.strictEqual(CP.state().pending.length, 0, `随机事件 ${ev.id} resolve 后 pending 队列应为空`);
   } else if (ev.type === 'choice') {
     ev.opts.forEach((o, idx) => {
       CP.state().pending.push({
@@ -86,8 +100,22 @@ D.events.forEach(ev => {
         opts: ev.opts.map(opt => ({ label: opt.t, eff: opt.e }))
       });
       CP.resolve(idx);
+      simulatedOptionsCount++;
+      assert.strictEqual(CP.state().pending.length, 0, `抉择事件 ${ev.id} 选项${idx} resolve 后 pending 队列应为空`);
     });
+    simulatedEventsCount++;
   }
+  // 严格验证主角所有六维属性与资源无 NaN / undefined 污染
+  const s = CP.state();
+  ['iq', 'eq', 'mem', 'img', 'phy', 'cha'].forEach(k => {
+    assert(typeof s.attrs[k] === 'number' && !Number.isNaN(s.attrs[k]), `事件 ${ev.id} 结算后 attrs.${k} 出现非法值: ${s.attrs[k]}`);
+  });
+  ['insight', 'act', 'face', 'money', 'stress', 'sat'].forEach(k => {
+    assert(typeof s[k] === 'number' && !Number.isNaN(s[k]), `事件 ${ev.id} 结算后 ${k} 出现非法值: ${s[k]}`);
+  });
 });
 
+assert.strictEqual(simulatedEventsCount, D.events.length, `应完整模拟全部 ${D.events.length} 个事件`);
+assert(simulatedOptionsCount > 0, '抉择事件选项应全覆盖模拟');
+console.log(`✅ 测试 3 通过: 成功模拟 ${simulatedEventsCount} 个事件、${simulatedOptionsCount} 个分支选项，数值无 NaN 且状态自洽！`);
 console.log('所有事件题库单元测试与结算模拟全部顺利通过！');

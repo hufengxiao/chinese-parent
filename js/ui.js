@@ -9,8 +9,35 @@ const $ = s => document.querySelector(s);
 const h = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.innerHTML = x; return e; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
+}
+
 let ACTIVE = 'plan';
 const RARE_CN = { 1: '普通', 2: '稀有', 3: '史诗', 4: '传说' };
+
+let hbTimer = null;
+let hbKeyHandler = null;
+
+function stopHbLoop() {
+  if (hbTimer) {
+    clearInterval(hbTimer);
+    hbTimer = null;
+  }
+}
+
+function startHbLoop(fn, interval) {
+  stopHbLoop();
+  hbTimer = setInterval(fn, interval);
+  return hbTimer;
+}
 
 /* ---------- 音效与背景音律系统 (WebAudio 原生免外部文件合成) ---------- */
 class SoundManager {
@@ -444,6 +471,24 @@ if (typeof global !== 'undefined') {
   global.sound = sound;
 }
 
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  document.addEventListener('visibilitychange', () => {
+    try {
+      const audioCtx = sound && sound.ctx;
+      if (!audioCtx) return;
+      if (document.hidden) {
+        if (audioCtx.state === 'running' && typeof audioCtx.suspend === 'function') {
+          audioCtx.suspend();
+        }
+      } else {
+        if (audioCtx.state === 'suspended' && typeof audioCtx.resume === 'function') {
+          audioCtx.resume();
+        }
+      }
+    } catch(e) {}
+  });
+}
+
 /* ---------- 查找表 ---------- */
 function course(id) { return D.courses.find(c => c.id === id); }
 function play(id) { return D.plays.find(p => p.id === id); }
@@ -468,6 +513,7 @@ function slotName(sl) {
 
 /* ---------- 屏幕流转控制器 (彻底解决 [hidden] 白屏问题) ---------- */
 function showScreen(name) {
+  stopHbLoop();
   const screens = {
     splash: $('#splash'),
     game: $('#game'),
@@ -527,7 +573,7 @@ function renderTop() {
   
   const elGen = $('#top-gen');
   if (elGen) {
-    elGen.innerHTML = '第' + i.gen + '代 ' + genderIcon + i.name + styleBadgeHtml;
+    elGen.innerHTML = '第' + i.gen + '代 ' + genderIcon + ' ' + esc(i.name) + styleBadgeHtml;
     const elTurn = $('#top-turn');
     let branchBadge = '';
     if (i.careerBranch) {
@@ -548,7 +594,7 @@ function renderTop() {
     const topbar = $('#topbar');
     if (topbar) {
       topbar.innerHTML =
-        '<span class="gen-tag">第' + i.gen + '代 ' + genderIcon + i.name + styleBadgeHtml + '</span>' +
+        '<span class="gen-tag">第' + i.gen + '代 ' + genderIcon + ' ' + esc(i.name) + styleBadgeHtml + '</span>' +
         '<span class="chip">📅 回合' + i.turn + ' · ' + i.age + '岁 · ' + i.phase + '</span>' +
         '<span class="chip" title="面子">⭐面子<b>' + i.face + '</b></span>' +
         '<span class="chip" title="行动力">⚡行动<b>' + i.act + '</b></span>' +
@@ -1340,18 +1386,18 @@ function renderAtlas() {
         const genLabel = isFounder ? '👑 开基始祖' : ('📜 第 ' + anc.gen + ' 代宗亲');
         const genderIcon = anc.gender === 'girl' ? '👧' : '👦';
         const spouseTxt = (anc.spouse && anc.spouse !== '单身')
-          ? ('💑 联姻配偶: <b>' + anc.spouse + '</b> (' + (anc.spouseTag || '良缘') + ')')
+          ? ('💑 联姻配偶: <b>' + esc(anc.spouse) + '</b> (' + esc(anc.spouseTag || '良缘') + ')')
           : '💑 终身求索 · 志在四方 (单身)';
 
         const ratingText = (anc.rating || 'S') + ' 级 · ' + (anc.score != null ? anc.score : '--') + '分';
-        const jobText = (anc.jobIcon || '🛋️') + ' ' + (anc.job || '自由职业');
+        const jobText = (anc.jobIcon || '🛋️') + ' ' + esc(anc.job || '自由职业');
         const gkText = anc.gk ? anc.gk + ' 分' : '统招升学';
         const ancName = anc.name || '家族先祖';
 
         card.innerHTML =
           '<div class="tree-card-top">' +
             '<span class="tree-gen-tag">' + genLabel + '</span>' +
-            '<span class="tree-person-name">' + genderIcon + ' ' + ancName + '</span>' +
+            '<span class="tree-person-name">' + genderIcon + ' ' + esc(ancName) + '</span>' +
             '<span class="tree-rating-stamp">' + ratingText + '</span>' +
           '</div>' +
           '<div class="tree-badges-row">' +
@@ -1360,7 +1406,7 @@ function renderAtlas() {
             '<span class="tree-badge-chip">✨ 特长: <b>' + (anc.talentsCount || 0) + ' 项</b></span>' +
           '</div>' +
           '<div class="tree-spouse-box">' + spouseTxt + '</div>' +
-          '<div class="tree-hl-box">🌟 <b>生平纪事：</b>' + (anc.highlight || '精彩的一生') + '</div>';
+          '<div class="tree-hl-box">🌟 <b>生平纪事：</b>' + esc(anc.highlight || '精彩的一生') + '</div>';
 
         nodeWrap.appendChild(card);
         tree.appendChild(nodeWrap);
@@ -1378,7 +1424,7 @@ function renderAtlas() {
         card.innerHTML =
           '<div class="tree-card-top">' +
             '<span class="tree-gen-tag">🌱 第 ' + curGen + ' 代在世苗裔</span>' +
-            '<span class="tree-person-name">' + genderIcon + ' ' + curState.name + '</span>' +
+            '<span class="tree-person-name">' + genderIcon + ' ' + esc(curState.name) + '</span>' +
             '<span class="tree-rating-stamp" style="background:#ecfdf5;color:#059669;border-color:#6ee7b7">正在书写生平…</span>' +
           '</div>' +
           '<div class="tree-badges-row">' +
@@ -1492,8 +1538,6 @@ function niceEff(e) {
 }
 
 /* ---------- 弹窗系统 ---------- */
-let hbTimer = null;
-let hbKeyHandler = null;
 const activeModalCleanups = [];
 
 function registerModalCleanup(fn) {
@@ -1501,11 +1545,21 @@ function registerModalCleanup(fn) {
 }
 
 function clearActiveModalListeners() {
-  if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+  stopHbLoop();
   if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
   while (activeModalCleanups.length > 0) {
     const fn = activeModalCleanups.pop();
     try { fn(); } catch(e) {}
+  }
+}
+
+function closeActiveModal() {
+  stopHbLoop();
+  clearActiveModalListeners();
+  const m = $('#modal');
+  if (m) {
+    m.classList.remove('show');
+    m.innerHTML = '';
   }
 }
 
@@ -1715,10 +1769,10 @@ function renderPhaseTransition(p, m) {
 function renderHongbaoModal(p, m) {
   m = m || $('#modal');
   if (!m) return;
-  if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+  stopHbLoop();
   if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
   registerModalCleanup(() => {
-    if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+    stopHbLoop();
     if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
   });
 
@@ -1730,8 +1784,8 @@ function renderHongbaoModal(p, m) {
   // 亲戚对话与妈妈推脱气泡
   const diagWrap = h('div', 'hb-dialogues');
   diagWrap.innerHTML =
-    '<div class="hb-bubble hb-rel-bubble" id="hbRelBubble"><b>' + (p.rel || '长辈') + '</b>: ' + (p.quote || '“拿着拿着，给孩子的压岁钱！”') + '</div>' +
-    '<div class="hb-bubble hb-mom-bubble"><b>妈妈</b>: ' + (p.momQuote || '“哎呀使不得使不得，他小孩子要什么钱！”') + '</div>';
+    '<div class="hb-bubble hb-rel-bubble" id="hbRelBubble"><b>' + esc(p.rel || '长辈') + '</b>: ' + esc(p.quote || '“拿着拿着，给孩子的压岁钱！”') + '</div>' +
+    '<div class="hb-bubble hb-mom-bubble"><b>妈妈</b>: ' + esc(p.momQuote || '“哎呀使不得使不得，他小孩子要什么钱！”') + '</div>';
   body.appendChild(diagWrap);
 
   // 提示与动态阵风看板
@@ -1785,17 +1839,17 @@ function renderHongbaoModal(p, m) {
     if (curPos >= gMin && curPos <= gMax) {
       pt.className = 'hb-pointer in-zone';
       if (statusEl) statusEl.innerHTML = '<span class="status-perfect">✨ 双方势均力敌！客套拉扯处于黄金平衡</span>';
-      if (relBubble) relBubble.innerHTML = '<b>' + (p.rel || '长辈') + '</b>: ' + (p.quote || '“拿着拿着，给孩子的压岁钱！”');
-      if (momBubble) momBubble.innerHTML = '<b>妈妈</b>: ' + (p.momQuote || '“哎呀使不得使不得，他小孩子要什么钱！”');
+      if (relBubble) relBubble.innerHTML = '<b>' + esc(p.rel || '长辈') + '</b>: ' + esc(p.quote || '“拿着拿着，给孩子的压岁钱！”');
+      if (momBubble) momBubble.innerHTML = '<b>妈妈</b>: ' + esc(p.momQuote || '“哎呀使不得使不得，他小孩子要什么钱！”');
     } else if (curPos < gMin) {
       pt.className = 'hb-pointer warn-left';
       if (statusEl) statusEl.innerHTML = '<span class="status-warning">✋ 偏向推脱！长辈要缩手了 (快按→/空格扒拉)</span>';
-      if (relBubble) relBubble.innerHTML = '<b>' + (p.rel || '长辈') + '</b>: “小宝怎么推三阻四的？二叔给的必须拿着！”';
+      if (relBubble) relBubble.innerHTML = '<b>' + esc(p.rel || '长辈') + '</b>: “小宝怎么推三阻四的？二叔给的必须拿着！”';
       if (momBubble) momBubble.innerHTML = '<b>妈妈</b>: “这就对了，小孩子家家身上揣什么大钱！”';
     } else {
       pt.className = 'hb-pointer warn-right';
       if (statusEl) statusEl.innerHTML = '<span class="status-danger">🤲 过于急切！老妈在瞪你 (快按←客套推辞)</span>';
-      if (relBubble) relBubble.innerHTML = '<b>' + (p.rel || '长辈') + '</b>: “哈哈这孩子真爽快！大姑就喜欢利索的！”';
+      if (relBubble) relBubble.innerHTML = '<b>' + esc(p.rel || '长辈') + '</b>: “哈哈这孩子真爽快！大姑就喜欢利索的！”';
       if (momBubble) momBubble.innerHTML = '<b>妈妈</b>: “手快给我缩回来！平时怎么教你的，成何体统！”';
     }
   };
@@ -1803,7 +1857,7 @@ function renderHongbaoModal(p, m) {
   const finishHb = (posVal, isSkip) => {
     if (isFinished) return;
     isFinished = true;
-    if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+    stopHbLoop();
     if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
     sound.win();
     const r = CP.resolve({ pos: posVal, skipped: isSkip });
@@ -1850,7 +1904,7 @@ function renderHongbaoModal(p, m) {
   window.addEventListener('keydown', hbKeyHandler);
 
   // 物理主循环 (33ms ~ 30FPS)
-  hbTimer = setInterval(() => {
+  startHbLoop(() => {
     if (isFinished) return;
     tickCount++;
     timeLeft = Math.max(0, timeLeft - 0.033);
@@ -1884,7 +1938,7 @@ function renderHongbaoModal(p, m) {
       const gustDir = (curPos < centerTarget ? 1 : -1);
       gustForce = gustDir * (2.8 + Math.random() * 2.2);
       const hint = $('#hbHintBadge');
-      if (hint) hint.innerHTML = '⚡ <b>' + (p.rel || '长辈') + '</b>: ' + gustText;
+      if (hint) hint.innerHTML = '⚡ <b>' + esc(p.rel || '长辈') + '</b>: ' + esc(gustText);
     }
 
     // 速度阻尼积分与位移更新
@@ -1949,7 +2003,7 @@ function renderHongbaoModal(p, m) {
 
 /* ---------- 🧧 红包对决战报结算卡片 (正式版专属) ---------- */
 function renderHongbaoResult(p, m, posVal, isSkip, resText) {
-  if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+  stopHbLoop();
   if (hbKeyHandler) { window.removeEventListener('keydown', hbKeyHandler); hbKeyHandler = null; }
 
   m = m || $('#modal');
@@ -2010,7 +2064,7 @@ function renderHongbaoResult(p, m, posVal, isSkip, resText) {
 
   // 1) 图标与标题
   body.appendChild(h('div', 'hb-result-icon', icon));
-  body.appendChild(h('div', 'm-title', '🧧 ' + relName + '的压岁钱对决战报'));
+  body.appendChild(h('div', 'm-title', '🧧 ' + esc(relName) + '的压岁钱对决战报'));
   body.appendChild(h('div', 'hb-result-badge ' + outcomeType, badgeTitle));
 
   // 2) 动力学终局落点展示
@@ -2137,7 +2191,7 @@ function renderFaceDuelModal(p, m) {
       '<span class="fd-phase-pill" id="fd-phase-pill">我方出招</span>' +
     '</div>' +
     '<div class="fd-fighter right">' +
-      '<div class="fd-f-header"><span class="av">' + (duel.opp.icon || '👩') + '</span><span class="fd-f-name">' + duel.opp.name + '</span><span class="fd-f-badge">' + (duel.opp.style || '亲戚') + '</span></div>' +
+      '<div class="fd-f-header"><span class="av">' + (duel.opp.icon || '👩') + '</span><span class="fd-f-name">' + esc(duel.opp.name) + '</span><span class="fd-f-badge">' + esc(duel.opp.style || '亲戚') + '</span></div>' +
       '<div class="fd-hp-wrap">' +
         '<div class="fd-hp-trail opp" id="fd-opp-trail" style="width:' + oppHpPct + '%"></div>' +
         '<div class="fd-hp-fill opp" id="fd-opp-fill" style="width:' + oppHpPct + '%"></div>' +
@@ -2163,7 +2217,7 @@ function renderFaceDuelModal(p, m) {
 
   const rightSpriteWrap = h('div', 'fd-sprite-wrap right');
   rightSpriteWrap.id = 'fd-right-sprite-wrap';
-  rightSpriteWrap.innerHTML = '<div class="fd-sprite opp">' + (duel.opp.icon || '👩') + '</div><div class="fd-sprite-tag">' + duel.opp.name + '</div>';
+  rightSpriteWrap.innerHTML = '<div class="fd-sprite opp">' + (duel.opp.icon || '👩') + '</div><div class="fd-sprite-tag">' + esc(duel.opp.name) + '</div>';
 
   stageFighters.appendChild(leftSpriteWrap);
   stageFighters.appendChild(rightSpriteWrap);
@@ -2181,18 +2235,18 @@ function renderFaceDuelModal(p, m) {
       '<span class="fd-speaker-tag mom">👩‍👦 老妈迎击</span>' +
       '<span class="fd-move-tag" id="fd-mom-move-tag">' + momInitMove + '</span>' +
     '</div>' +
-    '<div class="fd-bubble-quote" id="fd-mom-bubble-text">“' + (duel.momCurrentLine || '哪里哪里，小孩子平时就随便玩玩～') + '”</div>';
+    '<div class="fd-bubble-quote" id="fd-mom-bubble-text">“' + esc(duel.momCurrentLine || '哪里哪里，小孩子平时就随便玩玩～') + '”</div>';
   bubblesWrap.appendChild(momBubble);
 
-  const oppInitMove = '【' + (duel.opp.style || '凡尔赛挑衅') + '】';
+  const oppInitMove = '【' + esc(duel.opp.style || '凡尔赛挑衅') + '】';
   const oppBubble = h('div', 'fd-bubble opp');
   oppBubble.id = 'fd-opp-bubble';
   oppBubble.innerHTML =
     '<div class="fd-bubble-header">' +
-      '<span class="fd-speaker-tag opp">💬 ' + duel.opp.name + '</span>' +
+      '<span class="fd-speaker-tag opp">💬 ' + esc(duel.opp.name) + '</span>' +
       '<span class="fd-move-tag" id="fd-opp-move-tag">' + oppInitMove + '</span>' +
     '</div>' +
-    '<div class="fd-bubble-quote" id="fd-opp-bubble-text">“' + (duel.oppCurrentLine || '我家孩子很优秀！') + '”</div>';
+    '<div class="fd-bubble-quote" id="fd-opp-bubble-text">“' + esc(duel.oppCurrentLine || '我家孩子很优秀！') + '”</div>';
   bubblesWrap.appendChild(oppBubble);
 
   stageView.appendChild(bubblesWrap);
@@ -2440,8 +2494,8 @@ function renderFaceDuelModal(p, m) {
       if (stage) {
         const oppCutin = h('div', 'fd-cutin-banner opp');
         oppCutin.innerHTML =
-          '<div class="fd-cutin-header">💬 ' + duelAfter.opp.name + ' · 炫耀暴击！</div>' +
-          '<div class="fd-cutin-body">“' + (duelAfter.oppCurrentLine || '我家孩子很优秀！') + '”</div>';
+          '<div class="fd-cutin-header">💬 ' + esc(duelAfter.opp.name) + ' · 炫耀暴击！</div>' +
+          '<div class="fd-cutin-body">“' + esc(duelAfter.oppCurrentLine || '我家孩子很优秀！') + '”</div>';
         stage.appendChild(oppCutin);
         safeTimeout(() => { if (oppCutin.parentNode) oppCutin.remove(); }, 620);
       }
@@ -2647,8 +2701,8 @@ function renderFaceDuelResult(duel, p, m) {
 
   const diagBox = h('div', 'fd-result-dialogue');
   diagBox.innerHTML =
-    '<b>' + oppName + '</b>: “' + oppQuote + '”<br><br>' +
-    '<b>老妈</b>: ' + momQuote;
+    '<b>' + esc(oppName) + '</b>: “' + esc(oppQuote) + '”<br><br>' +
+    '<b>老妈</b>: ' + esc(momQuote);
   body.appendChild(diagBox);
 
   // 4) 向父母索取正向飞轮指引
@@ -2810,7 +2864,7 @@ function renderTalentShowModal(p, m) {
         '<div class="ts-section-title">🔥 对手神童登台亮相</div>' +
         '<div class="ts-rival-spotlight">' +
           '<div class="ts-rival-avatar">🧒</div>' +
-          '<div class="ts-rival-speech-bubble"><b>' + rival.name + '</b>: “' + (rival.quote || '台下的掌声是我的！') + '”</div>' +
+          '<div class="ts-rival-speech-bubble"><b>' + esc(rival.name) + '</b>: “' + esc(rival.quote || '台下的掌声是我的！') + '”</div>' +
         '</div>' +
         '<div class="ts-rival-talent-card">' +
           '<span class="ts-card-ico">' + ((rival.talent && rival.talent.icon) || '🎶') + '</span>' +
@@ -3345,8 +3399,8 @@ function renderElectionModal(p, m) {
     const candDiv = h('div', cardClass);
     candDiv.innerHTML =
       '<div class="el-avatar">' + (cand.icon || '🧑') + '</div>' +
-      '<div class="el-cand-name">' + cand.name + '</div>' +
-      '<div class="el-cand-title">' + (cand.title || '候选人') + '</div>' +
+      '<div class="el-cand-name">' + esc(cand.name) + '</div>' +
+      '<div class="el-cand-title">' + esc(cand.title || '候选人') + '</div>' +
       '<div class="el-cand-badges">' +
         '<span class="el-metric-badge strength" title="擅长长板">⭐ ' + (metricNames[cand.strength] || '品德') + '</span>' +
         '<span class="el-metric-badge weakness" title="薄弱短板">⚠️ ' + (metricNames[cand.weakness] || '群众') + '</span>' +
@@ -3379,12 +3433,12 @@ function renderElectionModal(p, m) {
     const deskItem = h('div', 'el-desk-item');
     let bubbleHtml = '';
     if (d.bubble) {
-      bubbleHtml = '<div class="el-desk-bubble">' + d.bubble + '</div>';
+      bubbleHtml = '<div class="el-desk-bubble">' + esc(d.bubble) + '</div>';
     }
     deskItem.innerHTML =
       bubbleHtml +
       '<div class="el-desk-avatar">' + (d.icon || '🧑') + '</div>' +
-      '<div class="el-desk-name">' + d.name + '</div>';
+      '<div class="el-desk-name">' + esc(d.name) + '</div>';
     desksGrid.appendChild(deskItem);
   });
   classroomBox.appendChild(desksGrid);
@@ -3558,7 +3612,7 @@ function renderElectionResultModal(p, m) {
     const isMe = c.isPlayer;
     card.innerHTML =
       '<div style="font-size:10px; font-weight:800; color:' + (idx === 0 ? '#b45309' : (idx === 1 ? '#0369a1' : '#15803d')) + ';">' + medals[idx] + '</div>' +
-      '<div class="el-bloc-name">' + (c.icon || '🧑') + ' ' + c.name + (isMe ? ' (我)' : '') + '</div>' +
+      '<div class="el-bloc-name">' + (c.icon || '🧑') + ' ' + esc(c.name) + (isMe ? ' (我)' : '') + '</div>' +
       '<div style="font-size:12px; font-weight:900; color:#1e293b; margin-top:2px;">' + c.votes + ' 票</div>';
     rankBoard.appendChild(card);
   });
@@ -3620,7 +3674,7 @@ function renderMarryModal(p, m) {
     const head = h('div', 'marry-header');
     head.innerHTML =
       '<div class="marry-badge campus">💍 从校服到婚纱 · 浪漫求婚时刻</div>' +
-      '<div class="marry-title">与「' + cand.name + '」的人生约定</div>' +
+      '<div class="marry-title">与「' + esc(cand.name) + '」的人生约定</div>' +
       '<div class="marry-sub">从青涩校服走到圣洁婚纱，此时此刻，你想对TA说——</div>';
     body.appendChild(head);
 
@@ -3632,9 +3686,9 @@ function renderMarryModal(p, m) {
         '<span class="marry-heart-badge">❤️ ' + cand.aff + ' / 100</span>' +
       '</div>' +
       '<div class="marry-lover-info">' +
-        '<div class="marry-lover-name">' + cand.name + '</div>' +
-        '<div class="marry-lover-intro">' + (cand.intro || '青梅竹马同窗知己') + '</div>' +
-        '<div class="marry-lover-quote">“' + (cand.quote || '从后排传小纸条，到一起走过大学操场，我一直在等你这句话……') + '”</div>' +
+        '<div class="marry-lover-name">' + esc(cand.name) + '</div>' +
+        '<div class="marry-lover-intro">' + esc(cand.intro || '青梅竹马同窗知己') + '</div>' +
+        '<div class="marry-lover-quote">“' + esc(cand.quote || '从后排传小纸条，到一起走过大学操场，我一直在等你这句话……') + '”</div>' +
         '<div class="marry-gen-perk">🧬 伴侣后代基因赋能：' + bonusText + '</div>' +
       '</div>';
     body.appendChild(card);
@@ -3683,12 +3737,12 @@ function renderMarryModal(p, m) {
         '<div class="blind-cand-top">' +
           '<span class="blind-cand-ico">' + cand.icon + '</span>' +
           '<div class="blind-cand-titles">' +
-            '<div class="blind-cand-name">' + cand.name + '</div>' +
-            '<span class="blind-cand-tag">' + cand.tag + '</span>' +
+            '<div class="blind-cand-name">' + esc(cand.name) + '</div>' +
+            '<span class="blind-cand-tag">' + esc(cand.tag) + '</span>' +
           '</div>' +
           '<span class="blind-match-btn">约见 ➔</span>' +
         '</div>' +
-        '<div class="blind-cand-intro">' + cand.intro + '</div>' +
+        '<div class="blind-cand-intro">' + esc(cand.intro) + '</div>' +
         '<div class="blind-cand-perk">🧬 遗传底蕴: ' + bonusText + '</div>';
       card.onclick = () => {
         sound.click();
@@ -3785,13 +3839,13 @@ function renderCrossroadModal(p, m) {
     const card = h('div', 'crossroad-card');
     card.innerHTML =
       '<div class="cr-top">' +
-        '<span class="cr-name">' + path.name + '</span>' +
-        '<span class="cr-badge">' + path.badge + '</span>' +
+        '<span class="cr-name">' + esc(path.name) + '</span>' +
+        '<span class="cr-badge">' + esc(path.badge) + '</span>' +
       '</div>' +
-      '<div class="cr-desc">' + path.desc + '</div>' +
+      '<div class="cr-desc">' + esc(path.desc) + '</div>' +
       '<div class="cr-meta">' +
-        '<div>🎯 核心属性: <b>' + (path.focusAttrs ? path.focusAttrs.map(k => ANAME[k] || k).join('、') : '') + '</b></div>' +
-        '<div>💼 顶级职业: <b>' + path.jobTitle + '</b> (起薪 ' + path.salaryBase + '元/回)</div>' +
+        '<div>🎯 核心属性: <b>' + (path.focusAttrs ? path.focusAttrs.map(k => (CP.attrName ? CP.attrName(k) : (CP.ANAME && CP.ANAME[k]) || k)).join('、') : '') + '</b></div>' +
+        '<div>💼 顶级职业: <b>' + esc(path.jobTitle) + '</b> (起薪 ' + path.salaryBase + '元/回)</div>' +
       '</div>' +
       '<button class="btn btn-primary cr-select-btn">扬帆起航 🚀</button>';
     card.querySelector('.cr-select-btn').onclick = () => {
@@ -3845,13 +3899,13 @@ function showReport(p) {
     '</div>' +
     '<div class="rep-highlight-box">' +
       '<span class="rep-hl-icon">✨</span>' +
-      '<span class="rep-hl-text"><b>家族高光时刻：</b>' + highlight + '</span>' +
+      '<span class="rep-hl-text"><b>家族高光时刻：</b>' + esc(highlight) + '</span>' +
     '</div>' +
     '<div class="rep-summary-grid">' +
-      '<div class="rep-grid-item"><span class="lbl">主角生平</span><span class="val">' + (info ? info.name : fam.name) + ' (' + ((info && info.gender === 'girl') ? '女儿' : '儿子') + ')</span></div>' +
-      '<div class="rep-grid-item"><span class="lbl">最终职业</span><span class="val">' + (job.icon || '💼') + ' ' + jobName + ' (' + tierDesc + ')</span></div>' +
+      '<div class="rep-grid-item"><span class="lbl">主角生平</span><span class="val">' + esc(info ? info.name : fam.name) + ' (' + ((info && info.gender === 'girl') ? '女儿' : '儿子') + ')</span></div>' +
+      '<div class="rep-grid-item"><span class="lbl">最终职业</span><span class="val">' + (job.icon || '💼') + ' ' + esc(jobName) + ' (' + esc(tierDesc) + ')</span></div>' +
       '<div class="rep-grid-item"><span class="lbl">高考战绩</span><span class="val">' + (s && s.gaokaoScore ? s.gaokaoScore + ' 分' : (fam.lastScore ? fam.lastScore + ' 分' : '推荐保送')) + '</span></div>' +
-      '<div class="rep-grid-item"><span class="lbl">家庭伴侣</span><span class="val">' + (s && s.spouse ? s.spouse.name : (fam.lastSpouse || '独善其身 (单身)')) + '</span></div>' +
+      '<div class="rep-grid-item"><span class="lbl">家庭伴侣</span><span class="val">' + esc(s && s.spouse ? s.spouse.name : (fam.lastSpouse || '独善其身 (单身)')) + '</span></div>' +
       '<div class="rep-grid-item"><span class="lbl">家族积蓄</span><span class="val">' + (info ? info.money : 0) + ' 元</span></div>' +
       '<div class="rep-grid-item"><span class="lbl">最终面子</span><span class="val">⭐ ' + (info ? info.face : 0) + '</span></div>' +
     '</div>';
@@ -4412,7 +4466,7 @@ function renderSaveSlots() {
       `;
     } else {
       const genderIco = sl.gender === 'girl' ? '👧 女' : '👦 男';
-      const detailStr = `第 <b>${sl.gen}</b> 代 · 「<b>${sl.name}</b>」 (${genderIco}) · <b>${sl.phase}</b> (第${sl.turn}回合·${sl.age}岁)`;
+      const detailStr = `第 <b>${sl.gen}</b> 代 · 「<b>${esc(sl.name)}</b>」 (${genderIco}) · <b>${esc(sl.phase)}</b> (第${sl.turn}回合·${sl.age}岁)`;
       const famStr = `📜 家族已历 <b>${sl.familyGen}</b> 代 · 家族特长 <b>${sl.familyTalents}</b> 项 · 门第 Tier <b>${sl.familyTier}</b>`;
       body.innerHTML = `
         <div class="slot-desc-main">${detailStr}</div>
@@ -4699,7 +4753,7 @@ function init() {
       }
       const manualM = $('#manual-modal');
       if (manualM && !manualM.hidden) {
-        closeManualModal();
+        closeManual();
         return;
       }
       const m = $('#modal');
@@ -4729,13 +4783,26 @@ global.renderElectionModal = renderElectionModal;
 global.renderElectionResultModal = renderElectionResultModal;
 global.clearActiveModalListeners = clearActiveModalListeners;
 global.registerModalCleanup = registerModalCleanup;
+global.closeActiveModal = closeActiveModal;
+global.stopHbLoop = stopHbLoop;
+global.startHbLoop = startHbLoop;
+global.esc = esc;
+global.closeManual = closeManual;
+global.renderModal = renderModal;
+global.renderCrossroadModal = renderCrossroadModal;
 global.UI = {
   renderTop,
   renderPhaseTransition,
   showReport,
   renderModal,
+  renderCrossroadModal,
   clearActiveModalListeners,
   registerModalCleanup,
+  closeActiveModal,
+  stopHbLoop,
+  startHbLoop,
+  esc,
+  closeManual,
   renderHongbaoModal,
   renderHongbaoResult,
   renderFaceDuelModal,
@@ -4755,5 +4822,31 @@ global.UI = {
   setTab,
   init
 };
+
+// P1-7: Unified namespace window.CPH while preserving globals CP, DATA, UI
+global.CPH = global.CPH || {};
+global.CPH.DATA = typeof D !== 'undefined' ? D : (global.DATA || null);
+global.CPH.CP = typeof CP !== 'undefined' ? CP : (global.CP || null);
+global.CPH.UI = global.UI;
+
+if (typeof window !== 'undefined' && window !== global) {
+  window.CPH = global.CPH;
+  window.UI = global.UI;
+  window.esc = esc;
+  window.stopHbLoop = stopHbLoop;
+  window.startHbLoop = startHbLoop;
+  window.closeActiveModal = closeActiveModal;
+  window.closeManual = closeManual;
+}
+if (typeof globalThis !== 'undefined' && globalThis !== global) {
+  globalThis.CPH = global.CPH;
+  globalThis.UI = global.UI;
+  globalThis.esc = esc;
+  globalThis.stopHbLoop = stopHbLoop;
+  globalThis.startHbLoop = startHbLoop;
+  globalThis.closeActiveModal = closeActiveModal;
+  globalThis.closeManual = closeManual;
+}
+
 document.addEventListener('DOMContentLoaded', init);
 })(typeof window !== 'undefined' ? window : globalThis);

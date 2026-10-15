@@ -52,8 +52,23 @@ self.addEventListener('fetch', event => {
 
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then(cachedResponse => {
-      // 找到缓存则直接使用，同时在后台静默发起网络拉取更新（Stale-While-Revalidate）
-      const fetchPromise = fetch(event.request).then(networkResponse => {
+      // 1) 缓存命中：立即返回缓存，并在后台静默发起网络拉取更新（Stale-While-Revalidate）
+      if (cachedResponse) {
+        fetch(event.request).then(networkResponse => {
+          if (networkResponse && networkResponse.status === 200) {
+            const resClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, resClone);
+            });
+          }
+        }).catch(() => {
+          // 后台静默刷新失败时忽略异常
+        });
+        return cachedResponse;
+      }
+
+      // 2) 缓存未命中：发起网络请求
+      return fetch(event.request).then(networkResponse => {
         if (networkResponse && networkResponse.status === 200) {
           const resClone = networkResponse.clone();
           caches.open(CACHE_NAME).then(cache => {
@@ -62,10 +77,18 @@ self.addEventListener('fetch', event => {
         }
         return networkResponse;
       }).catch(() => {
-        // 离线无网时静默忽略网络异常
+        // 3) 离线网络故障兜底：绝对不得返回 undefined，防止 respondWith 抛错崩溃 (P0-4)
+        if (event.request.mode === 'navigate') {
+          return caches.match('./index.html').then(fallback => {
+            if (fallback) return fallback;
+            return new Response(
+              '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>中国式家长 - 离线提示</title></head><body><h2>游戏处于离线状态</h2><p>请检查网络连接后重试。</p></body></html>',
+              { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+            );
+          });
+        }
+        return new Response('', { status: 504, statusText: 'Gateway Timeout (Offline)' });
       });
-
-      return cachedResponse || fetchPromise;
     })
   );
 });

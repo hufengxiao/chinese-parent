@@ -2,12 +2,27 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="description" content="中国式家长 H5自娱版 - 原生纯前端实现，模拟从婴儿到高考再到成家立业与世代传承。">
 <meta name="theme-color" content="#d33824">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="中国式家长">
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://chinese-parent.pages.dev/">
+<meta property="og:title" content="中国式家长 · H5自娱版">
+<meta property="og:description" content="纯前端深度还原《中国式家长》H5自娱版：原生单页/PWA离线/脑洞日程/特长选秀/高考相亲/百年家族传承。">
+<meta property="og:image" content="https://chinese-parent.pages.dev/icon-512.png">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="https://chinese-parent.pages.dev/">
+<meta name="twitter:title" content="中国式家长 · H5自娱版">
+<meta name="twitter:description" content="纯前端深度还原《中国式家长》H5自娱版：原生单页/PWA离线/脑洞日程/特长选秀/高考相亲/百年家族传承。">
+<meta name="twitter:image" content="https://chinese-parent.pages.dev/icon-512.png">
+
 <title>中国式家长 · H5自娱版</title>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -70,7 +85,7 @@
           <button id="sound-btn" class="top-tool-btn" title="音效切换" aria-label="音效切换">🔊</button>
         </div>
       </div>
-      <div class="topbar-row res-row">
+      <div class="topbar-row res-row" role="region" aria-label="核心资源" aria-live="polite">
         <div class="res-item face-item" id="res-face" title="家庭面子">
           <span class="res-lbl">⭐ 面子</span>
           <b id="top-face" class="res-val">0</b>
@@ -89,7 +104,7 @@
         </div>
       </div>
     </header>
-    <div id="status"></div>
+    <div id="status" aria-live="polite"></div>
     <main id="stage"></main>
     <nav id="tabs">
       <button data-tab="plan" class="tab-btn on">📅 日程</button>
@@ -121,7 +136,7 @@
 
   <!-- 弹层 -->
   <div id="modal"></div>
-  <div id="toasts"></div>
+  <div id="toasts" aria-live="polite" aria-atomic="true"></div>
 
   <!-- 新手交互引导聚光灯遮罩层 -->
   <div id="guide-overlay" class="guide-overlay" hidden>

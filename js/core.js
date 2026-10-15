@@ -87,7 +87,7 @@ function ageOf(t) {
   if (t <= 44) return 15 + Math.min(3, Math.floor((t - 33) * 3 / 11)); // 高中期 (Turn 33~44): 15~18岁 (第44回合高考冲刺18岁)
   if (t <= 50) return 18 + Math.floor((t - 45) / 2); // 大学期 (Turn 45~50): 18~21岁, 毕业22岁
   if (t <= 57) return 22 + (t - 51); // 职场期 (Turn 51~57): 22~28岁
-  return 30 + Math.floor((t - 58) / 2); // 成家后 (Turn 58+): 30岁+
+  return 29 + Math.floor((t - 58) / 2); // 成家后 (Turn 58+): 29岁+
 }
 function cls() { return phaseOf(); }
 
@@ -101,6 +101,23 @@ function slotSaveKey(slot) {
 function slotFamKey(slot) {
   const idx = (typeof slot === 'number' && slot >= 0 && slot <= 2) ? slot : activeSlot;
   return idx === 0 ? 'cph_fam' : ('cph_fam_' + idx);
+}
+
+function writeSlot(slot, saveStr, famStr) {
+  if (!LS) return;
+  const idx = (typeof slot === 'number' && slot >= 0 && slot <= 2) ? slot : activeSlot;
+  if (saveStr !== undefined && saveStr !== null) {
+    LS.setItem(slotSaveKey(idx), saveStr);
+    if (idx === 0) {
+      LS.setItem('cph_save_0', saveStr);
+    }
+  }
+  if (famStr !== undefined && famStr !== null) {
+    LS.setItem(slotFamKey(idx), famStr);
+    if (idx === 0) {
+      LS.setItem('cph_fam_0', famStr);
+    }
+  }
 }
 
 function initStorage() {
@@ -122,10 +139,7 @@ function persist() {
   try {
     S.savedAt = Date.now();
     const str = JSON.stringify(S);
-    LS.setItem(slotSaveKey(activeSlot), str);
-    if (activeSlot === 0) {
-      LS.setItem('cph_save_0', str);
-    }
+    writeSlot(activeSlot, str, null);
   } catch (e) {}
 }
 
@@ -160,10 +174,7 @@ function saveFam(f, slot) {
   try {
     if (f && !Array.isArray(f.heirlooms)) f.heirlooms = [];
     const str = JSON.stringify(f);
-    LS.setItem(slotFamKey(idx), str);
-    if (idx === 0) {
-      LS.setItem('cph_fam_0', str);
-    }
+    writeSlot(idx, null, str);
   } catch (e) {}
 }
 
@@ -353,20 +364,9 @@ function copySlot(fromSlot, toSlot) {
   if (!s && !fam) return { ok: false, error: '来源槽位为空' };
   if (LS) {
     try {
-      if (s) {
-        LS.setItem(slotSaveKey(t), JSON.stringify(s));
-        if (t === 0) {
-          LS.setItem('cph_save', JSON.stringify(s));
-          LS.setItem('cph_save_0', JSON.stringify(s));
-        }
-      }
-      if (fam) {
-        LS.setItem(slotFamKey(t), JSON.stringify(fam));
-        if (t === 0) {
-          LS.setItem('cph_fam', JSON.stringify(fam));
-          LS.setItem('cph_fam_0', JSON.stringify(fam));
-        }
-      }
+      const sStr = s ? JSON.stringify(s) : null;
+      const famStr = fam ? JSON.stringify(fam) : null;
+      writeSlot(t, sStr, famStr);
     } catch (e) {}
   }
   if (t === activeSlot) {
@@ -458,22 +458,27 @@ function importSlot(rawInput, targetSlot) {
     return { ok: false, error: '存档包内容为空' };
   }
 
+  if (saveObj) {
+    let sName = (typeof saveObj.name === 'string') ? saveObj.name : '';
+    sName = sName.replace(/<[^>]*>/g, '').trim();
+    if (!sName) {
+      sName = '无名';
+    } else if (sName.length > 16) {
+      sName = sName.slice(0, 16);
+    }
+    saveObj.name = sName;
+  }
+  if (summary && typeof summary === 'object') {
+    let smName = (typeof summary.name === 'string') ? summary.name : '';
+    smName = smName.replace(/<[^>]*>/g, '').trim();
+    summary.name = smName ? smName.slice(0, 16) : ((saveObj && saveObj.name) || '无名');
+  }
+
   if (LS) {
     try {
-      if (saveObj) {
-        LS.setItem(slotSaveKey(idx), JSON.stringify(saveObj));
-        if (idx === 0) {
-          LS.setItem('cph_save', JSON.stringify(saveObj));
-          LS.setItem('cph_save_0', JSON.stringify(saveObj));
-        }
-      }
-      if (famObj) {
-        LS.setItem(slotFamKey(idx), JSON.stringify(famObj));
-        if (idx === 0) {
-          LS.setItem('cph_fam', JSON.stringify(famObj));
-          LS.setItem('cph_fam_0', JSON.stringify(famObj));
-        }
-      }
+      const saveStr = saveObj ? JSON.stringify(saveObj) : null;
+      const famStr = famObj ? JSON.stringify(famObj) : null;
+      writeSlot(idx, saveStr, famStr);
     } catch (e) {
       return { ok: false, error: '存储空间已满或写入异常' };
     }
@@ -619,18 +624,37 @@ function rollParentingStyle(fam) {
   return pick(pool);
 }
 
+function applyOneRelic(r) {
+  if (!S || !r || !r.perk) return;
+  const p = r.perk;
+  if (p.maxAct) S.act = clamp((S.act || 0) + p.maxAct, 0, 240);
+  if (p.seedMoney) S.money = (S.money || 0) + p.seedMoney;
+  if (!S.attrs) S.attrs = {};
+  if (p.phy) S.attrs.phy = (S.attrs.phy || 0) + p.phy;
+  if (p.img) S.attrs.img = (S.attrs.img || 0) + p.img;
+  if (p.cha) S.attrs.cha = (S.attrs.cha || 0) + p.cha;
+  if (p.eq) S.attrs.eq = (S.attrs.eq || 0) + p.eq;
+  if (p.face) S.face = (S.face || 0) + p.face;
+}
+
+function removeOneRelic(r) {
+  if (!S || !r || !r.perk) return;
+  const p = r.perk;
+  if (p.maxAct) S.act = Math.max(0, (S.act || 0) - p.maxAct);
+  if (p.seedMoney) S.money = Math.max(0, (S.money || 0) - p.seedMoney);
+  if (!S.attrs) S.attrs = {};
+  if (p.phy) S.attrs.phy = Math.max(0, (S.attrs.phy || 0) - p.phy);
+  if (p.img) S.attrs.img = Math.max(0, (S.attrs.img || 0) - p.img);
+  if (p.cha) S.attrs.cha = Math.max(0, (S.attrs.cha || 0) - p.cha);
+  if (p.eq) S.attrs.eq = Math.max(0, (S.attrs.eq || 0) - p.eq);
+  if (p.face) S.face = Math.max(0, (S.face || 0) - p.face);
+}
+
 function applyRelicPerks() {
   if (!S || !Array.isArray(S.equippedRelics)) return;
   S.equippedRelics.forEach(id => {
     const r = (D.relics || []).find(x => x.id === id);
-    if (!r || !r.perk) return;
-    if (r.perk.maxAct) S.act = clamp(S.act + r.perk.maxAct, 0, 240);
-    if (r.perk.seedMoney) S.money += r.perk.seedMoney;
-    if (r.perk.phy) S.attrs.phy += r.perk.phy;
-    if (r.perk.img) S.attrs.img += r.perk.img;
-    if (r.perk.cha) S.attrs.cha += r.perk.cha;
-    if (r.perk.eq) S.attrs.eq += r.perk.eq;
-    if (r.perk.face) S.face += r.perk.face;
+    if (r) applyOneRelic(r);
   });
 }
 
@@ -663,12 +687,8 @@ function equipRelic(id) {
   }
   S.equippedRelics.push(id);
   const r = (D.relics || []).find(x => x.id === id);
-  if (r && r.perk) {
-    if (r.perk.phy) S.attrs.phy += r.perk.phy;
-    if (r.perk.img) S.attrs.img += r.perk.img;
-    if (r.perk.cha) S.attrs.cha += r.perk.cha;
-    if (r.perk.eq) S.attrs.eq += r.perk.eq;
-    if (r.perk.face) S.face += r.perk.face;
+  if (r) {
+    applyOneRelic(r);
   }
   toast('已佩戴传家宝【' + (r ? r.n : id) + '】');
   persist();
@@ -681,12 +701,8 @@ function unequipRelic(id) {
   if (idx < 0) return false;
   S.equippedRelics.splice(idx, 1);
   const r = (D.relics || []).find(x => x.id === id);
-  if (r && r.perk) {
-    if (r.perk.phy) S.attrs.phy = Math.max(0, S.attrs.phy - r.perk.phy);
-    if (r.perk.img) S.attrs.img = Math.max(0, S.attrs.img - r.perk.img);
-    if (r.perk.cha) S.attrs.cha = Math.max(0, S.attrs.cha - r.perk.cha);
-    if (r.perk.eq) S.attrs.eq = Math.max(0, S.attrs.eq - r.perk.eq);
-    if (r.perk.face) S.face = Math.max(0, S.face - r.perk.face);
+  if (r) {
+    removeOneRelic(r);
   }
   toast('已卸下传家宝【' + (r ? r.n : id) + '】');
   persist();
@@ -847,6 +863,7 @@ function newGame() {
     careerBranch: null,
     lastBrainCombo: null,
   };
+  S.act = 100; // 基线行动力重置，确保在 parentingStyle 与 applyRelicPerks 之前建立基准
   const pStyle = (D.parentingStyles || []).find(x => x.id === S.parentingStyle);
   if (pStyle) {
     if (pStyle.initFace) S.face += pStyle.initFace;
@@ -884,7 +901,6 @@ function newGame() {
   S.learnedCourses = ['fanshen', 'wanju'];
   S.skills.fanshen = 1;
   S.skills.wanju = 1;
-  S.act = 100;
 
   const perTurnGrowth = fam.talent > 0 ? Math.max(1, Math.floor(fam.talent / 2)) : 0;
   const inheritStory = fam.g > 0
@@ -2011,7 +2027,7 @@ function pendShow(tier, title) {
 
 function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice, styleChoice, secondTalentId) {
   if (!S || !S.pending) return null;
-  const m = S.pending.find(x => x && x.type === 'show') || S.pending[0];
+  const m = S.pending.find(x => x && x.type === 'show') || S.pending.find(x => x && x.type === 'showr') || S.pending[0];
   if (!m || (m.type !== 'show' && m.type !== 'showr')) return null;
   const tier = m.tier || 1;
 
@@ -2025,10 +2041,32 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice, styleCho
     secondTalentId = opts.secondTalentId;
   }
 
+  // 检查是否已结算过（Encore 第二次调用判定）
+  const existingShowrIdx = S.pending.findIndex(x => x && x.type === 'showr');
+  const existingShowr = existingShowrIdx >= 0 ? S.pending[existingShowrIdx] : null;
+  const settledFlag = (S.flags && S.flags['showSettled_' + tier]) || null;
+  const isResettle = (existingShowr !== null) || (m.type === 'showr') || (settledFlag !== null);
+
+  let prevGi = 0;
+  let prevGf = 0;
+  let prevWin = false;
+  if (settledFlag) {
+    prevGi = settledFlag.gi || 0;
+    prevGf = settledFlag.gf || 0;
+    prevWin = !!settledFlag.win;
+  } else if (existingShowr) {
+    prevGi = existingShowr.gi || 0;
+    prevGf = existingShowr.gf || 0;
+    prevWin = !!existingShowr.win;
+  }
+
   // 1) 检录我方出战特长
   let mine = null;
   if (chosenTalentId) {
     mine = D.talentData.find(x => x.id === chosenTalentId);
+  }
+  if (!mine && isResettle && existingShowr && existingShowr.mine) {
+    mine = existingShowr.mine;
   }
   if (!mine) {
     mine = bestTalent();
@@ -2038,44 +2076,49 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice, styleCho
   }
   if (!mine.cat) mine.cat = 'art';
 
-  const rival = m.rival || {
+  const rival = m.rival || (existingShowr && existingShowr.rival) || {
     name: '隔壁小明',
     talent: { id: 'rival_t', n: '儿歌串烧', r: 1, icon: '🎶', atk: 7, cat: 'art' }
   };
   const rivalR = (rival.talent && rival.talent.r) || 1;
 
-  // 2) 基础胜率基准
-  let pBase = 0.50;
-  if (mine.r >= rivalR) {
-    pBase = clamp(0.72 + (mine.r - rivalR) * 0.18, 0.10, 0.92);
+  const sStyle = styleChoice || (existingShowr && existingShowr.styleChoice) || 'steady';
+  const sGrade = showtimeGrade || (existingShowr && existingShowr.showtimeGrade) || 'normal';
+
+  let lights;
+  if (isResettle && existingShowr && Array.isArray(existingShowr.lights)) {
+    lights = existingShowr.lights.slice();
   } else {
-    pBase = clamp(0.28 - (rivalR - mine.r) * 0.12, 0.10, 0.92);
-  }
+    // 2) 基础胜率基准
+    let pBase = 0.50;
+    if (mine.r >= rivalR) {
+      pBase = clamp(0.72 + (mine.r - rivalR) * 0.18, 0.10, 0.92);
+    } else {
+      pBase = clamp(0.28 - (rivalR - mine.r) * 0.12, 0.10, 0.92);
+    }
 
-  // 3) 三大表演风格修正
-  const sStyle = styleChoice || 'steady';
-  const sGrade = showtimeGrade || 'normal';
+    // 3) 三大表演风格修正
+    // 张教授 (严谨学术派)
+    let bZhang = (mine.cat === 'stem' ? 0.22 : 0) + (mine.r >= 3 ? 0.15 : 0) + (sStyle === 'steady' ? 0.20 : 0) - (mine.cat === 'witty' ? 0.16 : 0);
+    const pZhang = clamp(pBase + bZhang, 0.05, 0.98);
+    const l1 = Math.random() < pZhang;
 
-  // 张教授 (严谨学术派)
-  let bZhang = (mine.cat === 'stem' ? 0.22 : 0) + (mine.r >= 3 ? 0.15 : 0) + (sStyle === 'steady' ? 0.20 : 0) - (mine.cat === 'witty' ? 0.16 : 0);
-  const pZhang = clamp(pBase + bZhang, 0.05, 0.98);
-  const l1 = Math.random() < pZhang;
+    // 麦克老师 (前卫舞台派)
+    let deltaShowtime = (sGrade === 'perfect' ? 0.18 : (sGrade === 'good' ? 0.10 : 0));
+    let bMike = ((mine.cat === 'art' || mine.cat === 'phy') ? 0.20 : 0) + (sStyle === 'showtime' ? 0.22 : 0) + deltaShowtime - (mine.r <= 1 ? 0.10 : 0);
+    const pMike = clamp(pBase + bMike, 0.05, 0.98);
+    const l2 = Math.random() < pMike;
 
-  // 麦克老师 (前卫舞台派)
-  let deltaShowtime = (sGrade === 'perfect' ? 0.18 : (sGrade === 'good' ? 0.10 : 0));
-  let bMike = ((mine.cat === 'art' || mine.cat === 'phy') ? 0.20 : 0) + (sStyle === 'showtime' ? 0.22 : 0) + deltaShowtime - (mine.r <= 1 ? 0.10 : 0);
-  const pMike = clamp(pBase + bMike, 0.05, 0.98);
-  const l2 = Math.random() < pMike;
+    // 李主任 (德育亲和派)
+    const eqBonus = ((S.attrs && S.attrs.eq) ? (S.attrs.eq / 200) * 0.12 : 0);
+    let bLi = (sStyle === 'witty' ? 0.22 : 0) + eqBonus + (mine.r === 1 ? 0.15 : 0) + 0.10;
+    const pLi = clamp(pBase + bLi, 0.05, 0.98);
+    const l3 = Math.random() < pLi;
 
-  // 李主任 (德育亲和派)
-  const eqBonus = ((S.attrs && S.attrs.eq) ? (S.attrs.eq / 200) * 0.12 : 0);
-  let bLi = (sStyle === 'witty' ? 0.22 : 0) + eqBonus + (mine.r === 1 ? 0.15 : 0) + 0.10;
-  const pLi = clamp(pBase + bLi, 0.05, 0.98);
-  const l3 = Math.random() < pLi;
-
-  let lights = [l1, l2, l3];
-  if (typeof hasRelic === 'function' && hasRelic('relic_camera') && !lights[2]) {
-    lights[2] = true;
+    lights = [l1, l2, l3];
+    if (typeof hasRelic === 'function' && hasRelic('relic_camera') && !lights[2]) {
+      lights[2] = true;
+    }
   }
 
   // 4) 危急时刻【绝活返场 (Encore)】判定
@@ -2105,31 +2148,55 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice, styleCho
   const greenCount = lights.filter(Boolean).length;
   const win = greenCount >= 2;
 
-  // 5) 结算奖励与专属特长
-  if (win) {
-    if (!S.flags) S.flags = {};
-    S.flags.wonShow = 1;
-    // 授予金色传说特长：才艺之星·舞台王者
-    if (!S.talents) S.talents = [];
-    if (!S.talents.includes('talent_king')) {
-      S.talents.push('talent_king');
-    }
-  } else {
-    const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
-    if (pStyle && pStyle.id === 'elite') {
-      S.sat = Math.max(0, S.sat - 25);
-      toast('卷王世家对未获第一感到极度失望，家庭满意度-25！');
-    }
-  }
-
   let gi = win ? (tier >= 3 ? 500 : 200) : 120;
   let gf = win ? (tier >= 3 ? 150 : 60) : 30;
   if (win && greenCount === 3) {
     gi = Math.round(gi * 1.25);
     gf += 30;
   }
-  S.insight = (S.insight || 0) + gi;
-  S.face = Math.max(0, (S.face || 0) + gf);
+
+  // 5) 结算奖励与专属特长
+  if (!isResettle) {
+    if (win) {
+      if (!S.flags) S.flags = {};
+      S.flags.wonShow = 1;
+      // 授予金色传说特长：才艺之星·舞台王者
+      if (!S.talents) S.talents = [];
+      if (!S.talents.includes('talent_king')) {
+        S.talents.push('talent_king');
+      }
+    } else {
+      const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
+      if (pStyle && pStyle.id === 'elite') {
+        S.sat = Math.max(0, S.sat - 25);
+        toast('卷王世家对未获第一感到极度失望，家庭满意度-25！');
+      }
+    }
+    S.insight = (S.insight || 0) + gi;
+    S.face = Math.max(0, (S.face || 0) + gf);
+  } else {
+    // 增量结算：仅补充差额，不重复结算基础奖励
+    const deltaGi = Math.max(0, gi - prevGi);
+    const deltaGf = Math.max(0, gf - prevGf);
+    if (deltaGi > 0) S.insight = (S.insight || 0) + deltaGi;
+    if (deltaGf > 0) S.face = Math.max(0, (S.face || 0) + deltaGf);
+
+    if (win && !prevWin) {
+      if (!S.flags) S.flags = {};
+      S.flags.wonShow = 1;
+      if (!S.talents) S.talents = [];
+      if (!S.talents.includes('talent_king')) {
+        S.talents.push('talent_king');
+      }
+      const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
+      if (pStyle && pStyle.id === 'elite') {
+        S.sat = clamp((S.sat || 0) + 25, 0, 100);
+      }
+    }
+  }
+
+  if (!S.flags) S.flags = {};
+  S.flags['showSettled_' + tier] = { gi, gf, win, greenCount };
 
   // 6) 评委个性化针对性点评
   const judgeQuotes = [
@@ -2183,15 +2250,16 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice, styleCho
       : `惜败……对手【${rival.talent.n}】稍胜一筹，斩获优秀纪念奖。(悟性+${gi}, 面子+${gf})`),
     opts: ['收下奖项，走下舞台 🏆']
   };
-  S.pending.unshift(resultModal);
+
+  const currentShowrIdx = S.pending.findIndex(x => x && x.type === 'showr');
+  if (currentShowrIdx >= 0) {
+    S.pending[currentShowrIdx] = resultModal;
+  } else {
+    S.pending.unshift(resultModal);
+  }
 
   log((win ? '🏆 才艺选秀夺冠！' : '才艺选秀参与奖：') + '凭【' + mine.n + '】获悟性+' + gi + ', 面子+' + gf);
   return resultModal;
-}
-
-function showResult(tier) {
-  const r = talentShowPerform();
-  return r ? r.body : '';
 }
 
 function bestTalent() {
@@ -2388,7 +2456,7 @@ function faceDuelStep(actionIdx) {
   let myDmg = 0;
   let playerLog = '';
   let synergyNotice = '';
-  const isMomUlt = (actionIdx === 'mom' || (actionIdx === 4 && duel.momRage >= 100) || actionIdx === 'mom_ult');
+  const isMomUlt = (actionIdx === 'mom' || actionIdx === 'mom_ult');
 
   if (isMomUlt) {
     duel.momRage = 0;
@@ -3022,8 +3090,8 @@ function doElection(o, targetId) {
 }
 
 function electionFinish() {
+  if (!S || !S.election) return null;
   const el = S.election;
-  if (!el) return;
   el.finished = true;
 
   // 排序得出最终排名
@@ -4072,6 +4140,10 @@ const API = {
   newGame, resume, resetAll, restartLineage,
   save: () => persist(),
   persist,
+  attrName: (k) => ANAME[k] || k,
+  attrNames: () => ({ ...ANAME }),
+  ANAME,
+  writeSlot,
   nextGen: () => { resetAll(); newGame(); },
   saveInfo,
   info: () => S ? {
@@ -4144,7 +4216,8 @@ const API = {
     clearSlot,
     copySlot,
     exportSlot,
-    importSlot
+    importSlot,
+    writeSlot
   },
   activeSlot: () => activeSlot,
   saveSlots: listSlots,
@@ -4301,6 +4374,14 @@ function resolvePend(i) {
       break;
     }
     case 'showr': {
+      if (S && S.flags) {
+        if (m.tier && S.flags['showSettled_' + m.tier]) {
+          delete S.flags['showSettled_' + m.tier];
+        }
+        Object.keys(S.flags).forEach(k => {
+          if (k.startsWith('showSettled_')) delete S.flags[k];
+        });
+      }
       S.pending.shift();
       res = '走下选秀舞台';
       break;
@@ -4393,6 +4474,9 @@ function resolvePend(i) {
       break;
     }
     default: {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[CP] 未处理的 pend 类型:', S.pending[0] && S.pending[0].type);
+      }
       S.pending.shift();
       res = '继续';
       break;
@@ -4402,5 +4486,19 @@ function resolvePend(i) {
   return res;
 }
 global.CP = API;
+global.ANAME = ANAME;
+global.CPH = global.CPH || {};
+global.CPH.CP = API;
+if (typeof DATA !== 'undefined') global.CPH.DATA = DATA;
+else if (global.DATA) global.CPH.DATA = global.DATA;
+
+if (typeof window !== 'undefined' && window !== global) {
+  window.CP = API;
+  window.CPH = global.CPH;
+}
+if (typeof globalThis !== 'undefined' && globalThis !== global) {
+  globalThis.CP = API;
+  globalThis.CPH = global.CPH;
+}
 if (typeof module !== 'undefined') module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

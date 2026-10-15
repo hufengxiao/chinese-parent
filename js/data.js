@@ -1721,3 +1721,18 @@ changelog: [
   }
 ]
 };
+
+const _rootData = (typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : (typeof global !== 'undefined' ? global : null)));
+if (_rootData) {
+  _rootData.DATA = DATA;
+  _rootData.CPH = _rootData.CPH || {};
+  _rootData.CPH.DATA = DATA;
+}
+if (typeof globalThis !== 'undefined' && globalThis && globalThis !== _rootData) {
+  globalThis.DATA = DATA;
+  globalThis.CPH = globalThis.CPH || {};
+  globalThis.CPH.DATA = DATA;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = DATA;
+}
