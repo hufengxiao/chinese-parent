@@ -1055,7 +1055,7 @@ function restoreTurnStart() {
 }
 
 function courseCost(c) {
-  const phaseBase = { baby: 20, kinder: 35, pri: 55, junior: 85, senior: 130, college: 160 }[c.phase] || 40;
+  const phaseBase = { baby: 45, kinder: 80, pri: 120, junior: 200, senior: 300, college: 380 }[c.phase] || 90;
   const base = c.baseInsight || phaseBase;
   const mainAttrKey = c.main || (c.attr ? Object.keys(c.attr)[0] : 'iq');
   const attrVal = (S && S.attrs) ? (S.attrs[mainAttrKey] || 0) : 0;
@@ -3955,7 +3955,7 @@ function bGrid() { return bOpen().g; }
 function applyBrainCell(c, b, mult = 1) {
   const db = (1 + (b.layer - 1) * 0.2) * mult;
   switch (c.t) {
-    case 'bulb': { const v = Math.round(RI(10, 20) * db); S.insight = Math.max(0, Math.round((S.insight || 0) + v)); return '💡 悟性+' + v; }
+    case 'bulb': { const v = Math.round(RI(3, 6) * db); S.insight = Math.max(0, Math.round((S.insight || 0) + v)); return '💡 悟性+' + v; }
     case 'attr': { const k = pick(['iq', 'eq', 'mem', 'img', 'phy']); const v = Math.round((RI(2, 4) + Math.max(0, b.layer - 1)) * db); S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + v))); return ANAME[k] + '+' + v; }
     case 'bolt': { const v = Math.round(RI(10, 25) * mult); S.act = clamp(S.act + v, 0, 240); return '⚡ 行动+' + v; }
     case 'skull': { const v = Math.round(RI(2, 4) * mult); ['iq', 'eq', 'mem', 'img', 'phy'].forEach(k => { S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + v))); }); return '💀 脑内风暴:五维+' + v; }
@@ -3984,10 +3984,12 @@ function bRev(i) {
         b.keyIdx = -1;
         res = '🗝️ 钥匙已启用！成功下探至第' + b.layer + '层 (行动+50)！';
       } else {
-        S.act = clamp(S.act + 50, 0, 240);
+        // 第 4 层已到底: 钥匙作为沉没资源转为一次性悟性补给 (堵住无限刷行动力漏洞)
+        const bonus = 20;
+        S.insight = Math.max(0, Math.round((S.insight || 0) + bonus));
         b.keyPending = false;
         b.keyIdx = -1;
-        res = '🗝️ 钥匙已启用！已探明脑洞最深处，行动+50！';
+        res = '🗝️ 钥匙已启用！已探明脑洞最深处 (悟性+' + bonus + ')！';
       }
       save();
       return res;

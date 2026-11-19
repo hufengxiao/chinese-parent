@@ -856,8 +856,9 @@ const swFileContent = fs.readFileSync(path.join(dir, '..', 'sw.js'), 'utf8');
 const indexHtmlContent = fs.readFileSync(path.join(dir, '..', 'index.html'), 'utf8');
 assert(swFileContent.includes(`CACHE_NAME = 'chinese-parent-${DATA.version}'`), `sw.js 离线缓存版本必须与 DATA.version (${DATA.version}) 严格同步`);
 assert(indexHtmlContent.includes(DATA.version), `index.html 必须包含最新版本号 ${DATA.version}`);
-assert.strictEqual(DATA.version, 'v3.0.0', '当前最新发版版本应为 v3.0.0');
-assert(DATA.changelog[0].title.includes('选秀') || DATA.changelog[0].title.includes('才艺'), 'v3.0.0 首条更新必须包含特长才艺选秀 3.0');
+assert.strictEqual(DATA.version, 'v3.1.0', '当前最新发版版本应为 v3.1.0');
+assert(DATA.changelog[0].title.includes('悟性') || DATA.changelog[0].title.includes('平衡'), 'v3.1.0 首条更新必须为悟性经济再平衡公告');
+assert(DATA.changelog[1] && (DATA.changelog[1].title.includes('选秀') || DATA.changelog[1].title.includes('才艺')), 'v3.0.0 次条更新必须保留特长才艺选秀 3.0 记录');
 
 console.log('版本更新公告数据结构、多版本滚动历史、刷新自动识别与开发者升版响应测试 100% 验证通过！');
 
@@ -1659,10 +1660,12 @@ gLayer4[0].open = false;
 CP.brain.rev(0);
 assert.strictEqual(CP.brain.info().keyPending, true, '第4层挖出钥匙依然进入待决状态');
 const actBeforeUse = CP.state().act;
+const insBeforeUse = CP.state().insight;
 const useKeyLayer4 = CP.brain.useKey();
-assert(useKeyLayer4.includes('最深处') || useKeyLayer4.includes('行动+50'), '封顶层激活钥匙应有封顶提示');
+assert(useKeyLayer4.includes('最深处'), '封顶层激活钥匙应有封顶提示');
 assert.strictEqual(CP.brain.info().layer, 4, '封顶层激活钥匙不继续递增');
-assert.strictEqual(CP.state().act, actBeforeUse + 50, '封顶层激活钥匙依然如期奖励 50 行动力');
+assert.strictEqual(CP.state().act, actBeforeUse, '封顶层激活钥匙不再奖励行动力 (无限刷漏洞已修复)');
+assert.strictEqual(CP.state().insight, insBeforeUse + 20, '封顶层激活钥匙改为一次性奖励 20 悟性');
 
 // 3) 验证 SoundManager 包含新增的 statGain 与 keyUnlock 方法
 const testSndMgr = new sndSandboxCtx.SoundManager();

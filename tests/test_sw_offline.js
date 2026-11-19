@@ -77,8 +77,11 @@ function createSwSandbox(options = {}) {
     }
   }
 
-  const defaultCache = new MockCache('chinese-parent-v3.0.0');
-  cacheStorageMap.set('chinese-parent-v3.0.0', defaultCache);
+  // 缓存名直接从 sw.js 源码提取, 避免升版时硬编码失同步 (筑牢发版防线)
+  const swRaw = fs.readFileSync(path.join(__dirname, '../sw.js'), 'utf8');
+  const cacheName = (swRaw.match(/CACHE_NAME = '([^']+)'/) || [])[1] || 'chinese-parent-v3.1.0';
+  const defaultCache = new MockCache(cacheName);
+  cacheStorageMap.set(cacheName, defaultCache);
 
   const mockCaches = {
     async open(name) {

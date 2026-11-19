@@ -245,7 +245,7 @@ function createSandbox() {
   assert(revRes && revRes.indexOf('灵感回路') >= 0, '4连通连击必须触发【灵感回路】(1.6倍)');
   assert(state.lastBrainCombo && state.lastBrainCombo.count >= 4, '突触BFS连击数必须正确统计为 4');
   assert.strictEqual(state.lastBrainCombo.mult, 1.6, '4连通连击倍率必须为 1.6');
-  assert(state.insight > startInsight + 15, '连击暴击悟性增长显著高于单格基础值');
+  assert(state.insight > startInsight + 4, '连击暴击悟性增长显著高于单格基础值');
 
   // 4.2 验证全脑风暴 (5+ 连击返还 2 行动点)
   CP.newGame();
