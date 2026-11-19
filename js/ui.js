@@ -3694,7 +3694,7 @@ function renderMarryModal(p, m) {
     body.appendChild(card);
 
     const btnPropose = h('button', 'marry-action-btn propose');
-    btnPropose.innerHTML = '💍 拿出钻戒，单膝跪地深情求婚！<span class="btn-sub">结为校园夫妻，家庭面子+40，全额继承基因</span>';
+    btnPropose.innerHTML = '💍 拿出钻戒，单膝跪地深情求婚！<span class="btn-sub">结为校园夫妻，家庭面子+20，全额继承基因</span>';
     btnPropose.onclick = () => {
       sound.win();
       const r = CP.resolve(0);
