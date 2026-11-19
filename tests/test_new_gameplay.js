@@ -454,7 +454,7 @@ assert(CP.state().spouse, '求婚成功后必须确立配偶');
 assert.strictEqual(CP.state().spouse.tag, '校园恋人', '配偶标签应为校园恋人');
 assert.strictEqual(CP.state().spouse.name, '苏软软', '配偶姓名应为苏软软');
 assert.strictEqual(CP.state().spouse.bonus.eq, 20, '配偶专属遗传基因应成功绑定');
-assert.strictEqual(CP.state().face, preFaceM + 40, '求婚成功家庭面子增加40');
+assert.strictEqual(CP.state().face, preFaceM + 20, '求婚成功家庭面子增加20 (v3.3.0 面子反通胀减半)');
 console.log('校园恋人浪漫求婚验证通过:', proposeRes);
 
 // 2) 验证长辈公园相亲角
@@ -534,7 +534,7 @@ assert.strictEqual(CP.pending().length, 0, '答辩后模态框已关闭');
 assert.strictEqual(CP.state().job.t, 2, '考核 S+ 后职级应晋升为 Tier 2');
 assert(CP.state().job.n.includes('资深'), '岗位名称应冠以晋升级别前缀: ' + CP.state().job.n);
 assert.strictEqual(CP.state().workSalary, Math.round(preJobSalary * 1.5), '晋升后月薪应暴涨 1.5 倍');
-assert.strictEqual(CP.state().face, preJobFace + 50, '晋升成功后家庭面子应加 50');
+assert.strictEqual(CP.state().face, preJobFace + 25, '晋升成功后家庭面子应加 25 (v3.3.0 面子反通胀减半)');
 console.log('年中绩效考核与职级擢升结算验证通过:\n' + promoRes);
 
 console.log('\n--- 测试 11: 📱 脑洞连环爆炸机制与 PWA 离线应用支持 ---');
@@ -856,9 +856,10 @@ const swFileContent = fs.readFileSync(path.join(dir, '..', 'sw.js'), 'utf8');
 const indexHtmlContent = fs.readFileSync(path.join(dir, '..', 'index.html'), 'utf8');
 assert(swFileContent.includes(`CACHE_NAME = 'chinese-parent-${DATA.version}'`), `sw.js 离线缓存版本必须与 DATA.version (${DATA.version}) 严格同步`);
 assert(indexHtmlContent.includes(DATA.version), `index.html 必须包含最新版本号 ${DATA.version}`);
-assert.strictEqual(DATA.version, 'v3.2.0', '当前最新发版版本应为 v3.2.0');
-assert(DATA.changelog[0].title.includes('高考') || DATA.changelog[0].title.includes('拟真'), 'v3.2.0 首条更新必须为考试拟真化公告');
-assert(DATA.changelog[1] && (DATA.changelog[1].title.includes('悟性') || DATA.changelog[1].title.includes('平衡')), 'v3.1.0 次条更新必须保留悟性经济再平衡记录');
+assert.strictEqual(DATA.version, 'v3.3.0', '当前最新发版版本应为 v3.3.0');
+assert(DATA.changelog[0].title.includes('五大数值') || DATA.changelog[0].title.includes('通胀'), 'v3.3.0 首条更新必须为五大数值修复公告');
+assert(DATA.changelog[1] && (DATA.changelog[1].title.includes('拟真') || DATA.changelog[1].title.includes('考')), 'v3.2.0 次条更新必须保留考试拟真化记录');
+assert(DATA.changelog[2] && (DATA.changelog[2].title.includes('悟性') || DATA.changelog[2].title.includes('平衡')), 'v3.1.0 三条更新必须保留悟性经济再平衡记录');
 
 console.log('版本更新公告数据结构、多版本滚动历史、刷新自动识别与开发者升版响应测试 100% 验证通过！');
 

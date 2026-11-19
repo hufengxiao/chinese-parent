@@ -872,11 +872,12 @@ function newGame() {
   }
   applyRelicPerks();
   if (fam.g > 0) {
-    // 父母 18% 属性遗传 + 伴侣基因增益 + 家族特长底蕴
-    const inheritRatio = (fam.achievements && fam.achievements.indexOf('ach-gen-5') >= 0) ? 0.25 : 0.18;
+    // 父母属性遗传 + 伴侣基因增益 + 家族特长底蕴
+    // 反滚雪球: 18%/25% 无上限曾让第3代属性 1200+; 收紧为 12%/16%, 单项遗传封顶 150
+    const inheritRatio = (fam.achievements && fam.achievements.indexOf('ach-gen-5') >= 0) ? 0.16 : 0.12;
     ATTRS.forEach(k => {
-      const parentShare = Math.round(((fam.attr && fam.attr[k]) || 0) * inheritRatio);
-      S.attrs[k] += parentShare + (fam.talent || 0);
+      const parentShare = Math.min(150, Math.round(((fam.attr && fam.attr[k]) || 0) * inheritRatio));
+      S.attrs[k] += parentShare + Math.min(5, fam.talent || 0);
       if (fam.spouseBonus && fam.spouseBonus[k]) {
         S.attrs[k] += fam.spouseBonus[k];
       }
@@ -898,11 +899,13 @@ function newGame() {
     if (pShadow >= 50) S.stress = Math.min(40, Math.round(pShadow / 4));
     if ((fam.stress || 0) > 80) S.stress = Math.min(40, S.stress + Math.round(((fam.stress || 0) - 80) / 4));
   }
+  // 面子按门第封顶 (docs/03:92-97 开局面子上限 100~350 by tier): 此前无封顶, 面子堆到 1500 让索取门槛全部失效
+  S.face = Math.min(S.face, [100, 120, 150, 200, 260, 350][clamp(S.fam.tier || 0, 0, 5)]);
   S.learnedCourses = ['fanshen', 'wanju'];
   S.skills.fanshen = 1;
   S.skills.wanju = 1;
 
-  const perTurnGrowth = fam.talent > 0 ? Math.max(1, Math.floor(fam.talent / 2)) : 0;
+  const perTurnGrowth = fam.talent > 0 ? Math.min(3, Math.max(1, Math.floor(fam.talent / 8))) : 0;
   const inheritStory = fam.g > 0
     ? `\n🧬 上一代【${fam.name}】的积累为你打下深厚底蕴：\n• 父母五维遗传与伴侣基因赋能已注入开局！\n• 继承家族压岁钱 +${seedMoney} 元，门第面子 +${(fam.tier || 0) * 25}\n• 家族图鉴已收录 ${fam.talent} 项特长，每回合五维成长 +${perTurnGrowth}！`
     : '\n白手起家，第一代开启你的逆袭人生！';
@@ -1652,7 +1655,7 @@ function applyAct(pi) {
     if (!c) return;
     const lvl = S.skills[c.id] || 1;
     ATTRS.forEach(k => { if (c.attr && c.attr[k]) S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + c.attr[k]))); });
-    S.sat = clamp(S.sat + (c.sat || 2), 0, 140);
+    S.sat = clamp(S.sat + (c.sat || 1), 0, 140);
     S.stress = clamp(S.stress + (c.stress || 4), 0, 200);
     S.skills[c.id] = lvl + 1;
     log('练习了「' + c.name + '」 (掌握Lv' + (lvl + 1) + ')');
@@ -1738,8 +1741,9 @@ function endTurn() {
   // 每回合刷新全新脑洞 (6x6)
   S.brain = { layer: 1, g: bGen(), keyPending: false, keyIdx: -1 };
   // 家族天赋：每回合自然全属性成长加成 (一代更比一代强！)
+  // 反滚雪球: talent/2 曾让第5代(talent 20)每回合+10全属性×60回合=+600; 收紧为 talent/8, 上限+3
   if (S.fam && S.fam.talent > 0) {
-    const famBonus = Math.max(1, Math.floor(S.fam.talent / 2));
+    const famBonus = Math.min(3, Math.max(1, Math.floor(S.fam.talent / 8)));
     ATTRS.forEach(k => { S.attrs[k] = Math.max(0, Math.round(((S.attrs[k] || 0) + famBonus))); });
   }
 
@@ -1772,6 +1776,18 @@ function endTurn() {
   }
   const mp = moneyLet();
   if (mp > 0) { S.money += mp; log('零花钱 +' + mp); }
+  // 面子维护费: 超出门第上限的面子每回合流失超出部分的 15% (名声不经营就会掉, 遏制面子通胀)
+  const faceCap = [100, 120, 150, 200, 260, 350][clamp((S.fam && S.fam.tier) || 0, 0, 5)];
+  if (S.face > faceCap) {
+    const decay = Math.max(2, Math.round((S.face - faceCap) * 0.15));
+    S.face = Math.max(faceCap, S.face - decay);
+  }
+  // 愿望点获取 (修复"索取次数永不补充"漏洞, 对齐 UI 文案承诺):
+  // 满意度高 (≥80) 的家庭 30% 概率积攒 1 点; 考试前茅/重点/清北、阶段蜕变另有奖励
+  if (S.sat >= 80 && S.wishPoints < 3 && Math.random() < 0.3) {
+    S.wishPoints += 1;
+    log('家庭氛围融洽，攒下了一次许愿的机会 (愿望点 +' + S.wishPoints + ')');
+  }
   const rests = S.slots.filter(x => x && x.kind === 'rest').length;
   S.act = clamp(S.act + 40 + rests * 10, 10, 240);
   if (S.stress <= 0) { S.act = clamp(S.act + 15, 0, 240); }
@@ -1824,6 +1840,8 @@ function endTurn() {
     }
     const ph = cls();
     const trans = (D.phaseTransitions && D.phaseTransitions[ph]) ? D.phaseTransitions[ph] : null;
+    // 阶段蜕变奖励 1 次许愿机会 (对齐 UI "阶段蜕变可积攒愿望点" 的承诺)
+    if (S.wishPoints < 3) S.wishPoints += 1;
     if (trans) {
       S.pending.push({
         type: 'phase_transition',
@@ -1871,7 +1889,8 @@ function moneyLet() {
   if (ph === 'baby' || ph === 'kinder' || ph === 'home') base = 0;
   else if (ph === 'college') base = 120 + S.fam.tier * 40;
   else if (ph === 'work') base = 0; // 走工资
-  else base = 30 + S.fam.tier * 55 + (ph === 'senior' ? 25 : 0);
+  // 零花钱查表 (docs/03 门第零花钱表 30~180): 30+Tier*55 曾让 Tier5 达 305/回, 商店最贵才 80 元, 钱无处可花
+  else base = [30, 45, 65, 95, 135, 180][clamp(S.fam.tier || 0, 0, 5)] + RI(0, 10);
 
   const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
   if (pStyle && pStyle.moneyRatio) {
@@ -1922,6 +1941,7 @@ function pendFinal() {
   const rank = tg < 160 ? '班级后段' : tg < 215 ? '中游' : tg < 265 ? '上游' : '名列前茅';
   const fd = { '班级后段': -10, 中游: 0, 上游: 10, '名列前茅': 20 }[rank];
   S.face = Math.max(0, S.face + fd);
+  if (rank === '名列前茅' && S.wishPoints < 3) { S.wishPoints += 1; toast('名列前茅！爸妈高兴，许愿机会 +1'); }
   if (pStyle && pStyle.id === 'elite' && (rank === '班级后段' || rank === '中游')) {
     S.sat = Math.max(0, S.sat - 25);
   }
@@ -1949,6 +1969,7 @@ function pendZhongkao() {
   S.face = Math.max(0, S.face + fb);
   S.exambuff = clamp((S.exambuff || 0) + bu, 0, 200);
   S.flags.zhongkao = lvl;
+  if (lvl === '重点' && S.wishPoints < 3) { S.wishPoints += 1; toast('考上重点高中！许愿机会 +1'); }
   if (pStyle && pStyle.id === 'elite' && lvl !== '重点') {
     S.sat = Math.max(0, S.sat - 25);
   }
@@ -1977,6 +1998,7 @@ function pendGaokao() {
   S.gaokaoScore = tg; S.uniTier = idx;
   const fd = [-15, -5, 5, 15, 25, 40][idx];
   S.face = Math.max(0, S.face + fd);
+  if (idx >= 5 && S.wishPoints < 3) { S.wishPoints += 1; toast('金榜题名上清北！许愿机会 +1'); }
   if (tg >= 690) rollTalent('gaokao', 1);
   if (pStyle && pStyle.id === 'elite' && idx < 3) {
     S.sat = Math.max(0, S.sat - 25);
@@ -2171,10 +2193,11 @@ function talentShowPerform(chosenTalentId, showtimeGrade, encoreChoice, styleCho
   const win = greenCount >= 2;
 
   let gi = win ? (tier >= 3 ? 500 : 200) : 120;
-  let gf = win ? (tier >= 3 ? 150 : 60) : 30;
+  // 面子产出减半 (反通胀): 选秀曾是面子最大单笔来源, tier3 夺冠 +150 一次顶大钢琴门槛
+  let gf = win ? (tier >= 3 ? 75 : 30) : 15;
   if (win && greenCount === 3) {
     gi = Math.round(gi * 1.25);
-    gf += 30;
+    gf += 15;
   }
 
   // 5) 结算奖励与专属特长
@@ -2620,7 +2643,7 @@ function faceDuelStep(actionIdx) {
       ? duel.opp.tiltLines[duel.opp.tiltLines.length - 1]
       : '面子彻底崩溃，借口灶上炖着汤悻悻离席！';
     duel.logs.push('💥 ' + duel.opp.name + finQuote);
-    S.face += 120;
+    S.face += 60; // 面子减半 (反通胀): 曾 +120
     S.sat = clamp(S.sat + 15, 0, 140);
     duel.lastAction = {
       round: duel.round,
@@ -2729,7 +2752,7 @@ function faceDuelStep(actionIdx) {
       if (!S.flags) S.flags = {};
       S.flags.wonDuel = 1;
       duel.logs.push('🎉 ' + duel.maxRound + '轮交锋结束，我方面子更胜一筹！全场称赞！');
-      S.face += 120;
+      S.face += 60; // 面子减半 (反通胀): 曾 +120
       S.sat = clamp(S.sat + 15, 0, 140);
     } else {
       duel.logs.push('败下阵来……妈妈说今晚回家不吃鸡肉了。');
@@ -3138,18 +3161,18 @@ function electionFinish() {
     talentId = 'el_leader';
     if (!S.flags) S.flags = {};
     S.flags.wonElection = 1;
-    S.face += 100;
+    S.face += 50; // 面子减半 (反通胀): 曾 +100
     S.sat = clamp(S.sat + 25, 0, 140);
     S.insight = (S.insight || 0) + 300;
     Object.keys(S.npcAff || {}).forEach(k => {
       S.npcAff[k] = (S.npcAff[k] || 0) + 12;
     });
-    reportBody = '🎉 经过五轮跌宕起伏的激烈竞选演说，你以 ' + el.myVotes + ' 票拔得头筹，力压对手！\n\n班主任在全班雷动掌声中，庄严为你佩戴上光荣的【三道杠】中队长红臂章！并授予特长【威风凛凛一班之长】！\n(家庭面子+100, 悟性+300, 父母满意+25, 全员好感+12)';
+    reportBody = '🎉 经过五轮跌宕起伏的激烈竞选演说，你以 ' + el.myVotes + ' 票拔得头筹，力压对手！\n\n班主任在全班雷动掌声中，庄严为你佩戴上光荣的【三道杠】中队长红臂章！并授予特长【威风凛凛一班之长】！\n(家庭面子+50, 悟性+300, 父母满意+25, 全员好感+12)';
   } else if (pRank === 2) {
     // 🥈 第二名：副班长 / 宣传委员
     titleName = '班级副班长 / 宣传委员';
     talentId = 'el_deputy';
-    S.face += 50;
+    S.face += 25; // 面子减半 (反通胀): 曾 +50
     S.sat = clamp(S.sat + 15, 0, 140);
     S.insight = (S.insight || 0) + 180;
     Object.keys(S.npcAff || {}).forEach(k => {
@@ -3160,14 +3183,14 @@ function electionFinish() {
     // 🥉 第三名：劳动委员 / 保洁专员
     titleName = '班级劳动委员 / 保洁专员';
     talentId = 'el_labor';
-    S.face += 20;
+    S.face += 10; // 面子减半 (反通胀): 曾 +20
     S.attrs = S.attrs || {};
     S.attrs.phy = (S.attrs.phy || 0) + 20;
     S.insight = (S.insight || 0) + 80;
     Object.keys(S.npcAff || {}).forEach(k => {
       S.npcAff[k] = (S.npcAff[k] || 0) + 3;
     });
-    reportBody = '🧹 你斩获 ' + el.myVotes + ' 票位列第三！班主任走下讲台紧紧握住你的手：“班级包干区的卫生安全，就交给你这位实干家了！”\n\n你受任为【劳动委员】，佩戴【一道杠】袖标，并领悟搞笑特长【包干区总管】！\n(体魄+20, 悟性+80, 家庭面子+20, 全员好感+3)';
+    reportBody = '🧹 你斩获 ' + el.myVotes + ' 票位列第三！班主任走下讲台紧紧握住你的手：“班级包干区的卫生安全，就交给你这位实干家了！”\n\n你受任为【劳动委员】，佩戴【一道杠】袖标，并领悟搞笑特长【包干区总管】！\n(体魄+20, 悟性+80, 家庭面子+10, 全员好感+3)';
   }
 
   el.awardedTitle = titleName;
@@ -3276,11 +3299,11 @@ function promotionResolve(i) {
     const prefix = prefixMap[job.t] || '首席';
     job.n = prefix + '·' + (job.n || job.name || '核心骨干');
     S.workSalary = Math.round(S.workSalary * 1.5);
-    S.face += 50;
+    S.face += 25; // 面子减半 (反通胀): 曾 +50
     S.sat = clamp(S.sat + 15, 0, 140);
     const msg = '🎉 绩效考核斩获评级【S+】！\n' +
       '委员会一致通过你的晋升申请！正式擢升为【' + job.n + '】(门第 Tier ' + job.t + ')！\n' +
-      '月薪暴涨至 ' + S.workSalary + ' 元/回！家庭面子 +50，父母欣慰之至！';
+      '月薪暴涨至 ' + S.workSalary + ' 元/回！家庭面子 +25，父母欣慰之至！';
     log('职场晋升成功！擢升为「' + job.n + '」，月薪升至 ' + S.workSalary + ' 元');
     return msg;
   } else {
@@ -3389,8 +3412,8 @@ function marryResolve(i) {
         bonus: m.cand.bonus,
         npcId: m.cand.id
       };
-      S.face += 40;
-      return '💍 喜结连理！你与「' + (m.cand.name || m.cand.n) + '」在亲友见证下步入婚姻殿堂！(面子+40，基因全额注入后代)';
+      S.face += 20; // 面子减半 (反通胀): 曾 +40
+      return '💍 喜结连理！你与「' + (m.cand.name || m.cand.n) + '」在亲友见证下步入婚姻殿堂！(面子+20，基因全额注入后代)';
     }
     return '彼此都懂，但你决定暂时不打扰，把青葱回忆留在心底。保持单身。';
   }
@@ -3408,8 +3431,8 @@ function marryResolve(i) {
       bonus: target.bonus,
       title: target.tag
     };
-    S.face += 25;
-    return '🎉 相亲大获成功！你与【' + target.name + '】一见投缘，不久后领证组建温馨家庭！(面子+25)';
+    S.face += 12; // 面子减半 (反通胀): 曾 +25
+    return '🎉 相亲大获成功！你与【' + target.name + '】一见投缘，不久后领证组建温馨家庭！(面子+12)';
   }
   return '相亲席上相顾无言，未能擦出火花。长辈叹气：“看来缘分还未到，继续努力吧！”';
 }
@@ -3452,8 +3475,9 @@ function pushEndGen() {
   // 本代人生综合得分与评级 (对齐 GAME-DESIGN.md 12 节: 职业40% + 婚姻20% + 财富10% + 天赋30%)
   const jobScore = Math.min(100, (job.t || 0) * 20 + 20);
   const marryScore = S.spouse ? (S.spouse.tag === '校园恋人' ? 100 : 85) : 40;
-  const moneyScore = Math.min(100, Math.round((S.money || 0) / 25));
-  const talentScore = Math.min(100, newFamTalent * 8 + (S.gaokaoScore >= 620 ? 30 : S.gaokaoScore >= 430 ? 15 : 0));
+  // 反饱和标定: money/25 曾让 2500 元即满分 (一代终局轻松 2 万); talent*8 曾让 9 项图鉴即满分
+  const moneyScore = Math.min(100, Math.round((S.money || 0) / 120));
+  const talentScore = Math.min(100, Math.round(newFamTalent * 2.5) + (S.gaokaoScore >= 620 ? 30 : S.gaokaoScore >= 430 ? 15 : 0));
   const totalLifeScore = Math.round(jobScore * 0.4 + marryScore * 0.2 + moneyScore * 0.1 + talentScore * 0.3);
 
   let rating = 'B';

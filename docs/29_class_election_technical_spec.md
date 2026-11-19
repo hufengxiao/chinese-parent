@@ -76,7 +76,7 @@ $$\Delta V_{\text{rival}} = \text{RI}(5, 10)$$
 
 当 `round > 3` 或任意一方票数 $\ge 26$ 时，进入结算：
 1. `won = myVotes >= rival.votes`；
-2. 若获胜：发放面子 $+60$、满意 $+15$、全员 NPC 好感度 $+8$；
+2. 若获胜：发放面子 $+50$ (v3.3.0 反通胀减半)、满意 $+15$、全员 NPC 好感度 $+8$；
 3. 推入 `type: 'electionr'` 结算模态框，由 `renderElectionResultModal` 渲染带红章的正式任命聘书。
 
 ---

@@ -157,7 +157,7 @@ assert.strictEqual(duelCombat.finished, true, '对手HP归零时对决必须结�
 assert.strictEqual(duelCombat.won, true, '必须判定我方获胜');
 assert(duelCombat.mvpTalent, '终局必须评选出 MVP 特长');
 assert(duelCombat.totalDamageDealt > 0, '终局必须统计造成的总面子伤害');
-assert(CP.state().face >= faceBefore + 120, '获胜后家庭面子必须增加 120');
+assert(CP.state().face >= faceBefore + 60, '获胜后家庭面子必须增加 60 (v3.3.0 面子反通胀减半)');
 
 // 确认并退出战报
 const exitMsg = CP.resolve(0);

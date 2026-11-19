@@ -67,21 +67,22 @@ $$\text{Stress}_{\text{new}} = \text{Clamp}(\text{Stress}_{\text{old}} + \sum_{i
 ```
 上一代完结成就（高考分、最终职业、配偶素质、家族特长数）
         │
-        ├── ① 属性血统遗传：五维属性按 18% 折算注入后代先天初值
-        ├── ② 家族特长沉淀：已收录特长数量，提供后代每回合自然全属性成长
+        ├── ① 属性血统遗传：五维属性按 12% 折算（成就【开枝散叶】后 16%）注入后代先天初值，单项封顶 150
+        ├── ② 家族特长沉淀：已收录特长数量，提供后代每回合自然全属性成长（上限 +3，注入初值单项封顶 5）
         ├── ③ 经济门第晋升：职业地位提升下一代家族阶层 Tier 0~5
         └── ④ 伴侣基因赋能：高质量婚配带来额外开局属性加成
 ```
 
 ### 4.1 属性血统折算公式
 下一代新生儿建立角色时，六维属性不仅拥有基础保底初值，还会按比例继承父母双方的毕生修行：
-$$\text{Attr}_{\text{start}}(k) = \text{Base}(k) + \lfloor \text{ParentAttr}(k) \times 0.18 \rfloor + \text{SpouseBonus}(k)$$
-- **递增效应**：经过 3~5 代的积累，后代从婴儿期开局即可具备数十乃至上百点基础心智，研习高阶技能如鱼得水。
+$$\text{Attr}_{\text{start}}(k) = \text{Base}(k) + \min\left(150,\ \lfloor \text{ParentAttr}(k) \times 0.12 \rfloor\right) + \min(5,\ \text{TalentCount}) + \text{SpouseBonus}(k)$$
+- **封顶防滚雪球** (v3.3.0)：旧版无上限的 18%/25% 折算让第 3 代开局属性突破四位数；现在单项遗传封顶 150 点、特长注入封顶 5 点——传承依然温暖，但每一代都要靠自己的努力再攀高峰。
+- **递增效应**：经过 3~5 代的积累，后代从婴儿期开局即可具备数百点基础心智，研习高阶技能如鱼得水。
 
 ### 4.2 家族特长图鉴与全属性自然成长
 每一代获得的稀有特长均会自动收录进《家族特长图鉴》（Atlas）。
 图鉴总特长数量 $\text{TalentCount}$ 决定后代每回合的“家族底蕴自然觉醒”：
-$$\text{PerTurnGrowth} = \max\left(1, \ \lfloor \text{TalentCount} / 2 \rfloor\right)$$
+$$\text{PerTurnGrowth} = \min\left(3,\ \max\left(1,\ \lfloor \text{TalentCount} / 8 \rfloor\right)\right)$$
 在每一个回合开始时，六维属性均会自动无消耗增长 $\text{PerTurnGrowth}$ 点，生动诠释了“书香门第，耳濡目染”的成长优势。
 
 ### 4.3 家族门第与零花钱阶层继承表

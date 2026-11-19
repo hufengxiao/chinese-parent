@@ -240,7 +240,7 @@ $$\text{Discount} = \text{Clamp}(\text{AttrVal}(\text{MainAttr}) \times 0.003, \
 2. **己方特长输出**：
    $$\text{Damage}_{\text{my}} = \text{Round}\left(\text{RATK}[\text{Rank}] \times (0.9 + \text{Random}(0, 0.4))\right)$$
    若持有传说特长（战力 2401），一招制敌秒杀全场；若无特长，只能使出普通【大嗓门】（战力 7 点）。
-3. **奖惩**：大获全胜家庭面子暴涨 **$+120$ 点**；战败扣减 **$-40$ 点**。
+3. **奖惩**：大获全胜家庭面子暴涨 **$+60$ 点** (v3.3.0 反通胀减半)；战败扣减 **$-40$ 点**。
 
 ---
 
