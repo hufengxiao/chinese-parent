@@ -138,9 +138,11 @@ summaries.forEach((ss) => {
   assert.strictEqual(ss.phaseTransitions, 7, `第${ss.gen}代阶段蜕变次数异常: ${ss.phaseTransitions}`);
   assert(ss.turns && ss.turns >= 40, `第${ss.gen}代回合数异常: ${ss.turns}`);
   const maxGk = Math.max.apply(null, gkScores);
-  const allCapped = gkScores.every(v => v >= 19900);
+  const allCapped = gkScores.every(v => v >= 740);
   assert(!allCapped, '高考分数饱和缺陷回归: 全部世代顶到满分! ' + JSON.stringify(gkScores));
-  assert(maxGk <= 20000, `高考分数不应超过 20000 上限, 实际 ${maxGk}`);
+  const belowErben = gkScores.every(v => v < 390);
+  assert(!belowErben, '高考拟真回归: 全部世代连二本线都不到, 分数体系塌陷! ' + JSON.stringify(gkScores));
+  assert(maxGk <= 750, `高考分数不应超过 750 满分, 实际 ${maxGk}`);
 });
 // 传承断言: 二代起基础属性显著强于一代开局
 for (let i = 1; i < MAX_GENS; i++) {

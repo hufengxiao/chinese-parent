@@ -1881,7 +1881,7 @@ function moneyLet() {
 }
 
 /* ---------- 考试 ---------- */
-/* 单科考分上限表 —— 防止课程无限重复排课把每代高考都顶到满分 20000 (2026-09 平衡修复) */
+/* 单科考分上限表 —— 防止课程无限重复排课把每代高考都顶到满分 (2026-09 平衡修复) */
 const SUBJ_CAP = { cn: 55, ma: 60, en: 42, sc: 58, so: 34 };
 function subjPts() {
   const pts = { cn: 0, ma: 0, en: 0, sc: 0, so: 0 };
@@ -1907,11 +1907,19 @@ function cattr(keys, cap) {
 function pendFinal() {
   if (!S || !S.pending) return;
   const p = subjPts();
-  const relicBonus = hasRelic('relic_paper') ? 350 : 0;
+  const relicBonus = hasRelic('relic_paper') ? 35 : 0;
   const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
   const styleBonus = (pStyle && pStyle.examBuffBonus) ? pStyle.examBuffBonus : 0;
-  const tg = Math.round((p.cn + p.ma + p.en) * 60 + p.sc * 45 + p.so * 40 + cattr(['iq', 'mem'], 200) * 3 + Math.min((S.exambuff || 0) + styleBonus, 60) * 2 + relicBonus);
-  const rank = tg < 3500 ? '班级后段' : tg < 7000 ? '中游' : tg < 10500 ? '上游' : '名列前茅';
+  // 拟真分制: 期末满分 300 (语/数/英各100), 收益递减折算 pts/(pts+K) — 基础分易得, 高分要苦学
+  // 标定: 典型 T24 pts≈{23,9,5} → ~110~160 后段/中游; 全cap+满buff → ~275 名列前茅, 不超顶
+  const tg = clamp(Math.round(
+    100 * p.cn / (p.cn + 25) +
+    100 * p.ma / (p.ma + 27) +
+    100 * p.en / (p.en + 19) +
+    cattr(['iq', 'mem'], 200) / 30 +
+    Math.min((S.exambuff || 0) + styleBonus, 60) * 0.8 + relicBonus + RI(-12, 8)
+  ), 0, 300);
+  const rank = tg < 160 ? '班级后段' : tg < 215 ? '中游' : tg < 265 ? '上游' : '名列前茅';
   const fd = { '班级后段': -10, 中游: 0, 上游: 10, '名列前茅': 20 }[rank];
   S.face = Math.max(0, S.face + fd);
   if (pStyle && pStyle.id === 'elite' && (rank === '班级后段' || rank === '中游')) {
@@ -1922,11 +1930,20 @@ function pendFinal() {
 function pendZhongkao() {
   if (!S || !S.pending) return;
   const p = subjPts();
-  const relicBonus = hasRelic('relic_paper') ? 350 : 0;
+  const relicBonus = hasRelic('relic_paper') ? 35 : 0;
   const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
   const styleBonus = (pStyle && pStyle.examBuffBonus) ? pStyle.examBuffBonus : 0;
-  const tg = Math.round((p.cn * 55 + p.ma * 55 + p.en * 45 + p.sc * 50 + p.so * 40) + cattr(['iq', 'mem'], 200) * 4 + Math.min((S.exambuff || 0) + styleBonus, 100) * 3 + relicBonus);
-  const lvl = tg < 5200 ? '职高' : tg < 8800 ? '普高' : '重点';
+  // 拟真分制: 中考满分 700 (语120/数120/英100/综合360), 收益递减折算 — 基础分易得, 满掌握度也远非满分
+  // 标定: 典型 T32 pts≈{40,15,8,5,0} → ~150~210 普高; 全cap+buff → ~520 重点, 极限属性 +buff → 600+
+  const tg = clamp(Math.round(
+    120 * p.cn / (p.cn + 22) +
+    120 * p.ma / (p.ma + 24) +
+    100 * p.en / (p.en + 17) +
+    (p.sc + p.so) * 360 / ((p.sc + p.so) + 37) +
+    cattr(['iq', 'mem'], 200) / 25 +
+    Math.min((S.exambuff || 0) + styleBonus, 100) * 1.2 + relicBonus + RI(-18, 10)
+  ), 0, 700);
+  const lvl = tg < 175 ? '职高' : tg < 265 ? '普高' : '重点';
   const fb = { 职高: -8, 普高: 5, 重点: 20 }[lvl];
   const bu = { 职高: 150, 普高: 300, 重点: 500 }[lvl];
   S.face = Math.max(0, S.face + fb);
@@ -1940,22 +1957,27 @@ function pendZhongkao() {
 function pendGaokao() {
   if (!S || !S.pending) return;
   const p = subjPts();
-  const relicBonus = hasRelic('relic_paper') ? 350 : 0;
+  const relicBonus = hasRelic('relic_paper') ? 35 : 0;
   const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
   const styleBonus = (pStyle && pStyle.examBuffBonus) ? pStyle.examBuffBonus : 0;
+  // 拟真分制: 高考满分 750 (语/数/英各150 + 综合300), 收益递减折算 — 基础分易得, 清北要苦学+属性+传家宝
+  // 标定: 全cap pts=249 + 满属性满buff → ~705; 无属性 → ~640; 普通玩家 ~430~520; 满分 750 理论不可达
   const raw =
-    (p.cn * 70 + p.ma * 70 + p.sc * 70 + p.en * 52 + p.so * 46) +
-    cattr(['iq', 'mem'], 250) * 5 +
-    Math.min((S.exambuff || 0) + styleBonus, 80) * 8 +
-    Math.min(S.attrs.img || 0, 200) * 2 +
+    150 * p.cn / (p.cn + 15) +
+    150 * p.ma / (p.ma + 17) +
+    150 * p.en / (p.en + 12) +
+    (p.sc + p.so) * 300 / ((p.sc + p.so) + 26) +
+    cattr(['iq', 'mem'], 250) / 18 +
+    Math.min((S.exambuff || 0) + styleBonus, 80) * 0.9 +
+    Math.min(S.attrs.img || 0, 200) / 22 +
     relicBonus;
-  const tg = Math.min(20000, Math.round(raw));
+  const tg = clamp(Math.round(raw + RI(-25, 10)), 0, 750);
   let band = D.gk[0]; let idx = 0;
   D.gk.forEach((g, i) => { if (tg >= g.min) { band = g; idx = i; } });
   S.gaokaoScore = tg; S.uniTier = idx;
   const fd = [-15, -5, 5, 15, 25, 40][idx];
   S.face = Math.max(0, S.face + fd);
-  if (tg >= 19000) rollTalent('gaokao', 1);
+  if (tg >= 690) rollTalent('gaokao', 1);
   if (pStyle && pStyle.id === 'elite' && idx < 3) {
     S.sat = Math.max(0, S.sat - 25);
   }
@@ -1971,7 +1993,7 @@ function pendGaokao() {
     title: '🎓 高考放榜 & 志愿填报',
     score: tg,
     tierName: band.t,
-    body: '高考总分: ' + tg + ' / 20000\n录取位次: 『' + band.t + '』\n' +
+    body: '高考总分: ' + tg + ' / 750\n录取位次: 『' + band.t + '』\n' +
           (idx >= 4 ? '班主任在群里连发三次红包！全校拉起大红横幅！' : idx <= 1 ? '年轻人,人生还有很多赛道，未来依然可期。' : '还不错,向前看吧。') +
           '\n\n请填报你的大学专业志向：',
     opts: majorOpts.length ? majorOpts : ['文理兼修']
@@ -3431,7 +3453,7 @@ function pushEndGen() {
   const jobScore = Math.min(100, (job.t || 0) * 20 + 20);
   const marryScore = S.spouse ? (S.spouse.tag === '校园恋人' ? 100 : 85) : 40;
   const moneyScore = Math.min(100, Math.round((S.money || 0) / 25));
-  const talentScore = Math.min(100, newFamTalent * 8 + (S.gaokaoScore >= 17000 ? 30 : S.gaokaoScore >= 12000 ? 15 : 0));
+  const talentScore = Math.min(100, newFamTalent * 8 + (S.gaokaoScore >= 620 ? 30 : S.gaokaoScore >= 430 ? 15 : 0));
   const totalLifeScore = Math.round(jobScore * 0.4 + marryScore * 0.2 + moneyScore * 0.1 + talentScore * 0.3);
 
   let rating = 'B';
@@ -3443,11 +3465,11 @@ function pushEndGen() {
 
   // 经典高光回顾
   let highlight = '踏实走完精彩一代，将温暖与希望毫无保留地交托下一代！';
-  if (S.gaokaoScore >= 19000) highlight = '高考斩获 ' + S.gaokaoScore + ' 分直通清北，全校拉起大红横幅！';
+  if (S.gaokaoScore >= 690) highlight = '高考斩获 ' + S.gaokaoScore + ' 分直通清北，全校拉起大红横幅！';
   else if ((job.t || 0) >= 5) highlight = '白手起家终成首富，家族跨越直达金字塔尖！';
   else if (S.spouse && S.spouse.tag === '校园恋人') highlight = '与校园白月光相守白头，亲友齐赞神仙眷侣！';
   else if (S.talents && S.talents.length >= 8) highlight = '一身神级特长横扫各大舞台，人称『别人家孩子本尊』！';
-  else if (S.gaokaoScore >= 14000) highlight = '高考勇夺名牌大学，爸妈在亲戚群里连发三天大红包！';
+  else if (S.gaokaoScore >= 500) highlight = '高考勇夺名牌大学，爸妈在亲戚群里连发三天大红包！';
   else if ((job.t || 0) >= 3) highlight = '跻身社会精英阶层，生活体面宽裕，爸妈逢人便夸！';
 
   const prevHistory = (S.fam && S.fam.history) || [];
@@ -3476,7 +3498,7 @@ function pushEndGen() {
   function addAch(id) {
     if (updatedAchievements.indexOf(id) < 0) updatedAchievements.push(id);
   }
-  if ((S.gaokaoScore || 0) >= 19000) addAch('ach-gk-top');
+  if ((S.gaokaoScore || 0) >= 690) addAch('ach-gk-top');
   if (job.id === 'j-first' || (job.t || 0) >= 5) addAch('ach-first-rich');
   if (S.spouse && S.spouse.tag === '校园恋人') addAch('ach-love-true');
   if ((S.talents || []).length >= 8) addAch('ach-talent-all');
@@ -3501,7 +3523,7 @@ function pushEndGen() {
     }
   }
   if (S.gen >= 1) addRelic('relic_bike');
-  if ((S.gaokaoScore || 0) >= 16000 || updatedAchievements.indexOf('ach-gk-top') >= 0) addRelic('relic_paper');
+  if ((S.gaokaoScore || 0) >= 580 || updatedAchievements.indexOf('ach-gk-top') >= 0) addRelic('relic_paper');
   if ((S.money || 0) >= 1000 || (job.t || 0) >= 5 || updatedAchievements.indexOf('ach-first-rich') >= 0) addRelic('relic_stock');
   if (((S.attrs && S.attrs.phy) || 0) >= 200 || (S.flags && S.flags.wonDuel)) addRelic('relic_racket');
   if ((S.flags && S.flags.wonShow) || talentScore >= 60) addRelic('relic_camera');

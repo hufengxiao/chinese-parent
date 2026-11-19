@@ -31,6 +31,7 @@ const phaseSum = {};
 let couldntAfford = [];   // 想学学不起的回合 (稀缺感时刻)
 let keyUses = 0, bombsHit = 0, comboHits = 0;
 let totalDug = 0, totalInsightFromDig = 0, totalSpent = 0;
+const examScores = {};  // 期末/中考/高考 得分记录
 
 let guard = 0, done = false;
 while (!done && guard++ < 4000) {
@@ -44,6 +45,9 @@ while (!done && guard++ < 4000) {
   while (p.length && pg++ < 40) {
     const m = p[0];
     popups.push(m.type + (m.title ? ':' + m.title : ''));
+    if (m.type === 'gaokao_apply') examScores.gaokao = m.score;
+    if (m.type === 'news' && m.title === '中考出分') examScores.zhongkao = (m.body.match(/总分 (\d+)/) || [])[1];
+    if (m.type === 'news' && m.title === '期末考成绩单') examScores.final = (m.body.match(/总分 (\d+)/) || [])[1];
     if (m.type === 'endgen') { done = true; break; }
     CP.resolve(0);
     p = CP.pending();
@@ -103,6 +107,7 @@ for (const ph in phaseSum) {
 }
 console.log(`\n全程: 挖开${totalDug}格 → 脑洞共+${totalInsightFromDig}悟性; 研习共花${totalSpent}; 钥匙启用${keyUses}次; "想学学不起"出现${couldntAfford.length}回合 (回合: ${couldntAfford.slice(0, 20).join(',')}${couldntAfford.length > 20 ? '…' : ''})`);
 console.log(`最终: ${CP.learnedCount ? CP.learnedCount() : CP.state().learnedCourses.length} 门课 / 悟性结余 ${CP.state().insight}`);
+console.log(`三考得分 (拟真分制): 期末 ${examScores.final || '—'}/300 · 中考 ${examScores.zhongkao || '—'}/700 · 高考 ${examScores.gaokao || '—'}/750`);
 
 console.log('\n--- 前16回合流水 (开局节奏) ---');
 for (const r of log.slice(0, 16)) {

@@ -205,7 +205,7 @@ $$\text{Discount} = \text{Clamp}(\text{AttrVal}(\text{MainAttr}) \times 0.003, \
 | **Rank 3** (史诗) | **343 点** | `jiazui` | **压轴题杀手** | 🧮 | 研习【数学高考压轴】概率领悟 |
 | **Rank 4** (传说) | **2401 点**| `gods` | **五指琴魔** | 🎹 | 达成高级钢琴集训后顿悟 |
 | **Rank 4** | **2401 点**| `nianshen` | **捏泥成神** | 🧸 | 达成橡皮泥艺术巅峰后顿悟 |
-| **Rank 4** | **2401 点**| `gaokao` | **状元苗子** | 👑 | 高考总分 $\ge 19000$ 必定领悟 |
+| **Rank 4** | **2401 点**| `gaokao` | **状元苗子** | 👑 | 高考总分 $\ge 690$ 必定领悟 |
 
 ---
 
@@ -257,7 +257,7 @@ $$\text{Discount} = \text{Clamp}(\text{AttrVal}(\text{MainAttr}) \times 0.003, \
 
 ### 10.1 校园小卖部核心商品
 - **高能运动饮料 (15元)**：即刻回复行动力 $+15$ 点；
-- **三年模拟 (70元)**：直接增加高考总考分 $+40$ 分；
+- **三年模拟 (70元)**：考前心态加成 exambuff $+40$（折算进考总分）；
 - **深呼吸打气筒 (40元)**：强力削减压力 $-20$ 点，**高压防崩核心神药**。
 
 ### 10.2 向父母“索取”大件道具
@@ -272,17 +272,18 @@ $$\text{Discount} = \text{Clamp}(\text{AttrVal}(\text{MainAttr}) \times 0.003, \
 ### 11.1 单科考分上限与五育并举机制
 为防止单科无脑排满刷分，各学科设置科学考分上限：语文 55、数学 60、英语 42、理科 58、文科 34。单科刷满后继续排课仅增加基础属性。
 
-### 11.2 高考终极综合算分模型 (Turn 44)
-$$\text{RawScore} = (p_{\text{cn}} \times 70 + p_{\text{ma}} \times 70 + p_{\text{sc}} \times 70 + p_{\text{en}} \times 52 + p_{\text{so}} \times 46) + \text{CAttr}([\text{iq}, \text{mem}], 250) \times 5 + \text{Buff} \times 8 + \min(\text{img}, 200) \times 2$$
-$$\text{GaokaoScore} = \min(20000, \ \text{Round}(\text{RawScore}))$$
+### 11.2 高考终极综合算分模型 (Turn 44) —— 拟真 750 分制
+语/数/英各满分 150，综合科（理综/文综并集折算）满分 300，属性与心态仅作小幅修正：
+$$\text{RawScore} = (p_{\text{cn}} + p_{\text{ma}}) \times \tfrac{150}{58} + p_{\text{en}} \times \tfrac{150}{42} + (p_{\text{sc}} + p_{\text{so}}) \times \tfrac{300}{92} + \tfrac{\text{CAttr}([\text{iq}, \text{mem}], 250)}{20} + \text{Buff} \times 0.9 + \tfrac{\min(\text{img}, 200)}{20}$$
+$$\text{GaokaoScore} = \min(750, \ \text{Round}(\text{RawScore}))$$
 
 ### 11.3 六大高校录取门槛
-- $< 6000$ 分：专科院校
-- $6000 \sim 9999$ 分：普通二本
-- $10000 \sim 13999$ 分：老牌一本
-- $14000 \sim 16999$ 分：211 重点大学
-- $17000 \sim 18999$ 分：985 名门学府
-- $\ge 19000$ 分：**清华大学 / 北京大学**（全校横幅，解锁传说特长【状元苗子】）
+- $< 390$ 分：专科院校
+- $390 \sim 469$ 分：普通二本
+- $470 \sim 539$ 分：老牌一本
+- $540 \sim 599$ 分：211 重点大学
+- $600 \sim 679$ 分：985 名门学府
+- $\ge 680$ 分：**清华大学 / 北京大学**（全校横幅，解锁传说特长【状元苗子】）
 
 ---
 
