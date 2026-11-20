@@ -856,11 +856,12 @@ const swFileContent = fs.readFileSync(path.join(dir, '..', 'sw.js'), 'utf8');
 const indexHtmlContent = fs.readFileSync(path.join(dir, '..', 'index.html'), 'utf8');
 assert(swFileContent.includes(`CACHE_NAME = 'chinese-parent-${DATA.version}'`), `sw.js 离线缓存版本必须与 DATA.version (${DATA.version}) 严格同步`);
 assert(indexHtmlContent.includes(DATA.version), `index.html 必须包含最新版本号 ${DATA.version}`);
-assert.strictEqual(DATA.version, 'v3.3.1', '当前最新发版版本应为 v3.3.1');
-assert(DATA.changelog[0].title.includes('堵漏') || DATA.changelog[0].title.includes('校友') || DATA.changelog[0].title.includes('面子'), 'v3.3.1 首条更新必须为校友人脉面子回调公告');
-assert(DATA.changelog[1] && (DATA.changelog[1].title.includes('五大数值') || DATA.changelog[1].title.includes('通胀')), 'v3.3.0 次条更新必须保留五大数值修复公告');
-assert(DATA.changelog[2] && (DATA.changelog[2].title.includes('拟真') || DATA.changelog[2].title.includes('考')), 'v3.2.0 三条更新必须保留考试拟真化记录');
-assert(DATA.changelog[3] && (DATA.changelog[3].title.includes('悟性') || DATA.changelog[3].title.includes('平衡')), 'v3.1.0 四条更新必须保留悟性经济再平衡记录');
+assert.strictEqual(DATA.version, 'v3.3.2', '当前最新发版版本应为 v3.3.2');
+assert(DATA.changelog[0].title.includes('中考') || DATA.changelog[0].title.includes('锚定') || DATA.changelog[0].title.includes('分数线'), 'v3.3.2 首条更新必须为中考/期末分数线锚定公告');
+assert(DATA.changelog[1] && (DATA.changelog[1].title.includes('堵漏') || DATA.changelog[1].title.includes('校友') || DATA.changelog[1].title.includes('面子')), 'v3.3.1 次条更新必须保留校友人脉面子回调公告');
+assert(DATA.changelog[2] && (DATA.changelog[2].title.includes('五大数值') || DATA.changelog[2].title.includes('通胀')), 'v3.3.0 三条更新必须保留五大数值修复公告');
+assert(DATA.changelog[3] && (DATA.changelog[3].title.includes('拟真') || DATA.changelog[3].title.includes('考')), 'v3.2.0 四条更新必须保留考试拟真化记录');
+assert(DATA.changelog[4] && (DATA.changelog[4].title.includes('悟性') || DATA.changelog[4].title.includes('平衡')), 'v3.1.0 五条更新必须保留悟性经济再平衡记录');
 
 console.log('版本更新公告数据结构、多版本滚动历史、刷新自动识别与开发者升版响应测试 100% 验证通过！');
 

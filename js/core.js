@@ -1930,7 +1930,7 @@ function pendFinal() {
   const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
   const styleBonus = (pStyle && pStyle.examBuffBonus) ? pStyle.examBuffBonus : 0;
   // 拟真分制: 期末满分 300 (语/数/英各100), 收益递减折算 pts/(pts+K) — 基础分易得, 高分要苦学
-  // 标定: 典型 T24 pts≈{23,9,5} → ~110~160 后段/中游; 全cap+满buff → ~275 名列前茅, 不超顶
+  // 标定 (v3.3.2): T24 实测 25~66 (pts 每科 2~4, kinder+pri 掌握度); 阈值 45/55/68 对应 后段/中游/上游
   const tg = clamp(Math.round(
     100 * p.cn / (p.cn + 25) +
     100 * p.ma / (p.ma + 27) +
@@ -1938,7 +1938,7 @@ function pendFinal() {
     cattr(['iq', 'mem'], 200) / 30 +
     Math.min((S.exambuff || 0) + styleBonus, 60) * 0.8 + relicBonus + RI(-12, 8)
   ), 0, 300);
-  const rank = tg < 160 ? '班级后段' : tg < 215 ? '中游' : tg < 265 ? '上游' : '名列前茅';
+  const rank = tg < 45 ? '班级后段' : tg < 55 ? '中游' : tg < 68 ? '上游' : '名列前茅';
   const fd = { '班级后段': -10, 中游: 0, 上游: 10, '名列前茅': 20 }[rank];
   S.face = Math.max(0, S.face + fd);
   if (rank === '名列前茅' && S.wishPoints < 3) { S.wishPoints += 1; toast('名列前茅！爸妈高兴，许愿机会 +1'); }
@@ -1954,7 +1954,8 @@ function pendZhongkao() {
   const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
   const styleBonus = (pStyle && pStyle.examBuffBonus) ? pStyle.examBuffBonus : 0;
   // 拟真分制: 中考满分 700 (语120/数120/英100/综合360), 收益递减折算 — 基础分易得, 满掌握度也远非满分
-  // 标定: 典型 T32 pts≈{40,15,8,5,0} → ~150~210 普高; 全cap+buff → ~520 重点, 极限属性 +buff → 600+
+  // 标定 (v3.3.2): exambuff 在中考前通常为 0 (+150 是中考后给高考的), T32 实测 52~168;
+  // 分流线 130/180: 佛系 52~82 职高, 休闲/学霸/肝帝 84~168 多数普高, 重点 180+ 需攒考分buff (三年模拟/黄冈密卷/事件)
   const tg = clamp(Math.round(
     120 * p.cn / (p.cn + 22) +
     120 * p.ma / (p.ma + 24) +
@@ -1963,7 +1964,7 @@ function pendZhongkao() {
     cattr(['iq', 'mem'], 200) / 25 +
     Math.min((S.exambuff || 0) + styleBonus, 100) * 1.2 + relicBonus + RI(-18, 10)
   ), 0, 700);
-  const lvl = tg < 175 ? '职高' : tg < 265 ? '普高' : '重点';
+  const lvl = tg < 130 ? '职高' : tg < 180 ? '普高' : '重点';
   const fb = { 职高: -8, 普高: 5, 重点: 20 }[lvl];
   const bu = { 职高: 150, 普高: 300, 重点: 500 }[lvl];
   S.face = Math.max(0, S.face + fb);
