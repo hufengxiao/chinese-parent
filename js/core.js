@@ -1929,16 +1929,19 @@ function pendFinal() {
   const relicBonus = hasRelic('relic_paper') ? 35 : 0;
   const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
   const styleBonus = (pStyle && pStyle.examBuffBonus) ? pStyle.examBuffBonus : 0;
-  // 拟真分制: 期末满分 300 (语/数/英各100), 收益递减折算 pts/(pts+K) — 基础分易得, 高分要苦学
-  // 标定 (v3.3.2): T24 实测 25~66 (pts 每科 2~4, kinder+pri 掌握度); 阈值 45/55/68 对应 后段/中游/上游
+  // 拟真分制: 期末满分 300 (语/数/英各100), 收益递减折算 pts/(pts+K)
+  // v3.4.0 学段化标定: 小学考纲简单, K 按小学 pts 量表 — 学渣{2,2,2}≈104 不及格, 听课{4,3,2}≈130,
+  // 中坚{8,6,4}≈181 中游, 满研习{32,24,16}≈257 上游; 聪明项 clamp(iq+mem,900)/10 (cap 提到 900 才能显出
+  // 多周目神童差异: 一代学霸 iq+mem≈460→46分, 六代神童≈880→88分, 差 40+ 分肉眼可见), 神童+满研习可 250+ 前茅
+  const smartFinal = Math.round(Math.min(((S.attrs && S.attrs.iq) || 0) + ((S.attrs && S.attrs.mem) || 0), 900) / 10);
   const tg = clamp(Math.round(
-    100 * p.cn / (p.cn + 25) +
-    100 * p.ma / (p.ma + 27) +
-    100 * p.en / (p.en + 19) +
-    cattr(['iq', 'mem'], 200) / 30 +
+    100 * p.cn / (p.cn + 4) +
+    100 * p.ma / (p.ma + 4.5) +
+    100 * p.en / (p.en + 3) +
+    smartFinal +
     Math.min((S.exambuff || 0) + styleBonus, 60) * 0.8 + relicBonus + RI(-12, 8)
   ), 0, 300);
-  const rank = tg < 45 ? '班级后段' : tg < 55 ? '中游' : tg < 68 ? '上游' : '名列前茅';
+  const rank = tg < 130 ? '班级后段' : tg < 190 ? '中游' : tg < 250 ? '上游' : '名列前茅';
   const fd = { '班级后段': -10, 中游: 0, 上游: 10, '名列前茅': 20 }[rank];
   S.face = Math.max(0, S.face + fd);
   if (rank === '名列前茅' && S.wishPoints < 3) { S.wishPoints += 1; toast('名列前茅！爸妈高兴，许愿机会 +1'); }
@@ -1953,18 +1956,19 @@ function pendZhongkao() {
   const relicBonus = hasRelic('relic_paper') ? 35 : 0;
   const pStyle = (D.parentingStyles || []).find(x => x.id === (S && S.parentingStyle));
   const styleBonus = (pStyle && pStyle.examBuffBonus) ? pStyle.examBuffBonus : 0;
-  // 拟真分制: 中考满分 700 (语120/数120/英100/综合360), 收益递减折算 — 基础分易得, 满掌握度也远非满分
-  // 标定 (v3.3.2): exambuff 在中考前通常为 0 (+150 是中考后给高考的), T32 实测 52~168;
-  // 分流线 130/180: 佛系 52~82 职高, 休闲/学霸/肝帝 84~168 多数普高, 重点 180+ 需攒考分buff (三年模拟/黄冈密卷/事件)
+  // 拟真分制: 中考满分 700 (语120/数120/英100/综合360), 收益递减折算
+  // v3.4.0 学段化标定: K 按 T32 pts 量表 — 放养{5,4,3,4}≈186 职高, 中坚{10,8,6,8}≈278 普高边缘,
+  // 苦学{16,12,10,12}≈361 普高, 满研习+buff 冲 500+ 重点; 聪明项 clamp(iq+mem,900)/12 (一代 38, 神童 73)
+  const smartZk = Math.round(Math.min(((S.attrs && S.attrs.iq) || 0) + ((S.attrs && S.attrs.mem) || 0), 900) / 12);
   const tg = clamp(Math.round(
-    120 * p.cn / (p.cn + 22) +
-    120 * p.ma / (p.ma + 24) +
-    100 * p.en / (p.en + 17) +
-    (p.sc + p.so) * 360 / ((p.sc + p.so) + 37) +
-    cattr(['iq', 'mem'], 200) / 25 +
+    120 * p.cn / (p.cn + 9) +
+    120 * p.ma / (p.ma + 10) +
+    100 * p.en / (p.en + 7) +
+    (p.sc + p.so) * 360 / ((p.sc + p.so) + 15) +
+    smartZk +
     Math.min((S.exambuff || 0) + styleBonus, 100) * 1.2 + relicBonus + RI(-18, 10)
   ), 0, 700);
-  const lvl = tg < 130 ? '职高' : tg < 180 ? '普高' : '重点';
+  const lvl = tg < 240 ? '职高' : tg < 340 ? '普高' : '重点';
   const fb = { 职高: -8, 普高: 5, 重点: 20 }[lvl];
   const bu = { 职高: 150, 普高: 300, 重点: 500 }[lvl];
   S.face = Math.max(0, S.face + fb);
