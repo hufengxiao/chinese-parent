@@ -1092,9 +1092,9 @@ alumniPerks: [
     adultTitle: '知名概念设计师',
     company: '新锐数字艺术工作室',
     skillName: '视觉概念赋能',
-    skillDesc: '消耗15悟性，想象力+40，面子+25',
+    skillDesc: '消耗15悟性，想象力+40，面子+12',
     cost: { insight: 15 },
-    reward: { img: 40, face: 25 },
+    reward: { img: 40, face: 12 },
     quote: '“设计灵感就像捕风，和你聊完我又有新想法了！”'
   },
   {
@@ -1112,9 +1112,9 @@ alumniPerks: [
     adultTitle: '百万MCN创始人',
     company: '星火泛娱乐传媒',
     skillName: '全网流量引爆',
-    skillDesc: '消耗50元零花，面子+60，职场答辩好评加持',
+    skillDesc: '消耗50元零花，面子+30，职场答辩好评加持',
     cost: { money: 50 },
-    reward: { face: 60, promoBonus: 10 },
+    reward: { face: 30, promoBonus: 10 },
     quote: '“老同学的事就是我的头条！全网流量直接给你拉满！”'
   },
   {
@@ -1210,8 +1210,27 @@ branchActions: [
 ],
 
 /* ---------- 游戏版本与更新日志 ---------- */
-version: 'v3.3.0',
+version: 'v3.3.1',
 changelog: [
+  {
+    ver: 'v3.3.1',
+    date: '2026-11-20',
+    title: '堵漏查遗 · 校友人脉面子产出回调',
+    tag: '平衡修复',
+    desc: '漏洞审查发现校友人脉是面子通胀的隐藏持续产出源——夏小美 50 元就能换 60 面子且每回合可刷。现按反通胀原则回调：面子产出减半，属性/职场收益保持不变。',
+    highlights: [
+      {
+        icon: '🤝',
+        title: '校友人脉面子产出减半',
+        desc: '夏小美【全网流量引爆】面子 +60→+30，苏软软【视觉概念赋能】面子 +25→+12。属性加成 (想象力+40/职场内推+80月薪等) 全部保持不变——人脉依然有用，但不再是面子永动机。'
+      },
+      {
+        icon: '📦',
+        title: 'PWA 离线缓存版本升级 (v3.3.1)',
+        desc: 'Service Worker 缓存版本更新，老玩家刷新页面即可自动拉取最新数值。'
+      }
+    ]
+  },
   {
     ver: 'v3.3.0',
     date: '2026-11-19',
